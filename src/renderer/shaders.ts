@@ -1,0 +1,67 @@
+/**
+ * Shaders intégrés. Chacun fournit une fonction GLSL ES 3.00 :
+ *   vec3 render(vec2 uv, vec2 res)
+ * Le moteur (gl.ts) ajoute l'en-tête (uniforms) et le main().
+ *
+ * Uniforms disponibles : u_time, u_resolution, u_bass, u_mid, u_treble, u_level (0..1).
+ */
+
+export interface Shader {
+  name: string;
+  src: string;
+}
+
+export const SHADERS: Shader[] = [
+  {
+    name: "Plasma indus",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * 0.3;
+  float warp = 0.6 + u_bass * 1.6;
+  float v = sin(p.x * 6.0 * warp + t)
+          + sin(p.y * 6.0 - t * 1.3)
+          + sin((p.x + p.y) * 5.0 + t * 0.7);
+  v += sin(length(p) * 10.0 - t * 2.0) * (0.5 + u_mid);
+  float g = 0.5 + 0.5 * sin(v + t);
+  vec3 col = mix(vec3(0.02, 0.05, 0.07), vec3(0.9, 0.45, 0.10), g); // teal sombre -> orange
+  float grain = fract(sin(dot(uv * res, vec2(12.9898, 78.233)) + t) * 43758.5453);
+  col += u_treble * 0.3 * grain;
+  return col * (0.55 + u_level * 0.9);
+}`,
+  },
+  {
+    name: "Tunnel",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float r = length(p);
+  float a = atan(p.y, p.x);
+  float speed = 0.5 + u_level * 2.5;
+  float z = 0.2 / max(r, 1e-3) + u_time * speed;
+  float rings = 0.5 + 0.5 * sin(z * 8.0 + u_bass * 6.0);
+  float spokes = 0.5 + 0.5 * sin(a * 12.0 + u_time);
+  float m = rings * spokes;
+  vec3 col = mix(vec3(0.01), vec3(0.10, 0.70, 0.90), m); // sombre -> cyan
+  col *= smoothstep(0.0, 0.18, r);                        // centre noir
+  col += vec3(0.9, 0.3, 0.05) * pow(m, 4.0) * (0.5 + u_treble); // pointes chaudes
+  return col;
+}`,
+  },
+  {
+    name: "Scan grid",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = uv * vec2(res.x / res.y, 1.0);
+  float scale = 18.0;
+  vec2 g = fract(p * scale);
+  float line = 1.0 - smoothstep(0.0, 0.04, g.x) * smoothstep(0.0, 0.04, g.y);
+  float scan = 0.5 + 0.5 * sin(uv.y * res.y * 0.7 - u_time * 8.0);
+  float pulse = 0.3 + u_mid * 1.0;
+  vec3 base = vec3(0.0, 0.03, 0.02);
+  vec3 grid = vec3(0.1, 0.9, 0.4) * line * pulse * (0.6 + 0.4 * scan); // grille verte
+  grid += vec3(0.9) * line * u_bass * 0.5;                            // flash sur le kick
+  return base + grid;
+}`,
+  },
+];
