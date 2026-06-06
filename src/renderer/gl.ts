@@ -27,8 +27,11 @@ precision highp float;
 out vec4 fragColor;
 ${COMMON_UNIFORMS}
 uniform sampler2D u_audio; // 256×2 : ligne 0 = spectre, ligne 1 = forme d'onde
+uniform sampler2D u_text;  // canvas texte (générateur RECTA)
 float fftAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float waveAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
+vec3 textCol(vec2 uv) { return texture(u_text, uv).rgb; }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 `;
 const GEN_FOOTER = `
 void main() {
@@ -54,7 +57,7 @@ void main() {
 }`;
 
 const UNIFORM_NAMES = [
-  "u_resolution", "u_time", "u_bass", "u_mid", "u_treble", "u_level", "u_amount", "u_prev", "u_feedback", "u_audio",
+  "u_resolution", "u_time", "u_bass", "u_mid", "u_treble", "u_level", "u_amount", "u_prev", "u_feedback", "u_audio", "u_text",
 ];
 
 export interface Uniforms {
@@ -85,6 +88,7 @@ export class Pipeline {
   private tex: (WebGLTexture | null)[] = [null, null, null];
   private fbo: (WebGLFramebuffer | null)[] = [null, null, null];
   private audioTex: WebGLTexture;
+  private textTex: WebGLTexture;
   private w = 0;
   private h = 0;
 
@@ -96,6 +100,28 @@ export class Pipeline {
     this.vs = this.compileShader(gl.VERTEX_SHADER, VERT);
     this.copy = this.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
     this.audioTex = this.makeAudioTex();
+    this.textTex = this.makeTextTex();
+  }
+
+  private makeTextTex(): WebGLTexture {
+    const gl = this.gl;
+    const t = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+
+  /** Met à jour la texture texte depuis un canvas 2D. */
+  updateText(src: TexImageSource): void {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.textTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
   }
 
   private makeAudioTex(): WebGLTexture {
@@ -209,6 +235,9 @@ export class Pipeline {
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, this.audioTex);
     gl.uniform1i(p.loc["u_audio"] ?? null, 2);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, this.textTex);
+    gl.uniform1i(p.loc["u_text"] ?? null, 3);
     if (srcTex !== undefined) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, srcTex);

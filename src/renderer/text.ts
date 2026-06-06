@@ -70,27 +70,50 @@ export class TextOverlay {
     this.render(now);
   }
 
+  private rnd(): string {
+    return GLITCH_CHARS[(Math.random() * GLITCH_CHARS.length) | 0] ?? "#";
+  }
+
   private glitch(s: string, amt: number): string {
-    if (amt < 0.04) return s;
+    if (amt < 0.03) return s;
     let out = "";
     for (const c of s) {
-      out += c !== " " && Math.random() < amt * 0.22
-        ? GLITCH_CHARS[(Math.random() * GLITCH_CHARS.length) | 0]
-        : c;
+      if (c === " ") {
+        out += " ";
+        continue;
+      }
+      out += Math.random() < amt * 0.38 ? this.rnd() : c;
     }
     return out;
   }
 
+  private scramble(s: string): string {
+    let out = "";
+    for (const c of s) out += c === " " ? " " : this.rnd();
+    return out;
+  }
+
   private render(now: number): void {
-    const amt = this.energy;
-    const cursor = Math.floor(now / 420) % 2 ? "█" : " ";
+    // glitch permanent (baseline 0.22) puis amplifié par l'énergie
+    const amt = Math.min(1, this.energy * 1.7 + 0.22);
+    const cursor = Math.floor(now / 300) % 2 ? "█" : "▓";
     const typed = this.cur.slice(0, this.charPos);
-    const log = this.shown.map((l) => this.glitch(l, amt)).join("\n");
+    const log = this.shown
+      .map((l) => (Math.random() < amt * 0.05 ? this.scramble(l) : this.glitch(l, amt)))
+      .join("\n");
     this.el.textContent = (log ? log + "\n" : "") + this.glitch(typed, amt) + cursor;
 
-    const j = amt > 0.3 ? (Math.random() - 0.5) * amt * 9 : 0;
-    this.el.style.transform = `translateX(${j.toFixed(1)}px)`;
-    const flicker = Math.random() < amt * 0.08 ? 0.35 : 0;
-    this.el.style.opacity = (0.8 + 0.2 * Math.min(1, amt + 0.5) - flicker).toFixed(2);
+    // tremblement + skew
+    const jx = (Math.random() - 0.5) * amt * 14;
+    const skew = (Math.random() - 0.5) * amt * 4;
+    this.el.style.transform = `translateX(${jx.toFixed(1)}px) skewX(${skew.toFixed(2)}deg)`;
+
+    // aberration chromatique RGB
+    const off = (1 + amt * 6).toFixed(1);
+    this.el.style.textShadow =
+      `${off}px 0 rgba(255,40,40,.75), -${off}px 0 rgba(40,200,255,.65), 0 0 6px rgba(120,255,140,.5)`;
+
+    // dropouts d'opacité
+    this.el.style.opacity = (Math.random() < amt * 0.16 ? 0.3 + Math.random() * 0.4 : 1).toFixed(2);
   }
 }

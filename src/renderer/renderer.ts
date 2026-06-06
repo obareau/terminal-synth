@@ -5,6 +5,7 @@ import { AudioInput, type Bands, type AudioSource } from "./audio";
 import { pixelsToAscii } from "./ascii";
 import { MidiInput, type MidiMode } from "./midi";
 import { TextOverlay } from "./text";
+import { TextScroller } from "./textsource";
 import { TEXTS } from "./texts";
 import { SHADERS } from "./shaders";
 import { EFFECTS } from "./effects";
@@ -29,6 +30,9 @@ const pipeline = new Pipeline(canvas);
 const audio = new AudioInput();
 const midi = new MidiInput();
 const text = new TextOverlay($("text"), TEXTS);
+const scroller = new TextScroller(TEXTS);
+const RECTA_INDEX = 0; // le générateur "RECTA (texte)" est en tête de SHADERS
+let currentShader = 0;
 let asciiMode = false;
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
@@ -43,6 +47,7 @@ SHADERS.forEach((s, i) => {
 function loadShader(i: number): void {
   try {
     pipeline.setGenerator(SHADERS[i]!.src);
+    currentShader = i;
   } catch (e) {
     console.error(e);
   }
@@ -160,8 +165,19 @@ function asciiGrid(): { cols: number; rows: number } {
 }
 
 // --- Boucle ---
+let lastFrame = 0;
 function frame(now: number): void {
   const time = now / 1000;
+  const dt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0;
+  lastFrame = now;
+
+  // Générateur RECTA : maj + upload du canvas de texte défilant.
+  if (currentShader === RECTA_INDEX) {
+    scroller.update(dt);
+    scroller.draw();
+    pipeline.updateText(scroller.canvas);
+  }
+
   if (audio.enabled) {
     audio.sample();
     const b = audio.bands();
