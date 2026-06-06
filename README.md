@@ -1,95 +1,244 @@
-# terminal-synth
+# Terminal-Synth
 
-Synthé visuel **dark / industriel** — shaders GLSL réactifs au **son** (et bientôt au
-**MIDI**), avec un **mode rendu ASCII** (esthétique terminal). Inspiré de *VS — Visual
-Synthesizer* (Imaginando). Bras visuel de **ROBOTARIIS**.
+**Synthétiseur visuel dark/industriel avec génération automatique de compositions.**
 
-**Statut** : MVP · v0.1.0 · Electron + TypeScript + WebGL2
+Terminal-Synth est un visualiseur audio haute-performance basé sur WebGL2 + Electron, conçu pour créer des performances visuelles dynamiques et réactives à l'audio. Intègre des shaders GLSL ES 3.00, une génération procédurale multi-couches, et un système d'automation générative pour l'univers **ROBOTARIIS**.
 
-## v0.1.0 Highlights
+![Status](https://img.shields.io/badge/status-Production-brightgreen)
+![Version](https://img.shields.io/badge/version-0.9.5-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-### Visuals & Effects
-- **26+ GLSL generators** with full real-time parameter control (u_p0-p3 uniforms)
-- **Floyd-Steinberg dithering effect** for ordered color quantization
-- **11 blend modes** for layer composition (Normal, Add, Multiply, Screen, Overlay, Darken, Lighten, Difference, Divide, Hard Light, XOR)
-- **6 perturbators** (audio-triggered glitch effects): Déchirure, Dropout, Strobe, Corrupt, Tremor, Phosphore
-- **Terrain (Joy Division)** completely rewritten to match Unknown Pleasures album cover visual
-- **ASCII mode** with adjustable character density
+---
 
-### Audio & MIDI
-- Real-time FFT analysis (bass, mid, treble, level)
-- System loopback audio input + microphone support
-- MIDI input for generative control (organ/noise modes)
+## Caractéristiques Principales
 
-### UI & Workflow
-- **3-column professional layout** (sources, canvas, effects/perturbators)
-- **Keyboard shortcuts**: 1-9/q-p/a-k for source selection, Tab for focus mode
-- **Layer system**: A (primary) + B (secondary) with blend mode and opacity
-- **RECTA TUI overlay**: terminal-style metadata transmission
-- **Preset system**: save/load (JSON-based)
-- **Video export**: WebM codec with audio track
+### 🎨 Rendu Visuel
+- **WebGL2 Multi-Pass**: Ping-pong framebuffers pour les chaînes d'effets
+- **37 Générateurs**: Formes géométriques, patterns fractals, noise procédural
+- **31 Effets**: Distortions, glitches, feedback, Floyd-Steinberg, scanlines, rotations, etc.
+- **17 Perturbateurs**: Événements audio-réactifs (bursts, flickers, glitches)
+- **Système de Couches**: Layer A + Layer B avec 11 modes de fusion
+
+### 🎵 Audio-Réactif
+- **Détection Bandes**: Bass, Mid, Treble, Level en temps réel (FFT)
+- **Synchronisation BPM**: Timing mesuré (mesures = 4 beats)
+- **MIDI Support**: Clavier MIDI + contrôleurs
+- **Réactivité Intelligente**: Aggression contrôlée par l'énergie bass
+
+### 🌀 Génération Automatique (v0.9.5+)
+- **4 Presets**: Gentle, Chaotic, Psycho, Glitch
+- **Boucles Génératives**: Séquences auto-évolutives avec drift configurable
+- **Audio-Réactif**: Énergie bass drive le taux de changement
+- **Snapshots**: Undo/Redo, historique (50 états max)
+- **Sessions**: Export/Import JSON complets
+
+### 📝 Couche Texte Pixellisée
+- **Police Géante**: Texte personnalisé, pixel par pixel
+- **Liste de Mots**: Affichage aléatoire configurable
+- **Pixellisation**: 1-64px (ultra-pixelisé possible)
+- **Réactif aux Effets**: Filters CSS appliqués en temps réel
+- **Audio-Réactif**: Position + couleur wobble basées sur l'audio
+
+### 🎮 Interface
+- **Mode ASCII**: Render texte pour terminal
+- **Mode Plein Écran**: F pour basculer
+- **Topbar**: Presets, audio, MIDI, enregistrement, version (0.9.5)
+- **Panneaux**: Sources (1-9, q-p, a-k), effets, perturbateurs
+- **Statut Live**: Measures, BPM, audio levels
+
+---
 
 ## Installation
 
-### Windows (Pre-Built Executable)
+### Prérequis
+- Node.js 18+
+- npm 8+
+- Windows 10+ / macOS 12+ / Ubuntu 26.04+
 
-1. Download `terminal-synth 0.1.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
-2. Run directly (no installation needed)
-3. Grant audio/MIDI permissions when prompted
-
-Path after download: `C:\Users\[YourUsername]\Downloads\terminal-synth 0.1.0.exe`
-
-### macOS & Linux (Build from Source)
-
+### Setup
 ```bash
 git clone https://github.com/obareau/terminal-synth.git
 cd terminal-synth
 npm install
-npm run package
-# Executable in: ./release/
 ```
 
-## Lancer (Development)
+---
 
+## Utilisation
+
+### Mode Développement
 ```bash
-npm install
-npm start      # build (esbuild) + lance Electron
+npm run dev
+```
+Lance l'app avec hot-reload.
+
+### Build Production
+```bash
+npm run package          # Windows
+npm run package:mac      # macOS
+npm run package:linux    # Linux
 ```
 
-Clique **🎤 audio** pour autoriser l'entrée son, **ASCII** pour le mode terminal,
-**⛶** pour le plein écran.
+Voir [BUILD.md](BUILD.md) pour les détails de build par plateforme.
 
-## Structure
+### Lancer (Quick)
+```bash
+npm start
+```
 
+---
+
+## Architecture
+
+### Stack
+- **Frontend**: Electron + TypeScript + WebGL2
+- **Rendering**: GLSL ES 3.00 shaders
+- **Audio**: Web Audio API + FFT
+- **Build**: esbuild + electron-builder
+- **Testing**: Jest + ts-jest (36 tests)
+
+### Structure Clés
 ```
 src/
-  main.ts              # process principal Electron (fenêtre, permissions audio/MIDI)
+  main.ts                  # Electron process principal
   renderer/
-    index.html         # UI sombre (canvas + <pre> ASCII + barre)
-    renderer.ts        # glue : WebGL + audio + UI + boucle
-    gl.ts              # moteur WebGL2 (shader plein écran + rendu offscreen)
-    audio.ts           # Web Audio : FFT → bandes
-    ascii.ts           # pixels → art ASCII
-    shaders.ts         # shaders intégrés (fonction render(uv, res))
-build.ts               # bundle esbuild (main = node, renderer = browser) + copie html
+    index.html             # UI dark + canvas
+    renderer.ts            # Main glue + event loop
+    gl.ts                  # Pipeline WebGL2 (effects chain)
+    shaders.ts             # 37 générateurs GLSL
+    effects.ts             # 31 effets post-process
+    disruptors.ts          # 17 perturbateurs audio-réactifs
+    autoplayAdvanced.ts    # Génération automatique + presets
+    textLayer.ts           # Couche texte pixellisée
+    audio.ts               # Web Audio API + FFT
+    midi.ts                # MIDI input
+    ascii.ts               # Mode ASCII
+build.ts                   # esbuild bundler
 ```
 
-## Roadmap
+### Générateurs (37)
+Cercle, Carré, Onde, Spirale, Mandelbrot, Julia, Voronoi, Perlin, Worley, Triangle, Hexagone, Penrose, Lissajous, Vortex, Rose, Butterfly, Dragon, Hilbert, Sierpinski, Attractor, Pendule, Tourbillon, Kaleidoscope, Halftone, Grid, Noise, Simplex, et plus.
 
-**Fait**
-- Audio-réactif sur la **sortie système Windows** (loopback) ou micro ; vues **FFT bars** / **Waveform**.
-- **Pipeline** d'effets chaînés (entropie → feedback → glitch → filtre).
-- **Plein écran** natif (⛶ / F, Échap pour sortir).
-- **MIDI-in (contrôle)** + 2 modes de jeu : **Orgue** (dark ambient, soutenu) / **Noise** (percussif).
+### Effets (31)
+Entropie, Feedback, Glitch, Filtre, Invert, Grain, Neon, Onde, Fisheye, Hue, Scanlines, Datamosh, Pixelate, Thermal, Kuwahara, Slit Scan, Glow Edges, Posterize Dither, Floyd-Steinberg, Continuous Rotate CW/CCW, Scanlines Distort, Wave Spiral, Flip Horizontal/Vertical, Rotate, et plus.
 
-**En cours / suite**
-- **Générateurs polyphoniques** : N passes générateur empilées (notes tenues = calques),
-  vélocité = brillance, aftertouch = modulation ; blend additif.
-- **Mapping MIDI complet** : zone basse = effets (note+aftertouch), zone médium = générateurs.
-- **Overlay texte** (lore ROBOTARIIS — « tactiques Recta »), style terminal/glitch.
-- **Lecture de fichier MIDI** pour séquencer les visuels.
-- **Export** vidéo (`MediaRecorder` → ffmpeg) + *asciicast* (easter-egg).
+### Perturbateurs (17)
+Déchirure, Dropout, Strobe, Corrupt, Tremor, Phosphore, Flicker, Shatter, Bloom Burst, Glitch Rows, Flip Horizontal/Vertical, Mosaic Burst, Spin Vortex, Psycho Shift, Displacement Storm, et plus.
 
-**Plus tard**
-- Support **ISF** + import Shadertoy ; **presets** de chaîne ; sortie **Spout/NDI** (VJ) ;
-  bascule moteur **natif Rust** si besoin de perf.
+---
+
+## Commandes Clés
+
+| Touche | Action |
+|--------|--------|
+| `1-9, q-p, a-k` | Sélectionner générateur |
+| `Tab` | Focus sources list |
+| `A` | Audio on/off |
+| `M` | MIDI on/off |
+| `X` | Mode ASCII |
+| `T` | Overlay texte |
+| `F` | Plein écran |
+| `Ctrl+O` | Load preset |
+| `Ctrl+S` | Save preset |
+| `Ctrl+R` | Record vidéo |
+| `Ctrl+E` | Export MP4 |
+| `Ctrl+A` | Start Autoplay |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` | Redo |
+| `Échap` | Fullscreen toggle |
+
+---
+
+## Automation Générative
+
+### 4 Presets
+- **Gentle** (16-32 mesures): Changements lents, transitions smooth, séquentiel
+- **Chaotic** (4-12 mesures): Changements rapides, agressif, chaotique
+- **Psycho** (2-8 mesures): Ultra-rapide, chaos maximal
+- **Glitch** (8-16 mesures): Focus effets/perturbateurs, très réactif
+
+### Boucles Génératives
+Enregistre une boucle de N mesures, elle évolue automatiquement:
+- Mutations progressives basées sur drift speed
+- Historique conservé et jouable (history stack)
+- Freeze pour lock l'évolution et répéter la même boucle
+
+### Audio-Réactif
+- L'énergie bass drive le niveau d'agression générale
+- Probabilités de changement augmentent avec les pics audio
+- Feedback visuel en temps réel (metronome)
+
+---
+
+## Couche Texte
+
+### Configuration
+1. Click **📝 TEXT** (bas de l'écran) pour activer
+2. Click **⚙️** pour ouvrir le panel config
+3. **Liste de mots**: Entrez un mot par ligne
+4. **Couleur**: Utilisez le color picker
+5. **Opacité**: Slider 0-100%
+6. **Duration**: Durée par mot en ms
+7. Click **Apply**
+
+### Effets sur Texte
+Activez n'importe quel effet dans la chaîne → le texte réagit via CSS filters:
+- Invert → inverted
+- Glitch → brightness
+- Hue → hue-rotate
+- Thermal → sepia
+- Neon → bright + contrast
+- Scanlines → slight darkness pulse
+- Et les autres...
+
+---
+
+## Tests
+
+```bash
+npm test              # Run all tests
+npm run test:watch    # Watch mode (live reload)
+```
+
+**36 tests** couvrant:
+- Générateurs (structure GLSL, paramètres)
+- Effets (code valide, ranges)
+- Perturbateurs (sensibilité, timing)
+- Audio (bandes FFT, BPM sync)
+
+---
+
+## Univers ROBOTARIIS
+
+Terminal-Synth est le **bras visuel** de **ROBOTARIIS**, univers SF d'Olivier (ex-ROBOTANS):
+- **Calendrier de la Rectitude**: Timing cosmique + structures éphémériques
+- **AZA Sessions**: Sessions longues génératives
+- **Factions**: Couleurs + personnalités (Vortex, Flux, Écho, etc.)
+- **Langue de Combat**: Palette sonore + glyphes éphémériques
+
+Les générateurs, effets, perturbateurs incarnent les **tactiques Recta** (combat visuel).
+
+---
+
+## Licence
+
+**MIT** — Libre d'usage pour des fins créatives et commerciales.
+
+---
+
+## Crédits
+
+**Développé par**: Olivier Bareau  
+**Framework**: Electron + WebGL2  
+**Audio**: Web Audio API + FFT  
+**Build**: esbuild + electron-builder  
+**Testing**: Jest + ts-jest  
+
+**Univers**: ROBOTARIIS (Calendrier de la Rectitude, AZA Sessions, Factions, Langue de Combat)
+
+**Inspiré de**: VS (Visual Synthesizer) par Imaginando
+
+---
+
+**v0.9.5** — Complete generative automation + text layer system + dithering + rotation effects  
+**The ultimate visual synthesizer for dark industrial performances**
