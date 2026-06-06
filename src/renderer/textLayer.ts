@@ -52,6 +52,11 @@ class TextLayer {
     this.ctx = this.canvas.getContext("2d");
     this.resizeCanvas(container.clientWidth, container.clientHeight);
 
+    // Listen for window resize
+    window.addEventListener("resize", () => {
+      this.resizeCanvas(container.clientWidth, container.clientHeight);
+    });
+
     // Start animation loop
     this.animate();
   }
@@ -244,24 +249,68 @@ class TextLayer {
   }
 
   /**
-   * Apply effect to text layer (via canvas manipulation)
+   * Apply active effects to text layer (CSS filters based on active effects)
    */
-  applyEffect(effectName: string, intensity: number) {
-    if (!this.ctx || !this.canvas) return;
+  applyActiveEffects(effectStates: Array<{ name: string; enabled: boolean; amount: number }>) {
+    if (!this.canvas) return;
 
-    switch (effectName) {
-      case "invert":
-        this.ctx.filter = `invert(${intensity})`;
-        break;
-      case "hue-rotate":
-        this.ctx.filter = `hue-rotate(${intensity * 360}deg)`;
-        break;
-      case "saturate":
-        this.ctx.filter = `saturate(${1 + intensity})`;
-        break;
-      case "blur":
-        this.ctx.filter = `blur(${intensity * 10}px)`;
-        break;
+    const filters: string[] = [];
+
+    // Map effect names to CSS filters
+    effectStates.forEach((fx) => {
+      if (!fx.enabled) return;
+
+      const amt = fx.amount;
+      switch (fx.name.toLowerCase()) {
+        case "invert":
+          filters.push(`invert(${amt * 100}%)`);
+          break;
+        case "glitch":
+          filters.push(`brightness(${1 + amt * 0.3})`);
+          break;
+        case "filtre":
+          filters.push(`saturate(${1 + amt * 0.5})`);
+          break;
+        case "pixelate":
+          filters.push(`blur(${amt * 2}px)`);
+          break;
+        case "neon":
+          filters.push(`brightness(${1 + amt * 0.5}) contrast(${1 + amt * 0.3})`);
+          break;
+        case "grain":
+          filters.push(`contrast(${1 + amt * 0.2})`);
+          break;
+        case "hue":
+          filters.push(`hue-rotate(${amt * 360}deg)`);
+          break;
+        case "scanlines":
+          filters.push(`brightness(${1 - amt * 0.1})`);
+          break;
+        case "thermal":
+          filters.push(`sepia(${amt * 50}%) saturate(${1 + amt})`);
+          break;
+        case "fisheye":
+          // Can't do true fisheye with CSS, use brightness as proxy
+          filters.push(`brightness(${1 + amt * 0.1})`);
+          break;
+        case "onde":
+          // Wave effect proxy
+          filters.push(`brightness(${1 + Math.sin(performance.now() / 100) * amt * 0.2})`);
+          break;
+        case "dithering":
+          filters.push(`contrast(${1 + amt * 0.5})`);
+          break;
+        case "posterize dither":
+          filters.push(`saturate(${1 - amt * 0.5}) contrast(${1 + amt * 0.3})`);
+          break;
+      }
+    });
+
+    // Apply all filters
+    if (filters.length > 0) {
+      this.canvas.style.filter = filters.join(" ");
+    } else {
+      this.canvas.style.filter = "none";
     }
   }
 

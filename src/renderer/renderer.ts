@@ -816,3 +816,16 @@ setInterval(() => {
   textLayer.updateAudioEnergy(bands.level);
   textLayer.updateAudioFrequency(bands.mid);
 }, 50);
+
+// Apply active effects to text layer
+setInterval(() => {
+  const activeEffects = fxState
+    .map((fx, idx) => ({
+      name: EFFECTS[idx].name,
+      enabled: fx.enabled,
+      amount: fx.amount,
+    }))
+    .filter((fx) => fx.enabled);
+
+  textLayer.applyActiveEffects(activeEffects);
+}, 50);
