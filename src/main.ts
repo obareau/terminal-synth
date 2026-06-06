@@ -67,6 +67,32 @@ app.whenReady().then(() => {
     void w; void h;
   });
 
+  // Sauvegarde un fichier texte (presets JSON).
+  ipcMain.handle("dialog:save-file", async (e, content: string, filters: Electron.FileFilter[], defaultName: string) => {
+    const w = BrowserWindow.fromWebContents(e.sender);
+    if (!w) return false;
+    const { filePath, canceled } = await dialog.showSaveDialog(w, {
+      defaultPath: defaultName,
+      filters: filters ?? [{ name: "All Files", extensions: ["*"] }],
+    });
+    if (canceled || !filePath) return false;
+    fs.writeFileSync(filePath, content, "utf-8");
+    return true;
+  });
+
+  // Sauvegarde une vidéo WebM depuis le renderer.
+  ipcMain.handle("video:save", async (e, data: Uint8Array, defaultName: string) => {
+    const w = BrowserWindow.fromWebContents(e.sender);
+    if (!w) return false;
+    const { filePath, canceled } = await dialog.showSaveDialog(w, {
+      defaultPath: defaultName,
+      filters: [{ name: "WebM Video", extensions: ["webm"] }],
+    });
+    if (canceled || !filePath) return false;
+    fs.writeFileSync(filePath, Buffer.from(data));
+    return true;
+  });
+
   ipcMain.handle("fs:toggle", (e) => {
     const w = BrowserWindow.fromWebContents(e.sender);
     if (!w) return false;

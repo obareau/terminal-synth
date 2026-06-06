@@ -163,8 +163,10 @@ declare global {
   interface Window {
     synth?: {
       toggleFullscreen: () => Promise<boolean>;
-      setFullscreen: (v: boolean) => Promise<boolean>;
-      loadFile: (filters: { name: string; extensions: string[] }[]) => Promise<{ name: string; content: string } | null>;
+      setFullscreen:     (v: boolean) => Promise<boolean>;
+      loadFile:  (filters: { name: string; extensions: string[] }[]) => Promise<{ name: string; content: string } | null>;
+      saveFile:  (content: string, filters: { name: string; extensions: string[] }[], defaultName: string) => Promise<boolean>;
+      saveVideo: (data: Uint8Array, defaultName: string) => Promise<boolean>;
       spoutSendFrame: (w: number, h: number, pixels: Uint8Array) => Promise<void>;
     };
   }
@@ -257,6 +259,111 @@ let ASCII_COLS = 90;
 const asciiColsRng = $<HTMLInputElement>("ascii-cols");
 asciiColsRng.value = String(ASCII_COLS);
 asciiColsRng.addEventListener("input", () => { ASCII_COLS = Number(asciiColsRng.value); });
+
+// --- RECTA speed ---
+const rectaSpeedRng = $<HTMLInputElement>("recta-speed");
+rectaSpeedRng.addEventListener("input", () => { tactics.holdMs = Number(rectaSpeedRng.value); });
+
+// --- Presets ---
+interface Preset {
+  version: 2;
+  shaderIndex: number;
+  layerB: { enabled: boolean; shaderIndex: number; blendMode: number; opacity: number };
+  effects: { enabled: boolean; amount: number }[];
+  rectaHoldMs: number;
+}
+const presetSaveBtn = $<HTMLButtonElement>("preset-save");
+const presetLoadBtn = $<HTMLButtonElement>("preset-load");
+
+presetSaveBtn.addEventListener("click", async () => {
+  const preset: Preset = {
+    version: 2,
+    shaderIndex: currentShader,
+    layerB: {
+      enabled: layerBEnabled,
+      shaderIndex: Number(layerBSel.value),
+      blendMode: Number(blendSel.value),
+      opacity: Number(layerBOpa.value),
+    },
+    effects: fxState.map((s) => ({ enabled: s.enabled, amount: s.amount })),
+    rectaHoldMs: tactics.holdMs,
+  };
+  await window.synth?.saveFile(
+    JSON.stringify(preset, null, 2),
+    [{ name: "Preset terminal-synth", extensions: ["json"] }],
+    "preset.json",
+  );
+});
+
+presetLoadBtn.addEventListener("click", async () => {
+  const result = await window.synth?.loadFile([
+    { name: "Preset terminal-synth", extensions: ["json"] },
+  ]);
+  if (!result) return;
+  try {
+    const p: Preset = JSON.parse(result.content);
+    // shader A
+    if (p.shaderIndex >= 0 && p.shaderIndex < SHADERS.length) {
+      shaderSel.value = String(p.shaderIndex);
+      loadShader(p.shaderIndex);
+    }
+    // layer B
+    layerBEnabled = p.layerB.enabled;
+    layerBBtn.classList.toggle("on", layerBEnabled);
+    layerBBtn.textContent = layerBEnabled ? "B on" : "B";
+    if (p.layerB.shaderIndex >= 0 && p.layerB.shaderIndex < SHADERS.length)
+      layerBSel.value = String(p.layerB.shaderIndex);
+    blendSel.value  = String(p.layerB.blendMode);
+    layerBOpa.value = String(p.layerB.opacity);
+    loadLayerB(); syncBlend();
+    // effets
+    p.effects.forEach((e, i) => {
+      if (!fxState[i]) return;
+      fxState[i]!.enabled = e.enabled;
+      fxState[i]!.amount  = e.amount;
+    });
+    // re-sync les checkboxes et sliders
+    chain.querySelectorAll<HTMLInputElement>(".fx input[type=checkbox]").forEach((cb, i) => {
+      cb.checked = fxState[i]?.enabled ?? false;
+      cb.closest(".fx")?.classList.toggle("on", cb.checked);
+    });
+    chain.querySelectorAll<HTMLInputElement>(".fx input[type=range]").forEach((r, i) => {
+      r.value = String(fxState[i]?.amount ?? 0.3);
+    });
+    // recta
+    if (p.rectaHoldMs) { tactics.holdMs = p.rectaHoldMs; rectaSpeedRng.value = String(p.rectaHoldMs); }
+  } catch (err) { console.error("[Preset]", err); }
+});
+
+// --- Enregistrement vidéo ---
+const recBtn = $<HTMLButtonElement>("rec");
+let recorder: MediaRecorder | null = null;
+let recChunks: Blob[] = [];
+
+recBtn.addEventListener("click", async () => {
+  if (recorder && recorder.state === "recording") {
+    recorder.stop();
+    return;
+  }
+  recChunks = [];
+  const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+    ? "video/webm;codecs=vp9" : "video/webm";
+  const stream = canvas.captureStream(60);
+  recorder = new MediaRecorder(stream, { mimeType });
+  recorder.ondataavailable = (e) => { if (e.data.size > 0) recChunks.push(e.data); };
+  recorder.onstop = async () => {
+    recBtn.classList.remove("rec");
+    recBtn.textContent = "⏺ REC";
+    const blob = new Blob(recChunks, { type: "video/webm" });
+    const buf  = await blob.arrayBuffer();
+    const name = `terminal-synth-${Date.now()}.webm`;
+    await window.synth?.saveVideo(new Uint8Array(buf), name);
+    recorder = null;
+  };
+  recorder.start(1000); // chunk toutes les secondes
+  recBtn.classList.add("rec");
+  recBtn.textContent = "⏹ STOP";
+});
 
 function asciiGrid(): { cols: number; rows: number } {
   const cw = app.clientWidth;

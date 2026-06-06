@@ -8,11 +8,34 @@
   "scripts": {
     "build": "tsc --noEmit && tsx build.ts",
     "start": "tsx build.ts && electron .",
-    "dev": "tsx build.ts && electron ."
+    "dev": "tsx build.ts && electron .",
+    "package": "tsx build.ts --production && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.robotariis.terminal-synth",
+    "productName": "terminal-synth",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   },
   "devDependencies": {
     "@types/node": "^22.19.19",
     "electron": "^34.0.0",
+    "electron-builder": "^26.15.0",
     "esbuild": "^0.24.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"

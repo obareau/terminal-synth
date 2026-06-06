@@ -33,7 +33,9 @@
       border: 1px solid #060606; height: 22px; padding: 0 0.6em; border-radius: 2px; cursor: pointer;
     }
     #bar button:hover, #bar select:hover { background: #1e1e1e; }
-    #bar button.on { color: #0a0a0a; background: #9be29b; border-color: #060606; font-weight: 700; }
+    #bar button.on  { color: #0a0a0a; background: #9be29b; border-color: #060606; font-weight: 700; }
+    #bar button.rec { color: #ff4444; border-color: #ff2222; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0.4; } }
     #bar .spacer { flex: 1; }
     #meter { color: #6a6a6a; }
 
@@ -95,6 +97,10 @@
       <button id="ascii-toggle" title="Mode ASCII">ASCII</button>
       <input id="ascii-cols" type="range" min="20" max="200" step="5" title="Densité ASCII (colonnes)" style="width:70px;accent-color:#9be29b;vertical-align:middle">
       <button id="text-toggle" title="Overlay texte (transmissions)">TXT</button>
+      <input id="recta-speed" type="range" min="500" max="12000" step="250" value="4200" title="Durée d'affichage RECTA (ms)" style="width:60px;accent-color:#9be29b;vertical-align:middle">
+      <button id="preset-save" title="Sauvegarder le preset">💾</button>
+      <button id="preset-load" title="Charger un preset">📂</button>
+      <button id="rec" title="Enregistrer la vidéo (WebM)">⏺ REC</button>
       <button id="full" title="Plein écran">⛶</button>
       <span class="spacer"></span>
       <span id="meter"></span>
