@@ -125,15 +125,7 @@ class TextLayer {
     tempCtx.font = this.ctx.font;
     tempCtx.textAlign = "center";
     tempCtx.textBaseline = "middle";
-
-    // Audio-reactive color
-    let color = this.config.color;
-    if (this.config.audioReactive) {
-      const hueShift = (this.audioEnergy * 60) % 360;
-      color = this.hslToHex(hueShift, 100, 50);
-    }
-
-    tempCtx.fillStyle = color;
+    tempCtx.fillStyle = this.config.color;
     tempCtx.fillText(this.currentWord, tempCanvas.width / 2, tempCanvas.height / 2);
 
     // Apply pixelization via imageData
