@@ -66,7 +66,13 @@ loadShader(0);
 // --- Chaîne d'effets (génération → entropie → feedback → glitch → filtre) ---
 const defaultAmounts = [0.3, 0.4, 0.3, 0.4, 0.45, 0.3, 0.5];
 const fxState = EFFECTS.map((_e, i) => ({ enabled: false, amount: defaultAmounts[i] ?? 0.3 }));
-const fxProg = EFFECTS.map((e) => pipeline.compileEffect(e.body));
+const fxProg = EFFECTS.map((e) => {
+  try { return pipeline.compileEffect(e.body); }
+  catch (err) {
+    console.error(`[GL] effet "${e.name}" :`, err);
+    return pipeline.compileEffect("vec3 process(vec2 uv) { return prev(uv); }"); // passthrough
+  }
+});
 
 EFFECTS.forEach((e, i) => {
   const st = fxState[i]!;

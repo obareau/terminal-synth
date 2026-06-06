@@ -52,6 +52,9 @@ uniform sampler2D u_feedback;
 vec3 prev(vec2 uv) { return texture(u_prev, uv).rgb; }
 vec3 fb(vec2 uv) { return texture(u_feedback, uv).rgb; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+#define PI      3.14159265358979323846
+#define TWO_PI  6.28318530717958647692
+#define HALF_PI 1.5707963267948966192
 `;
 const FX_FOOTER = `
 void main() {
