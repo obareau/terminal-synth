@@ -9,6 +9,7 @@ import { TacticDisplay } from "./textsource";
 import { TEXTS } from "./texts";
 import { SHADERS } from "./shaders";
 import { EFFECTS } from "./effects";
+import { parseISF } from "./isf";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -21,6 +22,8 @@ const srcSel = $<HTMLSelectElement>("audio-src");
 const asciiBtn = $<HTMLButtonElement>("ascii-toggle");
 const textBtn = $<HTMLButtonElement>("text-toggle");
 const fullBtn = $<HTMLButtonElement>("full");
+const isfBtn = $<HTMLButtonElement>("isf-load");
+const spoutBtn = $<HTMLButtonElement>("spout");
 const midiBtn = $<HTMLButtonElement>("midi");
 const midiModeSel = $<HTMLSelectElement>("midi-mode");
 const meter = $("meter");
@@ -113,6 +116,8 @@ declare global {
     synth?: {
       toggleFullscreen: () => Promise<boolean>;
       setFullscreen: (v: boolean) => Promise<boolean>;
+      loadFile: (filters: { name: string; extensions: string[] }[]) => Promise<{ name: string; content: string } | null>;
+      spoutSendFrame: (w: number, h: number, pixels: Uint8Array) => Promise<void>;
     };
   }
 }
@@ -139,6 +144,43 @@ textBtn.addEventListener("click", () => {
 fullBtn.addEventListener("click", () => {
   window.synth?.toggleFullscreen();
 });
+
+// --- ISF loader ---
+isfBtn.addEventListener("click", async () => {
+  const result = await window.synth?.loadFile([
+    { name: "ISF Shaders", extensions: ["fs", "frag", "glsl"] },
+    { name: "All Files", extensions: ["*"] },
+  ]);
+  if (!result) return;
+  const shader = parseISF(result.name, result.content);
+  if (!shader) { console.error("[ISF] parse failed"); return; }
+  const entry = { name: shader.name, src: shader.glsl };
+  const existingIdx = SHADERS.findIndex((s) => s.name === shader.name);
+  if (existingIdx >= 0) {
+    SHADERS[existingIdx] = entry;
+    loadShader(existingIdx);
+    shaderSel.value = String(existingIdx);
+  } else {
+    SHADERS.push(entry);
+    const idx = SHADERS.length - 1;
+    const o = document.createElement("option");
+    o.value = String(idx);
+    o.textContent = shader.name;
+    shaderSel.appendChild(o);
+    shaderSel.value = String(idx);
+    loadShader(idx);
+  }
+});
+
+// --- Spout output ---
+let spoutEnabled = false;
+let spoutFrameIdx = 0;
+spoutBtn.addEventListener("click", () => {
+  spoutEnabled = !spoutEnabled;
+  spoutBtn.classList.toggle("on", spoutEnabled);
+  spoutBtn.textContent = spoutEnabled ? "SPOUT on" : "SPOUT";
+});
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "f" || e.key === "F") window.synth?.toggleFullscreen();
   if (e.key === "Escape") window.synth?.setFullscreen(false);
@@ -223,6 +265,15 @@ function frame(now: number): void {
     if (px) pre.textContent = pixelsToAscii(px, cols, rows);
   } else {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
+  }
+
+  // Spout : readback toutes les 8 images (~7 fps) pour limiter la charge IPC
+  spoutFrameIdx++;
+  if (spoutEnabled && spoutFrameIdx % 8 === 0) {
+    const spoutPixels = pipeline.readback();
+    if (spoutPixels) {
+      window.synth?.spoutSendFrame(canvas.width, canvas.height, spoutPixels);
+    }
   }
 
   text.energy = energy;

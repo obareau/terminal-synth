@@ -249,6 +249,17 @@ export class Pipeline {
     this.drawTri();
   }
 
+  /** Lit les pixels du dernier frame rendu (depuis tex[2], la copie historique). */
+  readback(): Uint8Array | null {
+    const gl = this.gl;
+    if (!this.fbo[2] || this.w <= 0 || this.h <= 0) return null;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo[2]);
+    const pixels = new Uint8Array(this.w * this.h * 4);
+    gl.readPixels(0, 0, this.w, this.h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return pixels;
+  }
+
   /**
    * Exécute la chaîne. Si `readback`, renvoie les pixels finaux (pour l'ASCII),
    * sinon dessine à l'écran.

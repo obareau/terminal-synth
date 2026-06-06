@@ -1,5 +1,6 @@
-import { app, BrowserWindow, session, desktopCapturer, ipcMain } from "electron";
+import { app, BrowserWindow, session, desktopCapturer, ipcMain, dialog } from "electron";
 import * as path from "node:path";
+import * as fs from "node:fs";
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -35,6 +36,32 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // Ouvre un fichier et renvoie son contenu texte.
+  ipcMain.handle("dialog:open-file", async (e, filters: Electron.FileFilter[]) => {
+    const w = BrowserWindow.fromWebContents(e.sender);
+    if (!w) return null;
+    const result = await dialog.showOpenDialog(w, {
+      properties: ["openFile"],
+      filters: filters ?? [{ name: "All Files", extensions: ["*"] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const filePath = result.filePaths[0];
+    const content = fs.readFileSync(filePath, "utf-8");
+    return { name: path.basename(filePath), content };
+  });
+
+  // Réception d'un frame Spout depuis le renderer.
+  // Pour activer la sortie Spout réelle, installer un addon natif (ex: spout2) et
+  // remplacer le stub ci-dessous par : spout.sendFrame("terminal-synth", w, h, Buffer.from(pixels))
+  let spoutCount = 0;
+  ipcMain.handle("spout:frame", (_e, w: number, h: number, _pixels: Uint8Array) => {
+    spoutCount++;
+    if (spoutCount % 300 === 1) {
+      console.log(`[Spout] ${spoutCount} frames — stub actif (install spout2 pour la vraie sortie)`);
+    }
+    void w; void h;
+  });
+
   ipcMain.handle("fs:toggle", (e) => {
     const w = BrowserWindow.fromWebContents(e.sender);
     if (!w) return false;
