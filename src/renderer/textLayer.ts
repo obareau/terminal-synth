@@ -109,21 +109,6 @@ class TextLayer {
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
 
-    // Audio-reactive color/position
-    let posX = w / 2;
-    let posY = h / 2;
-    let color = this.config.color;
-
-    if (this.config.audioReactive) {
-      // Wobble position with audio
-      posX += Math.sin(this.audioEnergy * Math.PI) * 50;
-      posY += Math.cos(this.audioFrequency * Math.PI) * 50;
-
-      // Shift hue based on audio
-      const hueShift = (this.audioEnergy * 60) % 360;
-      color = this.hslToHex(hueShift, 100, 50);
-    }
-
     // Create temporary canvas for pixelation
     const tempCanvas = document.createElement("canvas");
     const tempCtx = tempCanvas.getContext("2d")!;
@@ -140,6 +125,14 @@ class TextLayer {
     tempCtx.font = this.ctx.font;
     tempCtx.textAlign = "center";
     tempCtx.textBaseline = "middle";
+
+    // Audio-reactive color
+    let color = this.config.color;
+    if (this.config.audioReactive) {
+      const hueShift = (this.audioEnergy * 60) % 360;
+      color = this.hslToHex(hueShift, 100, 50);
+    }
+
     tempCtx.fillStyle = color;
     tempCtx.fillText(this.currentWord, tempCanvas.width / 2, tempCanvas.height / 2);
 
@@ -186,9 +179,17 @@ class TextLayer {
       tempCtx.putImageData(imageData, 0, 0);
     }
 
-    // Draw pixelated text on main canvas
-    const offsetX = Math.max(0, posX - tempCanvas.width / 2);
-    const offsetY = Math.max(0, posY - tempCanvas.height / 2);
+    // Draw pixelated text centered on main canvas
+    const centerX = (w - tempCanvas.width) / 2;
+    const centerY = (h - tempCanvas.height) / 2;
+
+    // Audio-reactive wobble (small movement around center)
+    let offsetX = centerX;
+    let offsetY = centerY;
+    if (this.config.audioReactive) {
+      offsetX += Math.sin(this.audioEnergy * Math.PI) * 30;
+      offsetY += Math.cos(this.audioFrequency * Math.PI) * 30;
+    }
 
     this.ctx.globalAlpha = this.config.opacity;
     this.ctx.drawImage(tempCanvas, offsetX, offsetY);
