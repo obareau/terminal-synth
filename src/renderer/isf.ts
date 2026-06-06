@@ -26,14 +26,14 @@ export interface IsfShader {
 
 export function parseISF(filename: string, source: string): IsfShader | null {
   try {
-    // 1. Extraire et parser le JSON header /*{ ... }*/
-    const headerMatch = source.match(/\/\*\{([\s\S]*?)\}\*\//);
+    // 1. Extraire et parser le JSON header /*{ ... }*/  (}\n*/ toléré)
+    const headerMatch = source.match(/\/\*\{([\s\S]*?)\}\s*\*\//);
     const meta: IsfMeta = headerMatch ? JSON.parse("{" + headerMatch[1] + "}") : {};
     const inputs: IsfInput[] = (meta.INPUTS ?? []).filter((i) => i.TYPE !== "image" && i.TYPE !== "event");
 
     // 2. Retirer le header JSON + directives de version + précision
     let glsl = source
-      .replace(/\/\*\{[\s\S]*?\}\*\//, "")
+      .replace(/\/\*\{[\s\S]*?\}\s*\*\//, "")
       .replace(/#version\s+\d+(\s+es)?\s*/g, "")
       .replace(/precision\s+(lowp|mediump|highp)\s+float\s*;/g, "");
 
@@ -47,7 +47,7 @@ export function parseISF(filename: string, source: string): IsfShader | null {
       }
     }
 
-    // 4. Traduire les globals ISF → nos uniforms
+    // 4. Traduire les globals et macros ISF → nos uniforms / helpers
     glsl = glsl
       .replace(/\bisf_FragNormCoord\b/g, "_uv")
       .replace(/\bTIME\b/g, "u_time")
@@ -56,12 +56,20 @@ export function parseISF(filename: string, source: string): IsfShader | null {
       .replace(/\bFRAMEINDEX\b/g, "0")
       .replace(/\btexture2D\b/g, "texture")
       .replace(/\bgl_FragColor\b/g, "_isf_out")
+      // Macros ISF image : IMG_THIS_PIXEL(img) → texture(img, _uv)
+      .replace(/IMG_THIS_PIXEL\s*\(([^)]+)\)/g, "texture($1, _uv)")
+      // IMG_NORM_PIXEL(img, uv) → texture(img, uv)
+      .replace(/IMG_NORM_PIXEL\s*\(([^,)]+),([^)]+)\)/g, "texture($1,$2)")
+      // IMG_PIXEL(img, px) → texture(img, (px)/u_resolution)
+      .replace(/IMG_PIXEL\s*\(([^,)]+),([^)]+)\)/g, "texture($1, ($2)/u_resolution)")
+      // IMG_SIZE(img) → u_resolution
+      .replace(/IMG_SIZE\s*\([^)]+\)/g, "u_resolution")
       // ISF 1.0 varying texCoord
       .replace(/varying\s+\w+\s+texCoord\s*;/, "")
       .replace(/\btexCoord\b/g, "_uv");
 
-    // 5. Renommer void main() → void _isf_main()
-    glsl = glsl.replace(/\bvoid\s+main\s*\(\s*\)/, "void _isf_main()");
+    // 5. Renommer void main(...) → void _isf_main()  (gère void main(void) aussi)
+    glsl = glsl.replace(/\bvoid\s+main\s*\([^)]*\)/, "void _isf_main()");
 
     // 6. Déclarations uniform pour les inputs personnalisés
     const uniformDecls = inputs
