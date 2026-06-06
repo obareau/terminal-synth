@@ -226,4 +226,106 @@ vec3 process(vec2 uv) {
   return mix(prev(uv), glitchColor, glitchRow * a * 0.9);
 }`,
   },
+
+  {
+    name: "Flip Horizontal",
+    defaultSensitivity: 0.5,
+    defaultDurationMs: 200,
+    defaultCooldownMs: 600,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec2 flipped = vec2(1.0 - uv.x, uv.y);
+  return prev(mix(uv, flipped, a));
+}`,
+  },
+
+  {
+    name: "Flip Vertical",
+    defaultSensitivity: 0.5,
+    defaultDurationMs: 200,
+    defaultCooldownMs: 600,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec2 flipped = vec2(uv.x, 1.0 - uv.y);
+  return prev(mix(uv, flipped, a));
+}`,
+  },
+
+  {
+    name: "Mosaic Burst",
+    defaultSensitivity: 0.6,
+    defaultDurationMs: 150,
+    defaultCooldownMs: 500,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  float scale = 3.0 + a * 10.0;
+  vec2 mosaic = floor(uv * scale) / scale;
+  vec3 scrambled = prev(mosaic);
+  scrambled += vec3(
+    hash(mosaic + t) * 0.3,
+    hash(mosaic + t + 0.5) * 0.3,
+    hash(mosaic + t + 1.0) * 0.3
+  ) * a;
+  return mix(prev(uv), scrambled, a * 0.8);
+}`,
+  },
+
+  {
+    name: "Spin Vortex",
+    defaultSensitivity: 0.55,
+    defaultDurationMs: 180,
+    defaultCooldownMs: 700,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 center = vec2(0.5);
+  vec2 p = uv - center;
+  float r = length(p);
+  float angle = atan(p.y, p.x);
+  float spin = angle + t * a * 8.0 - r * a * 12.0;
+  vec2 vortex = center + r * vec2(cos(spin), sin(spin));
+  return prev(clamp(vortex, 0.0, 1.0));
+}`,
+  },
+
+  {
+    name: "Psycho Shift",
+    defaultSensitivity: 0.65,
+    defaultDurationMs: 120,
+    defaultCooldownMs: 450,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec3 c = prev(uv);
+  float rnd = hash(vec2(floor(t * 30.0), uv.y * 100.0));
+  vec3 shifted = vec3(
+    c.g * (0.5 + 0.5 * sin(t * 4.0 + rnd)),
+    c.b * (0.5 + 0.5 * cos(t * 3.0 + rnd)),
+    c.r * (0.5 + 0.5 * sin(t * 5.0 + rnd * 2.0))
+  );
+  return mix(c, shifted, a * 0.7);
+}`,
+  },
+
+  {
+    name: "Displacement Storm",
+    defaultSensitivity: 0.6,
+    defaultDurationMs: 200,
+    defaultCooldownMs: 600,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  float disp1 = sin(uv.x * 20.0 + t * 5.0) * sin(uv.y * 15.0 + t * 3.0);
+  float disp2 = cos(uv.x * 30.0 - t * 4.0) * cos(uv.y * 20.0 - t * 2.0);
+  vec2 displaced = uv + vec2(disp1, disp2) * 0.1 * a;
+  return prev(clamp(displaced, 0.0, 1.0));
+}`,
+  },
 ];

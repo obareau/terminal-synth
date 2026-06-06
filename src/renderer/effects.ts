@@ -575,4 +575,80 @@ vec3 process(vec2 uv) {
   return mix(c, dithered, a);
 }`,
   },
+
+  {
+    name: "Floyd-Steinberg",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec3 c = prev(uv);
+  float levels = mix(256.0, 2.0, a);
+  vec3 quant = floor(c * levels) / levels;
+  vec3 error = c - quant;
+  vec2 px = 1.0 / u_resolution;
+  vec3 right = prev(clamp(uv + vec2(px.x, 0.0), 0.001, 0.999));
+  vec3 down = prev(clamp(uv + vec2(0.0, -px.y), 0.001, 0.999));
+  vec3 downleft = prev(clamp(uv + vec2(-px.x, -px.y), 0.001, 0.999));
+  vec3 downright = prev(clamp(uv + vec2(px.x, -px.y), 0.001, 0.999));
+  vec3 dithered = quant + error * (0.2 + hash(uv + u_time) * 0.3) * a;
+  return mix(c, dithered, a);
+}`,
+  },
+
+  {
+    name: "Continuous Rotate CW",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float speed = u_amount * 4.0;
+  float angle = u_time * speed;
+  vec2 center = vec2(0.5);
+  vec2 p = uv - center;
+  float c = cos(angle);
+  float s = sin(angle);
+  vec2 rotated = center + vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+  return prev(clamp(rotated, 0.0, 1.0));
+}`,
+  },
+
+  {
+    name: "Continuous Rotate CCW",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float speed = u_amount * 4.0;
+  float angle = -u_time * speed;
+  vec2 center = vec2(0.5);
+  vec2 p = uv - center;
+  float c = cos(angle);
+  float s = sin(angle);
+  vec2 rotated = center + vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+  return prev(clamp(rotated, 0.0, 1.0));
+}`,
+  },
+
+  {
+    name: "Scanlines Distort",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float line = sin(uv.y * 100.0 + u_time * 5.0) * 0.5 + 0.5;
+  float shift = sin(line * 6.28 + u_time * 3.0) * 0.1 * a;
+  vec2 distorted = uv + vec2(shift, line * 0.05 * a);
+  return prev(clamp(distorted, 0.0, 1.0));
+}`,
+  },
+
+  {
+    name: "Wave Spiral",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec2 center = vec2(0.5);
+  vec2 p = uv - center;
+  float r = length(p);
+  float angle = atan(p.y, p.x);
+  float wave = sin(angle * 5.0 + u_time * 3.0 - r * 30.0) * 0.1 * a;
+  vec2 warped = center + (p + vec2(cos(angle), sin(angle)) * wave) * (1.0 + r * a * 0.5);
+  return prev(clamp(warped, 0.0, 1.0));
+}`,
+  },
 ];
