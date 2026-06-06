@@ -13,6 +13,7 @@ import { parseISF } from "./isf";
 import { BLEND_MODES } from "./gl";
 import { DISRUPTORS } from "./disruptors";
 import { autoplayAdvanced, AUTOPLAY_PRESETS } from "./autoplayAdvanced";
+import { textLayer } from "./textLayer";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -738,3 +739,80 @@ setInterval(() => {
   // TODO: Get BPM from audio analysis
   // autoplayAdvanced.setBPM(detectedBPM);
 }, 1000);
+
+// --- Text Layer: Giant Pixelated Text ---
+textLayer.init(app);
+
+const textLayerBtn = $<HTMLButtonElement>("text-layer-toggle");
+const textPixelationSlider = $<HTMLInputElement>("text-pixelation");
+const textSizeSlider = $<HTMLInputElement>("text-size");
+const textConfigBtn = $<HTMLButtonElement>("text-config");
+const textConfigPanel = $("text-config-panel");
+const textConfigCloseBtn = $<HTMLButtonElement>("text-config-close");
+
+// Toggle text layer
+textLayerBtn.addEventListener("click", () => {
+  textLayer.toggle();
+  textLayerBtn.classList.toggle("on");
+});
+
+// Pixelation control
+textPixelationSlider.addEventListener("input", () => {
+  const level = parseInt(textPixelationSlider.value);
+  textLayer.updateConfig({ pixelationLevel: level });
+});
+
+// Size control
+textSizeSlider.addEventListener("input", () => {
+  const size = parseInt(textSizeSlider.value);
+  textLayer.updateConfig({ fontSize: size });
+});
+
+// Config panel
+textConfigBtn.addEventListener("click", () => {
+  const panel = textConfigPanel as HTMLElement;
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+});
+
+textConfigCloseBtn.addEventListener("click", () => {
+  (textConfigPanel as HTMLElement).style.display = "none";
+});
+
+// Config controls
+const textWordsTextarea = $<HTMLTextAreaElement>("text-words");
+const textColorInput = $<HTMLInputElement>("text-color");
+const textOpacitySlider = $<HTMLInputElement>("text-opacity");
+const textOpacityVal = $("text-opacity-val");
+const textDurationSlider = $<HTMLInputElement>("text-duration");
+const textDurationVal = $("text-duration-val");
+const textAudioReactiveCheckbox = $<HTMLInputElement>("text-audio-reactive");
+const textApplyBtn = $<HTMLButtonElement>("text-apply");
+
+// Update opacity display
+textOpacitySlider.addEventListener("input", () => {
+  textOpacityVal.textContent = textOpacitySlider.value;
+});
+
+// Update duration display
+textDurationSlider.addEventListener("input", () => {
+  textDurationVal.textContent = textDurationSlider.value;
+});
+
+// Apply button
+textApplyBtn.addEventListener("click", () => {
+  const words = textWordsTextarea.value.split("\n").map((w) => w.trim());
+  textLayer.updateConfig({
+    words,
+    color: textColorInput.value,
+    opacity: parseFloat(textOpacitySlider.value) / 100,
+    duration: parseInt(textDurationSlider.value),
+    audioReactive: textAudioReactiveCheckbox.checked,
+  });
+  (textConfigPanel as HTMLElement).style.display = "none";
+});
+
+// Feed audio energy to text layer
+setInterval(() => {
+  textLayer.updateAudioEnergy(bands.level);
+  textLayer.updateAudioFrequency(bands.mid);
+}, 50);
