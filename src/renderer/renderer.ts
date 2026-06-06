@@ -12,7 +12,7 @@ import { EFFECTS } from "./effects";
 import { parseISF } from "./isf";
 import { BLEND_MODES } from "./gl";
 import { DISRUPTORS } from "./disruptors";
-import { autoplay } from "./autoplay";
+import { autoplayAdvanced, AUTOPLAY_PRESETS } from "./autoplayAdvanced";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -674,24 +674,67 @@ exportBtn.addEventListener("click", async () => {
   }
 });
 
-// --- Autoplay: Random automation synced to BPM ---
-const autoplayBtn = $<HTMLButtonElement>("autoplay");
-autoplay.init(120); // Default BPM
+// --- Autoplay Advanced: Full generative system ---
+autoplayAdvanced.init(120); // Default BPM
 
-autoplayBtn.addEventListener("click", () => {
-  if (autoplay.getStatus().isRunning) {
-    autoplay.stop();
-    autoplayBtn.classList.remove("on");
-    autoplayBtn.textContent = "🎲";
-  } else {
-    autoplay.start();
-    autoplayBtn.classList.add("on");
-    autoplayBtn.textContent = "🎲 AUTO";
-  }
+// Status display
+const statusEl = $("autoplay-status");
+setInterval(() => {
+  const status = autoplayAdvanced.getStatus();
+  statusEl.textContent = status.running
+    ? `${status.preset} · M${status.measure}/${status.nextChangeAt}`
+    : "—";
+}, 100);
+
+// Preset buttons
+($<HTMLButtonElement>("autoplay-gentle")).addEventListener("click", () => {
+  autoplayAdvanced.start("gentle");
+  ($("autoplay-gentle") as HTMLElement).classList.add("on");
+});
+($<HTMLButtonElement>("autoplay-chaotic")).addEventListener("click", () => {
+  autoplayAdvanced.start("chaotic");
+  ($("autoplay-chaotic") as HTMLElement).classList.add("on");
+});
+($<HTMLButtonElement>("autoplay-psycho")).addEventListener("click", () => {
+  autoplayAdvanced.start("psycho");
+  ($("autoplay-psycho") as HTMLElement).classList.add("on");
+});
+($<HTMLButtonElement>("autoplay-glitch")).addEventListener("click", () => {
+  autoplayAdvanced.start("glitch");
+  ($("autoplay-glitch") as HTMLElement).classList.add("on");
 });
 
-// Update BPM if detected from audio
+// Generative loop
+($<HTMLButtonElement>("loop-record")).addEventListener("click", () => {
+  autoplayAdvanced.recordGenerativeLoop(8);
+  ($("loop-record") as HTMLElement).classList.add("on");
+});
+($<HTMLButtonElement>("loop-freeze")).addEventListener("click", () => {
+  autoplayAdvanced.freezeGenerativeLoop();
+  ($("loop-freeze") as HTMLElement).classList.toggle("on");
+});
+
+// History
+($<HTMLButtonElement>("undo")).addEventListener("click", () => {
+  autoplayAdvanced.undo();
+});
+($<HTMLButtonElement>("redo")).addEventListener("click", () => {
+  autoplayAdvanced.redo();
+});
+($<HTMLButtonElement>("session-export")).addEventListener("click", () => {
+  const session = autoplayAdvanced.exportSession();
+  window.synth?.saveFile(session, [{ name: "JSON", extensions: ["json"] }], "autoplay-session.json");
+});
+
+// Audio reactivity: feed bass energy to autoplay
+const originalFrameFunc = frame;
+const wrappedFrame = (now: number) => {
+  originalFrameFunc(now);
+  autoplayAdvanced.updateAudioEnergy(bands.bass, bands.mid, bands.treble);
+};
+
+// Update BPM if detected
 setInterval(() => {
-  // TODO: Get BPM from audio analysis if available
-  // autoplay.setBPM(detectedBPM);
+  // TODO: Get BPM from audio analysis
+  // autoplayAdvanced.setBPM(detectedBPM);
 }, 1000);
