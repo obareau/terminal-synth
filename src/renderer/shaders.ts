@@ -159,6 +159,88 @@ vec3 render(vec2 uv, vec2 res) {
   return base + grid;
 }`,
   },
+  // ── Batch 4 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Topographie",
+    src: /* glsl */ `
+float tp_n(vec2 p) {
+  vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
+             mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+}
+float tp_h(vec2 p) {
+  float h=0.0,a=0.5;
+  for(int i=0;i<4;i++){h+=a*tp_n(p);p*=2.1;a*=0.5;}
+  return h;
+}
+vec3 render(vec2 uv, vec2 res) {
+  vec2  p = uv * vec2(res.x/res.y,1.0) * 3.0 + u_time * 0.07;
+  float h = tp_h(p + u_bass * 0.4);
+  float n = (8.0 + u_mid * 6.0);
+  float c = fract(h * n);
+  float line = smoothstep(0.06, 0.0, min(c, 1.0-c));
+  vec3 col = mix(vec3(0.0,0.05,0.12), vec3(0.0,0.18,0.08), smoothstep(0.2,0.6,h));
+  col = mix(col, vec3(0.22,0.32,0.08), smoothstep(0.6,1.0,h));
+  col += vec3(0.55, 0.85, 0.35) * line * (0.5+u_level*0.7);
+  col += vec3(0.8,  1.0,  0.5)  * line * line * u_bass;
+  return col;
+}`,
+  },
+  {
+    name: "Éclairs",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = floor(u_time * 9.0);
+  float bright = 0.0;
+  for (int b = 0; b < 3; b++) {
+    float fb  = float(b);
+    float bx  = 0.2 + hash(vec2(fb, floor(u_time*0.5+fb))) * 0.6;
+    float x   = bx;
+    for (int i = 0; i < 16; i++) {
+      float fi = float(i);
+      float y0 = fi / 16.0, y1 = (fi+1.0) / 16.0;
+      float xn = x + (hash(vec2(fi+fb*100.0, t+fb)) - 0.5) * 0.09;
+      float inS = step(y0,uv.y)*step(uv.y,y1);
+      float lx  = mix(x, xn, (uv.y-y0)/max(y1-y0,1e-4));
+      float d   = abs(uv.x - lx) * inS + (1.0-inS) * 1.0;
+      bright += 0.0018 / max(d,0.0001) * inS * (1.0+u_bass*0.6);
+      // ramification
+      float bSeed = hash(vec2(fi+fb*100.0+50.0, t));
+      if (bSeed > 0.72) {
+        float bxe = lx + (hash(vec2(fi+200.0,t+fb))-0.5)*0.12;
+        float blx = mix(lx, bxe, clamp((uv.y-y0)/(y1*0.5-y0+1e-4),0.0,1.0));
+        float bd  = abs(uv.x - blx) * inS;
+        bright += 0.0009 / max(bd,0.0001) * inS * 0.6;
+      }
+      x = xn;
+    }
+  }
+  bright *= 0.6 + hash(vec2(floor(u_time*14.0),0.0))*0.4;
+  vec3 col = mix(vec3(0.5,0.65,1.0), vec3(1.0,1.0,1.0), min(bright*0.5,1.0));
+  return col * min(bright, 2.5);
+}`,
+  },
+  {
+    name: "Marbre",
+    src: /* glsl */ `
+float mb_n(vec2 p) {
+  vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
+             mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+}
+vec3 render(vec2 uv, vec2 res) {
+  vec2  p = uv * vec2(res.x/res.y,1.0) * 3.0;
+  float t = u_time * 0.18;
+  float turb=0.0, a=1.0; vec2 q=p+t;
+  for(int i=0;i<4;i++){turb+=a*mb_n(q);q=q*2.0+vec2(1.7,9.2);a*=0.5;}
+  float v = sin((p.x+p.y)*3.0 + turb*4.0*(1.0+u_bass) + t)*0.5+0.5;
+  vec3 col = mix(vec3(0.02,0.02,0.04), vec3(0.05,0.6,0.88), pow(v,2.0));
+  col = mix(col, vec3(0.9,0.4,0.04), pow(v,8.0)*(0.4+u_mid*0.8));
+  col = mix(col, vec3(1.0,0.95,0.8), pow(v,18.0)*u_level);
+  return col*(0.6+u_level*0.5);
+}`,
+  },
   // ── Batch 3 ───────────────────────────────────────────────────────────────
 
   {

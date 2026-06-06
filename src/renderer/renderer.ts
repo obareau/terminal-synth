@@ -10,6 +10,7 @@ import { TEXTS } from "./texts";
 import { SHADERS } from "./shaders";
 import { EFFECTS } from "./effects";
 import { parseISF } from "./isf";
+import { BLEND_MODES } from "./gl";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -22,8 +23,12 @@ const srcSel = $<HTMLSelectElement>("audio-src");
 const asciiBtn = $<HTMLButtonElement>("ascii-toggle");
 const textBtn = $<HTMLButtonElement>("text-toggle");
 const fullBtn = $<HTMLButtonElement>("full");
-const isfBtn = $<HTMLButtonElement>("isf-load");
+const isfBtn  = $<HTMLButtonElement>("isf-load");
 const spoutBtn = $<HTMLButtonElement>("spout");
+const blendSel  = $<HTMLSelectElement>("blend-mode");
+const layerBSel = $<HTMLSelectElement>("layer-b-shader");
+const layerBBtn = $<HTMLButtonElement>("layer-b-on");
+const layerBOpa = $<HTMLInputElement>("layer-b-opacity");
 const midiBtn = $<HTMLButtonElement>("midi");
 const midiModeSel = $<HTMLSelectElement>("midi-mode");
 const meter = $("meter");
@@ -44,10 +49,37 @@ const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture
 // --- Générateurs ---
 SHADERS.forEach((s, i) => {
   const o = document.createElement("option");
-  o.value = String(i);
-  o.textContent = s.name;
+  o.value = String(i); o.textContent = s.name;
   shaderSel.appendChild(o);
+  const o2 = o.cloneNode(true) as HTMLOptionElement;
+  layerBSel.appendChild(o2);
 });
+
+// --- Layer B / blend modes ---
+BLEND_MODES.forEach((name, i) => {
+  const o = document.createElement("option");
+  o.value = String(i); o.textContent = name;
+  blendSel.appendChild(o);
+});
+let layerBEnabled = false;
+function syncBlend(): void {
+  pipeline.setBlend(Number(blendSel.value), Number(layerBOpa.value));
+}
+function loadLayerB(): void {
+  if (!layerBEnabled) { pipeline.setGenerator2(null); return; }
+  try { pipeline.setGenerator2(SHADERS[Number(layerBSel.value)]!.src); }
+  catch(e) { console.error("[GL layer B]", e); }
+}
+layerBBtn.addEventListener("click", () => {
+  layerBEnabled = !layerBEnabled;
+  layerBBtn.classList.toggle("on", layerBEnabled);
+  layerBBtn.textContent = layerBEnabled ? "B on" : "B";
+  loadLayerB();
+});
+layerBSel.addEventListener("change", loadLayerB);
+blendSel.addEventListener("input", syncBlend);
+layerBOpa.addEventListener("input", syncBlend);
+syncBlend();
 function loadShader(i: number): void {
   try {
     pipeline.setGenerator(SHADERS[i]!.src);
@@ -64,7 +96,7 @@ shaderSel.addEventListener("change", () => loadShader(Number(shaderSel.value)));
 loadShader(0);
 
 // --- Chaîne d'effets (génération → entropie → feedback → glitch → filtre) ---
-const defaultAmounts = [0.3, 0.4, 0.3, 0.4, 0.45, 0.3, 0.5, 0.4, 0.5, 0.35, 0.4, 0.4, 0.45, 0.35, 0.4, 0.4, 0.5, 0.4];
+const defaultAmounts = [0.3, 0.4, 0.3, 0.4, 0.45, 0.3, 0.5, 0.4, 0.5, 0.35, 0.4, 0.4, 0.45, 0.35, 0.4, 0.4, 0.5, 0.4, 0.5, 0.4];
 const fxState = EFFECTS.map((_e, i) => ({ enabled: false, amount: defaultAmounts[i] ?? 0.3 }));
 const fxProg = EFFECTS.map((e) => {
   try { return pipeline.compileEffect(e.body); }

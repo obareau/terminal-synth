@@ -73,7 +73,13 @@
     <pre id="text" hidden></pre>
     <div id="bar">
       <span class="brand">terminal-synth</span>
+      <span style="color:#4a4a4a;font-size:10px">A</span>
       <select id="shader" title="Shader / générateur"></select>
+      <select id="blend-mode" title="Mode de fusion des layers"></select>
+      <span style="color:#4a4a4a;font-size:10px">B</span>
+      <select id="layer-b-shader" title="Layer B"></select>
+      <button id="layer-b-on" title="Activer / désactiver layer B">B</button>
+      <input id="layer-b-opacity" type="range" min="0" max="1" step="0.01" value="1" title="Opacité layer B" style="width:55px;accent-color:#9be29b;vertical-align:middle">
       <select id="audio-src" title="Source audio">
         <option value="system">🔊 Système</option>
         <option value="mic">🎤 Micro</option>
