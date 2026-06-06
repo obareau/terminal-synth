@@ -159,6 +159,141 @@ vec3 render(vec2 uv, vec2 res) {
   return base + grid;
 }`,
   },
+  // ── Batch 3 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Lissajous",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0) * 2.1;
+  float scale = 0.8 + u_level * 0.35;
+  // XY scope : deux demi-waveforms en X et Y
+  float wx = (waveAt(uv.x * 0.5) * 2.0 - 1.0) * scale;
+  float wy = (waveAt(uv.y * 0.5 + 0.5) * 2.0 - 1.0) * scale;
+  float dx = abs(p.y - wx), dy = abs(p.x - wy);
+  float lx = smoothstep(0.022, 0.0, dx) + exp(-dx * 38.0) * 0.45;
+  float ly = smoothstep(0.022, 0.0, dy) + exp(-dy * 38.0) * 0.45;
+  float cross = lx * ly;
+  vec3 col = vec3(0.0, 0.62, 0.28) * max(lx, ly) * (0.4 + u_level * 0.8);
+  col += vec3(1.0, 1.0, 0.45) * cross * 5.0;
+  return col;
+}`,
+  },
+  {
+    name: "Aurora",
+    src: /* glsl */ `
+float aur_n(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+}
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.28;
+  float w1 = aur_n(vec2(uv.x * 3.0 + t,        t * 0.5 )) * 0.50;
+  float w2 = aur_n(vec2(uv.x * 6.0 - t * 0.7,  t * 0.3 )) * 0.25;
+  float curtain = 0.44 + w1 + w2 + u_bass * 0.14;
+  float d = abs(uv.y - curtain);
+  float band = exp(-d *  7.5) * (0.45 + u_level * 0.7);
+  float thin = exp(-d * 22.0) * 0.65;
+  float hue = uv.x * 0.35 + t * 0.12 + aur_n(vec2(uv.x * 2.0, t * 0.18)) * 0.5;
+  vec3 ac = mix(vec3(0.0, 0.9, 0.4), vec3(0.0, 0.3, 0.9), sin(hue*TWO_PI)*0.5+0.5);
+  ac = mix(ac, vec3(0.9, 0.08, 0.55), aur_n(vec2(uv.x * 4.0, t * 0.35)) * u_mid);
+  vec3 sky = mix(vec3(0.0, 0.0, 0.03), vec3(0.0, 0.02, 0.06), uv.y);
+  vec3 col = sky + ac * (band + thin);
+  float star = step(0.997 - u_treble * 0.004, hash(floor(uv * res * 0.5)));
+  return col + vec3(star * (0.6 + w1 * 0.4));
+}`,
+  },
+  {
+    name: "Spirale",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0);
+  float r = length(p);
+  float a = atan(p.y, p.x);
+  float t = u_time;
+  float turns = 6.0 + u_mid * 4.0;
+  float sv = r * turns - (a + PI) / TWO_PI + t * (0.4 + u_bass * 1.0);
+  float d  = abs(fract(sv) - 0.5);
+  float thick = 0.07 + fftAt(r) * 0.22;
+  float arm  = smoothstep(thick, 0.0, d);
+  float glow = exp(-d * 11.0) * 0.4;
+  float hue  = fract(a / TWO_PI + t * 0.08);
+  vec3 col = mix(vec3(0.9, 0.3, 0.05), vec3(0.05, 0.75, 0.9), hue);
+  return col * (arm + glow) * (0.5 + u_level * 0.7);
+}`,
+  },
+  {
+    name: "Circuit",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float scale = 8.0 + u_mid * 4.0;
+  vec2 p  = uv * vec2(res.x/res.y, 1.0) * scale;
+  float t = u_time;
+  vec2 id = floor(p), fr = fract(p) - 0.5;
+  float sd  = hash(id), sd2 = hash(id + vec2(31.7, 17.3));
+  float hz = step(0.5, sd), vt = 1.0 - hz;
+  float lineH = smoothstep(0.04,0.0,abs(fr.y)) * step(abs(fr.x),0.49) * hz;
+  float lineV = smoothstep(0.04,0.0,abs(fr.x)) * step(abs(fr.y),0.49) * vt;
+  float via   = smoothstep(0.12, 0.06, length(fr));
+  float speed = 1.5 + u_bass * 2.5;
+  float posH  = fract(id.x * 0.37 + t * speed * sign(sd  - 0.5));
+  float posV  = fract(id.y * 0.37 + t * speed * sign(sd2 - 0.5));
+  float sigH  = smoothstep(0.18,0.0,abs(fr.x-(posH-0.5))) * step(abs(fr.y),0.04) * hz;
+  float sigV  = smoothstep(0.18,0.0,abs(fr.y-(posV-0.5))) * step(abs(fr.x),0.04) * vt;
+  float sig   = (sigH + sigV) * (0.8 + u_level * 0.5);
+  vec3 col = vec3(0.0, 0.02, 0.01);
+  col += vec3(0.0, 0.35, 0.15) * (lineH + lineV) * 0.6;
+  col += vec3(0.25, 0.65, 0.2) * via * 0.8;
+  col += vec3(0.4,  1.0,  0.25) * sig;
+  return col;
+}`,
+  },
+  {
+    name: "Orbe",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0);
+  float r = length(p);
+  float a = atan(p.y, p.x);
+  float t = u_time;
+  float sphere = smoothstep(0.35 + u_bass * 0.08, 0.30, r);
+  vec2 sp = vec2(a / TWO_PI + 0.5, r / 0.35);
+  float plasma = sin(sp.x * 8.0 + t * 2.0 + u_bass * 4.0)
+               * sin(sp.y * 6.0 - t * 1.5)
+               * sin((sp.x + sp.y) * 10.0 + t * 0.7);
+  plasma = plasma * 0.5 + 0.5;
+  float halo = exp(-r * 3.0) * 0.4 * (0.5 + u_level);
+  vec3 col = mix(vec3(0.02, 0.1, 0.7), vec3(0.9, 0.3, 0.05), plasma) * sphere;
+  col = mix(col, vec3(1.0, 0.9, 0.7), pow(plasma, 4.0) * sphere);
+  col += vec3(0.04, 0.1, 0.5) * halo;
+  return col * (0.5 + u_level * 0.7);
+}`,
+  },
+  {
+    name: "Signal",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  float tx = fract(uv.x + t * (0.35 + u_level * 0.25)) - 0.5;
+  // QRS complex ECG
+  float sig  = exp(-abs(tx + 0.05) * 80.0) * -0.30;
+  sig += exp(-abs(tx)        * 40.0) * ( 0.80 + u_bass * 0.55);
+  sig += exp(-abs(tx - 0.05) * 80.0) * -0.20;
+  sig += exp(-abs(tx - 0.15) * 15.0) *  0.15;
+  float wave = 0.5 + sig;
+  float d    = abs(uv.y - wave);
+  float line = smoothstep(0.014, 0.0, d);
+  float glow = exp(-d * 50.0) * 0.5;
+  float peak = exp(-abs(tx) * 40.0) * u_bass;
+  float gx = smoothstep(0.005,0.0, mod(uv.x*10.0,1.0)-0.97);
+  float gy = smoothstep(0.005,0.0, mod(uv.y* 8.0,1.0)-0.97);
+  vec3 col  = vec3(0.0, 0.62, 0.22) * (line + glow);
+  col += vec3(0.55, 1.0, 0.45) * line * peak;
+  col += vec3(0.0,  0.12, 0.04) * (gx + gy);
+  return col;
+}`,
+  },
   // ── Batch 2 ───────────────────────────────────────────────────────────────
 
   {

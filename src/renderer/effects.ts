@@ -79,6 +79,107 @@ vec3 process(vec2 uv) {
   return c;
 }`,
   },
+  // ── Batch 3 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Neon",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a  = u_amount;
+  vec2  px = 1.5 / u_resolution;
+  vec3  tl = prev(uv+vec2(-px.x, px.y)), tr = prev(uv+vec2(px.x, px.y));
+  vec3  bl = prev(uv+vec2(-px.x,-px.y)), br = prev(uv+vec2(px.x,-px.y));
+  vec3  l  = prev(uv+vec2(-px.x,0.0)),  r2 = prev(uv+vec2(px.x,0.0));
+  vec3  tu = prev(uv+vec2(0.0, px.y)),  bo = prev(uv+vec2(0.0,-px.y));
+  vec3  sx = (tr+2.0*r2+br)-(tl+2.0*l+bl);
+  vec3  sy = (tl+2.0*tu+tr)-(bl+2.0*bo+br);
+  float edge = length(sx) + length(sy);
+  vec3  c = prev(uv);
+  float hue = fract(edge * 2.0 + u_time * 0.25);
+  vec3  nc = mix(vec3(0.0,0.8,1.0), vec3(1.0,0.2,0.8), hue);
+  return c + nc * edge * 4.5 * a * (0.5 + u_bass * 0.5);
+}`,
+  },
+  {
+    name: "Onde",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 c1 = vec2(0.5 + 0.2*sin(t*0.7),  0.5 + 0.2*cos(t*0.5));
+  vec2 c2 = vec2(0.5 + 0.25*cos(t*0.4+1.0), 0.5 + 0.15*sin(t*0.6));
+  float rip = sin(length(uv-c1)*30.0 - t*8.0)
+            + sin(length(uv-c2)*25.0 - t*6.0);
+  vec2 off = vec2(cos(rip*PI), sin(rip*PI)) * a * 0.013 * (0.5 + u_bass * 0.7);
+  return prev(clamp(uv + off, 0.001, 0.999));
+}`,
+  },
+  {
+    name: "Fisheye",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a  = u_amount;
+  vec2  p  = uv * 2.0 - 1.0;
+  float r2 = dot(p, p);
+  float k  = a * (0.6 + u_mid * 0.4);
+  vec2  suv = clamp((p * (1.0 - k * r2) + 1.0) * 0.5, 0.001, 0.999);
+  return mix(prev(uv), prev(suv), a);
+}`,
+  },
+  {
+    name: "Hue",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a    = u_amount;
+  float ang  = a * TWO_PI * (0.3 + u_mid * 0.5) + u_time * a * 0.3;
+  float c    = cos(ang), s = sin(ang);
+  // matrice de rotation de teinte (column-major GLSL)
+  mat3 rot = mat3(
+    0.213+c*0.787-s*0.213, 0.715-c*0.715-s*0.715, 0.072-c*0.072+s*0.928,
+    0.213-c*0.213+s*0.143, 0.715+c*0.285+s*0.140, 0.072-c*0.072-s*0.283,
+    0.213-c*0.213-s*0.787, 0.715-c*0.715+s*0.715, 0.072+c*0.928+s*0.072
+  );
+  return mix(prev(uv), rot * prev(uv), a);
+}`,
+  },
+  {
+    name: "Scanlines",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a     = u_amount;
+  vec3  c     = prev(uv);
+  float row   = floor(uv.y * u_resolution.y);
+  // scanlines alternées
+  float scan  = mix(1.0, mod(row, 2.0) < 1.0 ? 1.0 : 0.35, a);
+  // dot mask RGB phosphore
+  float col3  = mod(floor(uv.x * u_resolution.x) + mod(row, 3.0), 3.0);
+  vec3  mask  = col3 < 1.0 ? vec3(1.0,0.35,0.35) : (col3 < 2.0 ? vec3(0.35,1.0,0.35) : vec3(0.35,0.35,1.0));
+  // flou vertical (rémanence phosphore)
+  vec2  px    = 1.0 / u_resolution;
+  vec3  blur  = c*0.5 + prev(uv+vec2(0,px.y))*0.25 + prev(uv-vec2(0,px.y))*0.25;
+  c = mix(c, blur * mask * scan, a);
+  // vignette CRT
+  vec2  vn = uv * (1.0 - uv.yx);
+  float vig = pow(vn.x * vn.y * 15.0, a * 0.35);
+  return c * mix(1.0, vig, a);
+}`,
+  },
+  {
+    name: "Datamosh",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a    = u_amount;
+  float t    = u_time;
+  float bs   = 0.035 + a * 0.055;
+  vec2  bid  = floor(uv / bs) * bs;
+  float rnd  = hash(bid + floor(t * 2.0));
+  float keep = step(0.68 - a * 0.38, rnd);
+  vec2  mot  = (vec2(hash(bid+5.0), hash(bid+10.0))-0.5) * a * 0.14 * keep;
+  vec3  cur  = prev(uv);
+  vec3  old  = fb(clamp(uv + mot, 0.001, 0.999));
+  return mix(cur, old, keep * a * (0.5 + u_bass * 0.45));
+}`,
+  },
   // ── Batch 2 ───────────────────────────────────────────────────────────────
 
   {
