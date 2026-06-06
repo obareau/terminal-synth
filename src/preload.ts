@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("synth", {
     ipcRenderer.invoke("dialog:save-file", content, filters, defaultName),
   saveVideo: (data: Uint8Array, defaultName: string): Promise<boolean> =>
     ipcRenderer.invoke("video:save", data, defaultName),
+  exportMP4: (config: any): Promise<any> =>
+    ipcRenderer.invoke("video:encode", config),
   spoutSendFrame: (w: number, h: number, pixels: Uint8Array): Promise<void> =>
     ipcRenderer.invoke("spout:frame", w, h, pixels),
 });

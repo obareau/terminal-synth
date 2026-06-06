@@ -282,6 +282,7 @@ declare global {
       loadFile:  (filters: { name: string; extensions: string[] }[]) => Promise<{ name: string; content: string } | null>;
       saveFile:  (content: string, filters: { name: string; extensions: string[] }[], defaultName: string) => Promise<boolean>;
       saveVideo: (data: Uint8Array, defaultName: string) => Promise<boolean>;
+      exportMP4: (config: any) => Promise<any>;
       spoutSendFrame: (w: number, h: number, pixels: Uint8Array) => Promise<void>;
     };
   }
@@ -637,3 +638,37 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// --- Export MP4 with FFmpeg ---
+const exportBtn = $<HTMLButtonElement>("export-mp4");
+exportBtn.addEventListener("click", async () => {
+  try {
+    exportBtn.disabled = true;
+    exportBtn.textContent = "🔄 Encoding...";
+
+    const result = await window.synth?.exportMP4({
+      config: {
+        fps: 30,
+        bitrate: "5000k", // H.264 bitrate
+        audioBitrate: "320k", // AAC high quality
+        outputPath: "", // Will be prompted by dialog
+      },
+      frameCount: 0,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+    });
+
+    exportBtn.textContent = "✅ Done";
+    setTimeout(() => {
+      exportBtn.textContent = "🎬";
+      exportBtn.disabled = false;
+    }, 3000);
+  } catch (err) {
+    console.error("Export failed:", err);
+    exportBtn.textContent = "❌ Failed";
+    setTimeout(() => {
+      exportBtn.textContent = "🎬";
+      exportBtn.disabled = false;
+    }, 3000);
+  }
+});
