@@ -18,6 +18,8 @@ const app = $("app");
 const canvas = $<HTMLCanvasElement>("gl");
 const pre = $<HTMLPreElement>("ascii");
 const shaderSel = $<HTMLSelectElement>("shader");
+const sourcesList = $("sources-list");
+const layerAName = $("layer-a-name");
 const audioBtn = $<HTMLButtonElement>("audio");
 const srcSel = $<HTMLSelectElement>("audio-src");
 const asciiBtn = $<HTMLButtonElement>("ascii-toggle");
@@ -46,14 +48,31 @@ let asciiMode = false;
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
 
-// --- Générateurs ---
+// --- Générateurs : select caché + liste visuelle ---
+const SRC_KEYS = "1234567890qwertyuiopasdfghjklzxcvbnm";
+
 SHADERS.forEach((s, i) => {
+  // select caché (logique preset)
   const o = document.createElement("option");
   o.value = String(i); o.textContent = s.name;
   shaderSel.appendChild(o);
   const o2 = o.cloneNode(true) as HTMLOptionElement;
   layerBSel.appendChild(o2);
+
+  // liste visuelle cliquable
+  const item = document.createElement("div");
+  item.className = "src-item";
+  item.dataset["idx"] = String(i);
+  const key = SRC_KEYS[i] ?? "";
+  item.innerHTML = `<span class="src-key">${key}</span><span class="src-name">${s.name}</span>`;
+  item.addEventListener("click", () => selectSource(i));
+  sourcesList.appendChild(item);
 });
+
+function selectSource(i: number): void {
+  shaderSel.value = String(i);
+  loadShader(i);
+}
 
 // --- Layer B / blend modes ---
 BLEND_MODES.forEach((name, i) => {
@@ -84,9 +103,15 @@ function loadShader(i: number): void {
   try {
     pipeline.setGenerator(SHADERS[i]!.src);
     currentShader = i;
+    // sync liste visuelle
+    sourcesList.querySelectorAll(".src-item").forEach(el => el.classList.remove("active"));
+    sourcesList.querySelector(`.src-item[data-idx="${i}"]`)?.classList.add("active");
+    (sourcesList.querySelector(`.src-item[data-idx="${i}"]`) as HTMLElement | null)
+      ?.scrollIntoView({ block: "nearest" });
+    // sync label layer A
+    layerAName.textContent = SHADERS[i]?.name ?? "—";
   } catch (e) {
     console.error("[GL]", e);
-    // affiche l'erreur GL dans la barre de statut 4s
     const prev = meter.textContent;
     meter.textContent = String(e).slice(0, 120);
     setTimeout(() => { meter.textContent = prev ?? ""; }, 4000);
@@ -241,9 +266,51 @@ spoutBtn.addEventListener("click", () => {
   spoutBtn.textContent = spoutEnabled ? "SPOUT on" : "SPOUT";
 });
 
+// --- Raccourcis clavier ---
+let focusMode = false;
+function toggleFocus(): void {
+  focusMode = !focusMode;
+  document.body.classList.toggle("focus", focusMode);
+}
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "f" || e.key === "F") window.synth?.toggleFullscreen();
-  if (e.key === "Escape") window.synth?.setFullscreen(false);
+  const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
+
+  // Toujours actifs
+  if (e.key === "Escape") {
+    if (focusMode) { toggleFocus(); return; }
+    window.synth?.setFullscreen(false);
+  }
+  if (e.key === "F11" || (!inInput && (e.key === "f" || e.key === "F")))
+    window.synth?.toggleFullscreen();
+
+  if (inInput) return; // le reste est désactivé si on est dans un input
+
+  // Tab = focus mode (canvas plein écran interne)
+  if (e.key === "Tab") { e.preventDefault(); toggleFocus(); return; }
+
+  // Ctrl+S / Ctrl+O / Ctrl+R
+  if (e.ctrlKey) {
+    if (e.key === "s") { e.preventDefault(); presetSaveBtn.click(); return; }
+    if (e.key === "o") { e.preventDefault(); presetLoadBtn.click(); return; }
+    if (e.key === "r") { e.preventDefault(); recBtn.click(); return; }
+  }
+
+  // Espace = RECTA prochaine tactique
+  if (e.key === " ") { e.preventDefault(); tactics.forceNext(performance.now()); return; }
+
+  // A = audio toggle, M = midi toggle, X = ascii toggle, T = texte toggle
+  if (e.key === "a" || e.key === "A") { audioBtn.click(); return; }
+  if (e.key === "m" || e.key === "M") { midiBtn.click(); return; }
+  if (e.key === "x" || e.key === "X") { asciiBtn.click(); return; }
+  if (e.key === "t" || e.key === "T") { textBtn.click(); return; }
+
+  // b = layer B toggle
+  if (e.key === "b" || e.key === "B") { layerBBtn.click(); return; }
+
+  // 1-9, 0, q-p, a-k, ... → sélection du générateur
+  const idx = SRC_KEYS.indexOf(e.key.toLowerCase());
+  if (idx >= 0 && idx < SHADERS.length) { selectSource(idx); return; }
 });
 
 // --- Tailles ---

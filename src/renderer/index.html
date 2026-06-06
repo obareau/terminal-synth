@@ -2,113 +2,308 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>terminal-synth</title>
   <style>
-    * { box-sizing: border-box; margin: 0; }
-    html, body { height: 100%; background: #0a0a0a; overflow: hidden; }
-    #app { position: fixed; inset: 0; background: #000; }
-    #gl, #ascii { position: absolute; inset: 0; width: 100%; height: 100%; }
-    #ascii {
-      margin: 0; padding: 0;
-      font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
-      color: #9be29b; background: #000;
-      white-space: pre; overflow: hidden;
-      letter-spacing: 0; text-shadow: 0 0 4px rgba(120, 255, 140, 0.35);
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:         #0a0a0a;
+      --panel:      #101010;
+      --panel2:     #131313;
+      --ctrl:       #181818;
+      --border:     #1c1c1c;
+      --border2:    #242424;
+      --dim:        #333;
+      --text-dim:   #444;
+      --text-sec:   #666;
+      --text:       #999;
+      --text-hi:    #ccc;
+      --accent:     #9be29b;
+      --accent-bg:  #0b1e0b;
+      --accent-dim: #3a5a3a;
+      --orange:     #e2993a;
+      --red:        #d94040;
+      --cyan:       #3ab8e2;
+      --font: "Cascadia Mono", Consolas, "Courier New", monospace;
     }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 11px; overflow: hidden; user-select: none; }
+
+    /* ── Scrollbars ──────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+
+    /* ── Base controls ───────────────────────────────────────────── */
+    button, select {
+      font: 11px var(--font);
+      background: var(--ctrl);
+      color: var(--text);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      cursor: pointer;
+      padding: 0 7px;
+      height: 22px;
+      white-space: nowrap;
+      transition: border-color .1s, color .1s, background .1s;
+    }
+    button:hover { border-color: #333; color: var(--text-hi); }
+    button.on  { color: #060a06; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+    button.rec { color: var(--red); border-color: #7a2020; }
+    button.rec.active { color: #fff; background: var(--red); border-color: var(--red); animation: blink .7s step-end infinite; }
+    @keyframes blink { 50% { opacity: .45; } }
+    select { padding: 0 3px; }
+    input[type=range] { accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
     [hidden] { display: none !important; }
 
-    #bar {
-      position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-      display: flex; align-items: center; gap: 0.5em;
-      padding: 0.4em 0.6em;
-      font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px;
-      color: #8a8a8a;
-      background: linear-gradient(#0c0c0cdd, #0c0c0c66 70%, transparent);
-      user-select: none;
+    /* ── App shell — 3-column, 3-row grid ────────────────────────── */
+    #app {
+      display: grid;
+      height: 100vh;
+      grid-template-rows: 32px 1fr 36px;
+      grid-template-columns: 210px 1fr 252px;
+      grid-template-areas:
+        "top   top   top"
+        "left  stage right"
+        "bot   bot   bot";
     }
-    #bar .brand { color: #9be29b; font-weight: 700; letter-spacing: 0.06em; margin-right: 0.4em; }
-    #bar select, #bar button {
-      font: inherit; color: #cfcfcf; background: #161616;
-      border: 1px solid #060606; height: 22px; padding: 0 0.6em; border-radius: 2px; cursor: pointer;
+    /* Focus mode: collapse panels & bars */
+    body.focus #app {
+      grid-template-rows: 0 1fr 0;
+      grid-template-columns: 0 1fr 0;
     }
-    #bar button:hover, #bar select:hover { background: #1e1e1e; }
-    #bar button.on  { color: #0a0a0a; background: #9be29b; border-color: #060606; font-weight: 700; }
-    #bar button.rec { color: #ff4444; border-color: #ff2222; animation: blink 1s step-end infinite; }
-    @keyframes blink { 50% { opacity: 0.4; } }
-    #bar .spacer { flex: 1; }
-    #meter { color: #6a6a6a; }
+    body.focus #topbar,
+    body.focus #bottom-bar,
+    body.focus #left-panel,
+    body.focus #right-panel { display: none; }
 
-    #chain {
-      position: absolute; top: 34px; left: 0; right: 0; z-index: 10;
-      display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em;
-      padding: 0.3em 0.6em;
-      font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; color: #8a8a8a;
-      background: linear-gradient(#0c0c0ccc, transparent);
-      user-select: none;
+    /* ── Top bar ─────────────────────────────────────────────────── */
+    #topbar {
+      grid-area: top;
+      display: flex; align-items: center; gap: 5px;
+      padding: 0 10px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
     }
-    #chain .arrow { color: #4a4a4a; }
-    #chain .gen { color: #9be29b; }
-    .fx {
-      display: inline-flex; align-items: center; gap: 0.35em;
-      padding: 0.15em 0.4em; border: 1px solid #1a1a1a; border-radius: 3px; background: #0e0e0e;
+    .brand {
+      color: var(--accent); font-weight: 700; font-size: 12px;
+      letter-spacing: .1em; margin-right: 2px;
     }
-    .fx.on { border-color: #9be29b55; color: #cfcfcf; }
-    .fx-name { min-width: 4.5em; }
-    .fx input[type="range"] { width: 70px; accent-color: #9be29b; }
-    .fx input[type="checkbox"] { accent-color: #9be29b; }
+    .sep { width: 1px; height: 16px; background: var(--border2); flex-shrink: 0; margin: 0 2px; }
+    .spacer { flex: 1; }
 
+    /* ── Left panel: sources + layers ────────────────────────────── */
+    #left-panel {
+      grid-area: left;
+      display: flex; flex-direction: column;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .ph {                                   /* panel header */
+      padding: 4px 10px 3px;
+      font-size: 9px; letter-spacing: .13em; text-transform: uppercase;
+      color: var(--text-dim);
+      background: #0d0d0d;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .ph .hint { color: #252525; font-size: 9px; text-transform: none; letter-spacing: 0; margin-left: 4px; }
+
+    /* Sources list */
+    #sources-list {
+      flex: 1; overflow-y: auto; min-height: 0;
+    }
+    .src-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #0d0d0d;
+    }
+    .src-item:hover { background: #161616; }
+    .src-item.active { background: var(--accent-bg); }
+    .src-item.active .src-name { color: var(--accent); }
+    .src-key {
+      font-size: 9px; color: var(--dim); min-width: 13px;
+      background: #161616; border: 1px solid var(--border2);
+      border-radius: 2px; text-align: center; line-height: 13px; padding: 0 1px;
+      flex-shrink: 0;
+    }
+    .src-item.active .src-key { color: var(--accent-dim); border-color: var(--accent-dim); }
+    .src-name { font-size: 11px; color: var(--text-sec); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Layer section */
+    #layer-section {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      padding: 7px 9px;
+      display: flex; flex-direction: column; gap: 5px;
+      background: #0e0e0e;
+    }
+    .lrow { display: flex; align-items: center; gap: 5px; }
+    .lbl { font-size: 9px; color: var(--text-dim); letter-spacing: .05em; min-width: 10px; }
+    .lrow select, .lrow button { height: 20px; font-size: 10px; }
+    .lrow select { flex: 1; }
+    #blend-mode { font-size: 10px; height: 20px; width: 100%; }
+    #layer-b-opacity { flex: 1; }
+
+    /* ── Stage ───────────────────────────────────────────────────── */
+    #stage {
+      grid-area: stage;
+      position: relative; background: #000; overflow: hidden;
+    }
+    #gl, #ascii {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+    }
+    #ascii {
+      font-family: var(--font); font-size: 14px; line-height: 14px;
+      color: var(--accent); background: #000;
+      white-space: pre; overflow: hidden; letter-spacing: 0;
+      text-shadow: 0 0 4px rgba(120,255,140,.3);
+    }
     #text {
       position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
-      margin: 0; padding: 0.6em 0.9em 1.1em;
-      font-family: "Cascadia Mono", Consolas, monospace; font-size: 15px; line-height: 1.35;
-      color: #9be29b; text-shadow: 0 0 6px rgba(120, 255, 140, 0.5);
+      padding: .6em .9em 1em;
+      font-family: var(--font); font-size: 15px; line-height: 1.35;
+      color: var(--accent); text-shadow: 0 0 6px rgba(120,255,140,.5);
       white-space: pre-wrap; word-break: break-word; pointer-events: none;
       max-width: 70ch; mix-blend-mode: screen;
     }
+
+    /* ── Right panel: effects rack ───────────────────────────────── */
+    #right-panel {
+      grid-area: right;
+      display: flex; flex-direction: column;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+    }
+    #chain {
+      flex: 1; overflow-y: auto; min-height: 0;
+      padding: 2px 0;
+    }
+    /* Override old inline-flex chip style → vertical rack rows */
+    .fx {
+      display: grid !important;
+      grid-template-columns: 20px 1fr 68px !important;
+      gap: 0 5px !important;
+      align-items: center !important;
+      padding: 4px 8px !important;
+      border: none !important;
+      border-bottom: 1px solid #0d0d0d !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+    }
+    .fx:hover { background: #141414 !important; }
+    .fx.on { background: #0b1a0b !important; }
+    .fx input[type=checkbox] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); }
+    .fx-name { font-size: 11px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fx.on .fx-name { color: var(--text-hi); }
+    .fx input[type=range] { width: 100% !important; height: 14px; }
+
+    /* ── Bottom bar ──────────────────────────────────────────────── */
+    #bottom-bar {
+      grid-area: bot;
+      display: flex; align-items: center; gap: 5px;
+      padding: 0 10px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+    }
+    #meter { font-size: 10px; color: var(--text-dim); margin-left: 4px; }
+
+    /* ── Focus exit hint ─────────────────────────────────────────── */
+    #focus-hint {
+      display: none;
+      position: fixed; bottom: 6px; right: 8px; z-index: 200;
+      font-size: 9px; color: #2a2a2a; letter-spacing: .05em;
+      pointer-events: none;
+    }
+    body.focus #focus-hint { display: block; }
   </style>
 </head>
 <body>
-  <div id="app">
+<div id="app">
+
+  <!-- ── Top bar ────────────────────────────────────────── -->
+  <div id="topbar">
+    <span class="brand">TERMINAL·SYNTH</span>
+    <div class="sep"></div>
+    <button id="audio" title="Audio [A]">audio</button>
+    <select id="audio-src" title="Source">
+      <option value="system">sys</option>
+      <option value="mic">mic</option>
+    </select>
+    <div class="sep"></div>
+    <button id="midi" title="MIDI [M]">MIDI</button>
+    <select id="midi-mode">
+      <option value="organ">organ</option>
+      <option value="noise">noise</option>
+    </select>
+    <div class="sep"></div>
+    <button id="isf-load" title="Charger shader ISF">ISF</button>
+    <button id="spout" title="Spout output">SPOUT</button>
+    <div class="spacer"></div>
+    <button id="preset-load" title="Charger preset  [Ctrl+O]">📂</button>
+    <button id="preset-save" title="Sauvegarder preset  [Ctrl+S]">💾</button>
+    <div class="sep"></div>
+    <button id="rec" title="Enregistrer vidéo  [Ctrl+R]">⏺</button>
+    <div class="sep"></div>
+    <button id="full" title="Plein écran  [F]">⛶</button>
+  </div>
+
+  <!-- ── Left panel: sources + layers ──────────────────── -->
+  <div id="left-panel">
+    <div class="ph">Sources<span class="hint">· 1-9 q-p a-k · Tab=focus</span></div>
+    <div id="sources-list"></div>
+    <!-- select conservé pour la compatibilité preset -->
+    <select id="shader" hidden></select>
+
+    <div id="layer-section">
+      <div class="ph" style="margin:-7px -9px 4px;padding:4px 9px">Layers</div>
+
+      <div class="lrow">
+        <span class="lbl">A</span>
+        <span id="layer-a-name" style="font-size:11px;color:var(--text-hi);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+      </div>
+
+      <div class="lrow">
+        <span class="lbl">B</span>
+        <select id="layer-b-shader" style="flex:1;font-size:10px;height:20px"></select>
+        <button id="layer-b-on" style="padding:0 5px;height:20px;font-size:10px">B</button>
+      </div>
+
+      <select id="blend-mode" title="Blend mode"></select>
+
+      <div class="lrow">
+        <span class="lbl">α</span>
+        <input id="layer-b-opacity" type="range" min="0" max="1" step="0.01" value="1" style="flex:1">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Stage ─────────────────────────────────────────── -->
+  <div id="stage">
     <canvas id="gl"></canvas>
     <pre id="ascii" hidden></pre>
     <pre id="text" hidden></pre>
-    <div id="bar">
-      <span class="brand">terminal-synth</span>
-      <span style="color:#4a4a4a;font-size:10px">A</span>
-      <select id="shader" title="Shader / générateur"></select>
-      <select id="blend-mode" title="Mode de fusion des layers"></select>
-      <span style="color:#4a4a4a;font-size:10px">B</span>
-      <select id="layer-b-shader" title="Layer B"></select>
-      <button id="layer-b-on" title="Activer / désactiver layer B">B</button>
-      <input id="layer-b-opacity" type="range" min="0" max="1" step="0.01" value="1" title="Opacité layer B" style="width:55px;accent-color:#9be29b;vertical-align:middle">
-      <select id="audio-src" title="Source audio">
-        <option value="system">🔊 Système</option>
-        <option value="mic">🎤 Micro</option>
-      </select>
-      <button id="audio" title="Activer l'entrée audio">audio</button>
-      <button id="midi" title="Activer le MIDI">🎛 MIDI</button>
-      <select id="midi-mode" title="Mode de jeu MIDI">
-        <option value="organ">Orgue</option>
-        <option value="noise">Noise</option>
-      </select>
-      <button id="isf-load" title="Charger un shader ISF (Interactive Shader Format)">ISF…</button>
-      <button id="spout" title="Activer la sortie Spout (Windows — nécessite un addon natif pour la vraie sortie)">SPOUT</button>
-      <button id="ascii-toggle" title="Mode ASCII">ASCII</button>
-      <input id="ascii-cols" type="range" min="20" max="200" step="5" title="Densité ASCII (colonnes)" style="width:70px;accent-color:#9be29b;vertical-align:middle">
-      <button id="text-toggle" title="Overlay texte (transmissions)">TXT</button>
-      <input id="recta-speed" type="range" min="500" max="12000" step="250" value="4200" title="Durée d'affichage RECTA (ms)" style="width:60px;accent-color:#9be29b;vertical-align:middle">
-      <button id="preset-save" title="Sauvegarder le preset">💾</button>
-      <button id="preset-load" title="Charger un preset">📂</button>
-      <button id="rec" title="Enregistrer la vidéo (WebM)">⏺ REC</button>
-      <button id="full" title="Plein écran">⛶</button>
-      <span class="spacer"></span>
-      <span id="meter"></span>
-    </div>
-    <div id="chain">
-      <span class="gen">génération</span><span class="arrow">→</span>
-    </div>
   </div>
-  <script src="./renderer.js"></script>
+
+  <!-- ── Right panel: effects rack ─────────────────────── -->
+  <div id="right-panel">
+    <div class="ph">Effects Rack</div>
+    <div id="chain"></div>
+  </div>
+
+  <!-- ── Bottom bar ────────────────────────────────────── -->
+  <div id="bottom-bar">
+    <button id="ascii-toggle" title="Mode ASCII  [X]">ASCII</button>
+    <input id="ascii-cols" type="range" min="20" max="200" step="5" title="Densité" style="width:52px">
+    <div class="sep"></div>
+    <button id="text-toggle" title="Overlay RECTA  [T]">TXT</button>
+    <input id="recta-speed" type="range" min="500" max="12000" step="250" value="4200" title="Durée RECTA" style="width:52px">
+    <div class="spacer"></div>
+    <span id="meter"></span>
+  </div>
+</div>
+
+<div id="focus-hint">Tab · Échap</div>
+<script src="./renderer.js"></script>
 </body>
 </html>
