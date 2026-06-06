@@ -129,4 +129,101 @@ vec3 process(vec2 uv) {
   return c + phosCol * lum * 2.5;
 }`,
   },
+  {
+    name: "Flicker",
+    defaultSensitivity: 0.72,
+    defaultDurationMs: 90,
+    defaultCooldownMs: 350,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float t = u_time;
+  float a = u_amount;
+  // artefacts CRT rapides
+  float flicker = abs(sin(t * 85.0)) * step(0.5, sin(t * 37.0));
+  float lines = mod(uv.y * 480.0, 3.0);
+  float scanline = step(0.7, fract(lines));
+
+  vec3 c = prev(uv);
+  vec3 darken = c * (1.0 - flicker * a * 0.6);
+  vec3 displaced = prev(vec2(uv.x + sin(t * 120.0) * 0.008 * a, uv.y));
+
+  return mix(c, mix(darken, displaced, 0.5), scanline * a * 0.8);
+}`,
+  },
+  {
+    name: "Shatter",
+    defaultSensitivity: 0.68,
+    defaultDurationMs: 110,
+    defaultCooldownMs: 420,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float t = u_time;
+  float a = u_amount;
+  // pixelation crystalline avec scatter géométrique
+  float res = 20.0 + a * 40.0;
+  vec2 grid = floor(uv * res) / res;
+
+  float rnd = hash(grid + floor(t * 25.0));
+  vec2 shatter = (vec2(hash(grid + 11.3), hash(grid + 22.7)) - 0.5) * 0.05 * a * step(0.6, rnd);
+
+  vec3 c = prev(grid + shatter);
+  float edge = length(fract(uv * res) - 0.5);
+  float outline = step(0.4, edge) * (1.0 - edge);
+
+  return c + outline * 0.2 * a;
+}`,
+  },
+  {
+    name: "Bloom Burst",
+    defaultSensitivity: 0.75,
+    defaultDurationMs: 130,
+    defaultCooldownMs: 550,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float t = u_time;
+  float a = u_amount;
+  vec3 c = prev(uv);
+
+  // zones lumineuses qui explosent vers l'extérieur
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  float bloomPulse = abs(sin(t * 40.0)) * a;
+
+  // distance depuis le centre avec bloom radiatif
+  vec2 center = vec2(0.5);
+  float dist = length(uv - center);
+  float burst = exp(-dist * 5.0) * lum * bloomPulse;
+
+  // inversion progressive des hautes lumières
+  vec3 invLum = mix(c, 1.0 - c, lum * a * 0.5);
+  vec3 bloomed = mix(c, invLum + burst * 2.0, lum * 0.7 * a);
+
+  return bloomed;
+}`,
+  },
+  {
+    name: "Glitch Rows",
+    defaultSensitivity: 0.62,
+    defaultDurationMs: 100,
+    defaultCooldownMs: 380,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float t = u_time;
+  float a = u_amount;
+  // corruption de scan lines style VHS
+  float rowIdx = floor(uv.y * u_resolution.y);
+  float rnd = hash(vec2(rowIdx, floor(t * 30.0)));
+
+  float glitchRow = step(0.8 - a * 0.18, rnd);
+  float shift = (hash(vec2(rowIdx + t, t)) - 0.5) * 0.12 * a * glitchRow;
+
+  vec2 glitchUv = uv + vec2(shift, 0.0);
+  vec3 glitchColor = prev(clamp(glitchUv, 0.0, 1.0));
+
+  // duplication horizontale sur la ligne corrompue
+  vec3 dup = prev(clamp(glitchUv + vec2(0.05, 0.0), 0.0, 1.0));
+  glitchColor = mix(glitchColor, dup, 0.3 * glitchRow);
+
+  return mix(prev(uv), glitchColor, glitchRow * a * 0.9);
+}`,
+  },
 ];

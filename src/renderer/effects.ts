@@ -370,4 +370,209 @@ vec3 process(vec2 uv) {
   return mix(c, quant + dither * (0.3 + u_treble * 0.7), a);
 }`,
   },
+
+  // ── NEW EFFECTS (5) ────────────────────────────────────────────────────────
+
+  {
+    name: "Chrono",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec3 col = prev(uv);
+
+  // 8-level frame history decay
+  vec3 ghost = vec3(0.0);
+  float totalWeight = 1.0;
+
+  // Sample frame history at different time offsets with exponential decay
+  for (int i = 1; i <= 8; i++) {
+    float level = float(i) / 8.0;
+    float decay = pow(0.75, level * 8.0);
+
+    // Time-displaced sample (simulating motion trail)
+    float timeLag = level * 0.05;
+    vec2 ghostUV = mix(uv, uv + (vec2(hash(uv + float(i)), hash(uv.yx - float(i))) - 0.5) * 0.08, level);
+
+    ghost += fb(clamp(ghostUV, 0.001, 0.999)) * decay;
+    totalWeight += decay;
+  }
+
+  ghost /= totalWeight;
+  ghost *= a * (0.6 + u_level * 0.4);
+
+  return mix(col, col + ghost, a);
+}`,
+  },
+  {
+    name: "Kuwahara",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec2 px = 2.0 / u_resolution;
+
+  // 4-quadrant edge-preserving filter (oil painting effect)
+  vec3 quad[4];
+  float mean[4];
+  float var[4];
+
+  // Top-left quadrant
+  quad[0] = prev(uv + vec2(-px.x, px.y)) + prev(uv + vec2(0, px.y))
+          + prev(uv + vec2(-px.x, 0)) + prev(uv);
+  quad[0] /= 4.0;
+  mean[0] = (dot(quad[0], vec3(0.299, 0.587, 0.114))) * 0.25;
+
+  // Top-right quadrant
+  quad[1] = prev(uv + vec2(px.x, px.y)) + prev(uv + vec2(0, px.y))
+          + prev(uv + vec2(px.x, 0)) + prev(uv);
+  quad[1] /= 4.0;
+  mean[1] = (dot(quad[1], vec3(0.299, 0.587, 0.114))) * 0.25;
+
+  // Bottom-left quadrant
+  quad[2] = prev(uv + vec2(-px.x, -px.y)) + prev(uv + vec2(0, -px.y))
+          + prev(uv + vec2(-px.x, 0)) + prev(uv);
+  quad[2] /= 4.0;
+  mean[2] = (dot(quad[2], vec3(0.299, 0.587, 0.114))) * 0.25;
+
+  // Bottom-right quadrant
+  quad[3] = prev(uv + vec2(px.x, -px.y)) + prev(uv + vec2(0, -px.y))
+          + prev(uv + vec2(px.x, 0)) + prev(uv);
+  quad[3] /= 4.0;
+  mean[3] = (dot(quad[3], vec3(0.299, 0.587, 0.114))) * 0.25;
+
+  // Select quadrant with minimum variance (best preserved edges)
+  int minIdx = 0;
+  float minVar = 1e10;
+  for (int i = 0; i < 4; i++) {
+    float m = mean[i];
+    var[i] = abs(dot(quad[i], vec3(0.299, 0.587, 0.114)) - m * 4.0);
+    if (var[i] < minVar) {
+      minVar = var[i];
+      minIdx = i;
+    }
+  }
+
+  vec3 result = mix(prev(uv), quad[minIdx], a * (0.5 + u_mid * 0.5));
+  return result;
+}`,
+  },
+  {
+    name: "Slit Scan",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+
+  // Temporal video synthesis: scan through time at different spatial positions
+  vec2 p = uv * 2.0 - 1.0;
+  float t = u_time * a * 0.8;
+
+  // Vertical slit scan displaced in time
+  float slitWidth = 0.08 + a * 0.12;
+  float slitPos = mod(p.x * 2.0 + t, 2.0) - 1.0;
+
+  // Sample current frame at slit
+  vec3 col = prev(uv);
+
+  // Sample history frames at time-displaced positions
+  vec3 scanCol = vec3(0.0);
+  float weight = 0.0;
+
+  for (int i = 0; i < 5; i++) {
+    float phase = float(i) / 5.0;
+    float timeScan = t * (0.5 + phase * 0.8);
+
+    vec2 scanUV = vec2(
+      mod(uv.x + timeScan * 0.15, 1.0),
+      clamp(uv.y + sin(timeScan * 2.0) * 0.1, 0.001, 0.999)
+    );
+
+    float dist = abs(scanUV.x - uv.x);
+    float w = exp(-dist * dist * 15.0 / slitWidth);
+
+    scanCol += fb(clamp(scanUV, 0.001, 0.999)) * w;
+    weight += w;
+  }
+
+  scanCol /= weight;
+  return mix(col, scanCol, a * (0.6 + u_bass * 0.4));
+}`,
+  },
+  {
+    name: "Glow Edges",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec2 px = 1.5 / u_resolution;
+
+  // Edge detection (Sobel-like)
+  vec3 tl = prev(uv+vec2(-px.x, px.y)), tr = prev(uv+vec2(px.x, px.y));
+  vec3 bl = prev(uv+vec2(-px.x,-px.y)), br = prev(uv+vec2(px.x,-px.y));
+  vec3 l  = prev(uv+vec2(-px.x,0.0)),  r2 = prev(uv+vec2(px.x,0.0));
+  vec3 tu = prev(uv+vec2(0.0, px.y)),  bo = prev(uv+vec2(0.0,-px.y));
+
+  vec3 sx = (tr+2.0*r2+br)-(tl+2.0*l+bl);
+  vec3 sy = (tl+2.0*tu+tr)-(bl+2.0*bo+br);
+  float edge = length(sx) + length(sy);
+
+  // Bloom trails on edges
+  vec3 col = prev(uv);
+  float edgeGlow = edge * 3.0 * a;
+
+  // Multi-scale bloom decay
+  vec3 bloomTrail = vec3(0.0);
+  for (int i = 1; i <= 4; i++) {
+    float dist = float(i) * 1.5;
+    float decay = pow(0.7, float(i));
+    bloomTrail += prev(clamp(uv + vec2(px.x * dist, 0.0), 0.001, 0.999)) * decay * edge;
+    bloomTrail += prev(clamp(uv + vec2(-px.x * dist, 0.0), 0.001, 0.999)) * decay * edge;
+    bloomTrail += prev(clamp(uv + vec2(0.0, px.y * dist), 0.001, 0.999)) * decay * edge;
+    bloomTrail += prev(clamp(uv + vec2(0.0, -px.y * dist), 0.001, 0.999)) * decay * edge;
+  }
+  bloomTrail *= a * (0.5 + u_treble * 0.5);
+
+  vec3 glowCol = mix(vec3(0.0, 1.0, 1.0), vec3(1.0, 0.2, 0.8), fract(u_time * 0.5));
+
+  return col + glowCol * edgeGlow + bloomTrail;
+}`,
+  },
+  {
+    name: "Posterize Dither",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec3 c = prev(uv);
+
+  // Ordered dithering with Bayer 4x4 matrix
+  vec2 pixelCoord = uv * u_resolution;
+  float bayerPattern[16] = float[](
+    0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
+    12.0/16.0, 4.0/16.0, 14.0/16.0,  6.0/16.0,
+    3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
+    15.0/16.0, 7.0/16.0, 13.0/16.0,  5.0/16.0
+  );
+
+  int bayerIdx = int(mod(pixelCoord.x, 4.0)) + int(mod(pixelCoord.y, 4.0)) * 4;
+  float threshold = bayerPattern[bayerIdx];
+
+  // Posterize levels (2-6 levels per channel)
+  float levels = mix(256.0, 2.0, a);
+  vec3 posterized = floor(c * levels) / levels;
+
+  // Add dithering based on Bayer threshold
+  vec3 error = c - posterized;
+  float ditherAmount = a * (0.4 + u_level * 0.6);
+
+  vec3 dithered = posterized;
+  dithered.r += (threshold - 0.5) * 2.0 * error.r * ditherAmount;
+  dithered.g += (threshold - 0.5) * 2.0 * error.g * ditherAmount;
+  dithered.b += (threshold - 0.5) * 2.0 * error.b * ditherAmount;
+
+  // Clamp to valid range
+  dithered = clamp(dithered, 0.0, 1.0);
+
+  // Re-posterize after dithering
+  dithered = floor(dithered * levels) / levels;
+
+  return mix(c, dithered, a);
+}`,
+  },
 ];
