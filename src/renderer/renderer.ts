@@ -5,7 +5,7 @@ import { AudioInput, type Bands, type AudioSource } from "./audio";
 import { pixelsToAscii } from "./ascii";
 import { MidiInput, type MidiMode } from "./midi";
 import { TextOverlay } from "./text";
-import { TextScroller } from "./textsource";
+import { TacticDisplay } from "./textsource";
 import { TEXTS } from "./texts";
 import { SHADERS } from "./shaders";
 import { EFFECTS } from "./effects";
@@ -30,9 +30,10 @@ const pipeline = new Pipeline(canvas);
 const audio = new AudioInput();
 const midi = new MidiInput();
 const text = new TextOverlay($("text"), TEXTS);
-const scroller = new TextScroller(TEXTS);
+const tactics = new TacticDisplay(TEXTS);
 const RECTA_INDEX = 0; // le générateur "RECTA (texte)" est en tête de SHADERS
 let currentShader = 0;
+let prevEnergy = 0;
 let asciiMode = false;
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
@@ -152,7 +153,7 @@ function resizeCanvas(): void {
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-const ASCII_COLS = 150;
+const ASCII_COLS = 90; // moins de colonnes = caractères plus gros / plus lisibles
 function asciiGrid(): { cols: number; rows: number } {
   const cw = app.clientWidth;
   const ch = app.clientHeight;
@@ -165,18 +166,8 @@ function asciiGrid(): { cols: number; rows: number } {
 }
 
 // --- Boucle ---
-let lastFrame = 0;
 function frame(now: number): void {
   const time = now / 1000;
-  const dt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0;
-  lastFrame = now;
-
-  // Générateur RECTA : maj + upload du canvas de texte défilant.
-  if (currentShader === RECTA_INDEX) {
-    scroller.update(dt);
-    scroller.draw();
-    pipeline.updateText(scroller.canvas);
-  }
 
   if (audio.enabled) {
     audio.sample();
@@ -194,6 +185,17 @@ function frame(now: number): void {
   const e = midi.energy;
   const mod = midi.mod;
   const noise = midi.mode === "noise";
+
+  // Énergie globale + détection de hit (front montant) → pioche d'une nouvelle tactique.
+  const energy = Math.max(bands.bass, e);
+  const hit = energy > 0.55 && prevEnergy <= 0.55;
+  prevEnergy = energy;
+  if (currentShader === RECTA_INDEX) {
+    if (hit) tactics.forceNext(now);
+    tactics.update(now);
+    tactics.draw(now, energy);
+    pipeline.updateText(tactics.canvas);
+  }
 
   const u = {
     time,
@@ -223,7 +225,7 @@ function frame(now: number): void {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
   }
 
-  text.energy = Math.max(bands.bass, e);
+  text.energy = energy;
   text.update(now);
 
   const pct = (v: number) => String(Math.round(v * 100)).padStart(3, " ");
