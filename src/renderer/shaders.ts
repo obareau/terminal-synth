@@ -4,11 +4,13 @@
  * Le moteur (gl.ts) ajoute l'en-tête (uniforms) et le main().
  *
  * Uniforms disponibles : u_time, u_resolution, u_bass, u_mid, u_treble, u_level (0..1).
+ * u_p0..u_p3 sont des uniforms GLSL flottants.
+ * "holdMs" est un paramètre JS uniquement (contrôle tactics.holdMs, pas un uniform GLSL).
  */
 
 export interface ShaderParam {
   label: string;
-  key: "u_p0" | "u_p1" | "u_p2" | "u_p3";
+  key: "u_p0" | "u_p1" | "u_p2" | "u_p3" | "holdMs";
   min: number; max: number; default: number; step?: number;
 }
 export interface Shader {
@@ -20,6 +22,9 @@ export interface Shader {
 export const SHADERS: Shader[] = [
   {
     name: "RECTA (texte)",
+    params: [
+      { label: "Durée texte", key: "holdMs", min: 1000, max: 15000, default: 8000, step: 500 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time;
@@ -67,14 +72,18 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Tunnel",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.35, step: 0.01 },
+      { label: "Rayons",  key: "u_p1", min: 2, max: 20, default: 8,   step: 1    },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
   float r = length(p);
   float a = atan(p.y, p.x);
-  float speed = 0.5 + u_level * 2.5;
+  float speed = mix(0.2, 3.0, u_p0) + u_level * 1.5;
   float z = 0.2 / max(r, 1e-3) + u_time * speed;
-  float rings = 0.5 + 0.5 * sin(z * 8.0 + u_bass * 6.0);
+  float rings = 0.5 + 0.5 * sin(z * mix(4.0, 20.0, u_p1) + u_bass * 6.0);
   float spokes = 0.5 + 0.5 * sin(a * 12.0 + u_time);
   float m = rings * spokes;
   vec3 col = mix(vec3(0.01), vec3(0.10, 0.70, 0.90), m); // sombre -> cyan
@@ -85,26 +94,34 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "FFT bars",
+    params: [
+      { label: "Barres", key: "u_p0", min: 16,    max: 128,  default: 96,    step: 1     },
+      { label: "Crête",  key: "u_p1", min: 0.003, max: 0.04, default: 0.012, step: 0.001 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float v = fftAt(uv.x);                          // hauteur de la barre (0..1)
   float bar = step(uv.y, v);                       // rempli sous la valeur
   vec3 col = mix(vec3(0.0, 0.04, 0.03), vec3(0.10, 0.90, 0.40), bar);
-  col += vec3(0.9, 0.3, 0.05) * smoothstep(0.012, 0.0, abs(uv.y - v)); // crête chaude
+  col += vec3(0.9, 0.3, 0.05) * smoothstep(u_p1, 0.0, abs(uv.y - v)); // crête chaude
   // séparation des barres
-  col *= 0.4 + 0.6 * step(0.12, fract(uv.x * 96.0));
+  col *= 0.4 + 0.6 * step(0.12, fract(uv.x * u_p0));
   return col;
 }`,
   },
   {
     name: "Waveform",
+    params: [
+      { label: "Épaisseur", key: "u_p0", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Halo",      key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float w = waveAt(uv.x);                          // 0..1, 0.5 = zéro
   float d = abs(uv.y - w);
-  float line = smoothstep(0.02, 0.0, d);
+  float line = smoothstep(mix(0.004, 0.06, u_p0), 0.0, d);
   vec3 col = vec3(0.0, 0.02, 0.04) + vec3(0.10, 0.70, 0.90) * line;
-  col += vec3(0.10, 0.70, 0.90) * 0.15 * smoothstep(0.12, 0.0, d); // halo
+  col += vec3(0.10, 0.70, 0.90) * 0.15 * smoothstep(mix(0.02, 0.4, u_p1), 0.0, d); // halo
   return col;
 }`,
   },
@@ -159,13 +176,17 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Scan grid",
+    params: [
+      { label: "Densité", key: "u_p0", min: 4,  max: 50, default: 18,  step: 1    },
+      { label: "Vitesse", key: "u_p1", min: 0,  max: 1,  default: 0.4, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = uv * vec2(res.x / res.y, 1.0);
-  float scale = 18.0;
+  float scale = u_p0;
   vec2 g = fract(p * scale);
   float line = 1.0 - smoothstep(0.0, 0.04, g.x) * smoothstep(0.0, 0.04, g.y);
-  float scan = 0.5 + 0.5 * sin(uv.y * res.y * 0.7 - u_time * 8.0);
+  float scan = 0.5 + 0.5 * sin(uv.y * res.y * 0.7 - u_time * mix(2.0, 20.0, u_p1));
   float pulse = 0.3 + u_mid * 1.0;
   vec3 base = vec3(0.0, 0.03, 0.02);
   vec3 grid = vec3(0.1, 0.9, 0.4) * line * pulse * (0.6 + 0.4 * scan); // grille verte
@@ -178,66 +199,74 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Terrain (Joy Division)",
     params: [
-      { label: "Lignes",    key: "u_p0", min: 0,   max: 1,   default: 0.45, step: 0.01 },
-      { label: "Amplitude", key: "u_p1", min: 0,   max: 1,   default: 0.50, step: 0.01 },
-      { label: "Échelle X", key: "u_p2", min: 0,   max: 1,   default: 0.35, step: 0.01 },
+      { label: "Lignes",    key: "u_p0", min: 0,   max: 1,   default: 0.55, step: 0.01 },
+      { label: "Amplitude", key: "u_p1", min: 0,   max: 1,   default: 0.55, step: 0.01 },
+      { label: "Texture",   key: "u_p2", min: 0,   max: 1,   default: 0.35, step: 0.01 },
     ],
     src: /* glsl */ `
-// Noise fractal multi-octave
 float jd_n(vec2 p) {
   vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
              mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
 }
-float jd_h(float x, float fk, float t, float scX) {
-  vec2 p = vec2(x*scX+t, fk*0.42);
-  return jd_n(p)*0.60 + jd_n(p*2.05+vec2(1.7,9.2))*0.28 + jd_n(p*4.2-vec2(5.3,1.7))*0.12;
+float jd_sig(float x, float k, float t, float scX) {
+  vec2 p = vec2(x*scX+t*0.05, k*0.38);
+  // Multi-octave noise for radio-signal character
+  float h = jd_n(p)*0.55 + jd_n(p*2.05+vec2(1.7,9.2))*0.30 + jd_n(p*4.3-vec2(5.3,1.7))*0.15;
+  // Add a periodic "pulse" component (like actual pulsar signal)
+  h += sin(x*8.0*scX + k*0.5 + t*0.03) * 0.08;
+  return h;
 }
-// Rendu front-to-back avec hidden-line correct :
-// chaque ligne a une crête qui monte AU-DESSUS de sa position de base.
-// On parcourt du premier plan (bas) vers l'arrière-plan (haut),
-// en suivant le minimum de crête visible → les lignes devant masquent celles derrière.
 vec3 render(vec2 uv, vec2 res) {
-  float t   = u_time * 0.07;
-  float fN  = mix(24.0, 56.0, u_p0);
-  float amp = mix(0.03, 0.22, u_p1) * (1.0 + u_bass * 0.55);
-  float scX = mix(1.2,  7.0,  u_p2);
+  float t   = u_time;
+  float N   = mix(45.0, 90.0, u_p0);          // nombre de lignes
+  float amp = mix(0.02, 0.18, u_p1);           // amplitude max
+  float scX = mix(1.2,  7.0,  u_p2);           // texture horizontale
   float y   = uv.y;
-  float minR = 2.0;   // minimum ridge Y atteint (écran = 0 haut, 1 bas)
+  float minR = 2.0;
   vec3 result = vec3(0.0);
-  for (int k = 54; k >= 0; k--) {        // fixed bound, skip si k >= fN
-    if (float(k) >= fN) continue;
-    float fk     = float(k);
-    float baseY  = fk / fN;              // position de base de cette ligne
-    float h      = jd_h(uv.x, fk, t, scX) * amp;
-    h += waveAt(uv.x) * amp * 0.28 * u_level;
-    float ridgeY = baseY - h;            // la crête monte au-dessus de baseY (Y plus petit)
-    if (ridgeY < minR) {                 // cette crête est plus haute que tout ce qu'on a vu
-      float dy = abs(y - ridgeY);
-      if (dy < 0.013) {                  // pixel sur la crête
-        float br    = 1.0 - dy / 0.013;
-        float depth = fk / fN;           // 0=avant (chaud), 1=arrière (froid)
-        vec3  col   = mix(vec3(1.0, 0.95, 0.85), vec3(0.55, 0.78, 1.0), depth);
-        result = col * br * br * (0.28 + depth * 0.72);
+  // Parcours front-to-back (band 0 = bas = premier plan)
+  for (int k = 90; k >= 0; k--) {
+    if (float(k) >= N) continue;
+    float fk    = float(k);
+    float baseY = (fk + 0.5) / N;              // espacement REGULIER
+    // Enveloppe gaussienne : cretes plus hautes au centre (comme Unknown Pleasures)
+    float center = abs(baseY - 0.5) * 2.4;
+    float env    = exp(-center * center * 1.8) * (0.25 + 0.75 * smoothstep(0.9, 0.1, abs(baseY-0.5)*2.0));
+    float a      = amp * env * (1.0 + u_bass * 0.7);
+    float h      = jd_sig(uv.x, fk, t, scX) * a;
+    h += waveAt(uv.x) * a * 0.22 * u_level;
+    float ridgeY = baseY - h;                   // crete monte au-dessus de baseY
+    if (ridgeY < minR) {
+      float dy    = abs(y - ridgeY);
+      float thick = 0.006 + amp * 0.04;
+      if (dy < thick) {
+        float br = 1.0 - dy / thick;
+        result = vec3(0.94, 0.97, 1.0) * br * br;
       }
       minR = ridgeY;
     }
-    if (y > minR + 0.016) break;         // bien en dessous de la crête frontale → noir
+    if (y > minR + 0.012) break;
   }
   return result;
 }`,
   },
   {
     name: "Laser scan",
+    params: [
+      { label: "Vitesse",  key: "u_p0", min: 0, max: 1, default: 0.25, step: 0.01 },
+      { label: "Largeur",  key: "u_p1", min: 0, max: 1, default: 0.5,  step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t  = u_time;
-  float sp = 0.55 + u_bass * 0.7;
+  float sp = mix(0.15, 2.0, u_p0) + u_bass * 0.5;
   // triangle wave : aller-retour
   float sc = fract(t * sp * 0.5) * 2.0;
   float scanX = sc > 1.0 ? 2.0 - sc : sc;
   float dx = abs(uv.x - scanX);
-  float beam  = exp(-dx * 130.0) * (0.9 + u_level * 0.2);
+  float beamW = mix(40.0, 200.0, u_p1);
+  float beam  = exp(-dx * beamW) * (0.9 + u_level * 0.2);
   float trail = exp(-dx * 20.0) * 0.22;
   // FFT révélée sous le laser
   float fft = fftAt(uv.x);
@@ -253,11 +282,15 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Laser write",
+    params: [
+      { label: "Durée texte",  key: "holdMs", min: 1000, max: 15000, default: 8000, step: 500  },
+      { label: "Vitesse laser", key: "u_p0", min: 0,    max: 1,     default: 0.4,  step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t   = u_time;
-  float sp  = 1.5 + u_bass * 1.8;
-  // Laser qui parcourt l'écran en zigzag et grave le texte RECTA
+  float sp  = mix(0.5, 4.0, u_p0) + u_bass * 1.5;
+  // Laser qui parcourt l'ecran en zigzag et grave le texte RECTA
   float row  = floor(uv.y * 12.0);
   float dir  = mod(row, 2.0) < 1.0 ? 1.0 : -1.0;
   float scanX = fract(t * sp * 0.04 + row * 0.083) ;
@@ -273,10 +306,10 @@ vec3 render(vec2 uv, vec2 res) {
   float r   = 0.025 + u_level * 0.015;
   float beam = exp(-d * d / (r * r)) * (0.8 + u_level * 0.3);
 
-  // Là où le laser passe sur du texte : surbrillance intense
+  // La ou le laser passe sur du texte : surbrillance intense
   float burn = txt * exp(-d * 45.0) * 4.0;
 
-  // Résidu : texte déjà gravé (phosphorescence)
+  // Residu : texte deja grave (phosphorescence)
   float residue = txt * 0.55 * (0.4 + u_level * 0.4);
 
   vec3 col = vec3(0.8, 0.08, 0.01) * residue;
@@ -289,6 +322,10 @@ vec3 render(vec2 uv, vec2 res) {
 
   {
     name: "Topographie",
+    params: [
+      { label: "Isolignes", key: "u_p0", min: 3,  max: 24, default: 8,   step: 1    },
+      { label: "Vitesse",   key: "u_p1", min: 0,  max: 1,  default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 float tp_n(vec2 p) {
   vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
@@ -301,9 +338,9 @@ float tp_h(vec2 p) {
   return h;
 }
 vec3 render(vec2 uv, vec2 res) {
-  vec2  p = uv * vec2(res.x/res.y,1.0) * 3.0 + u_time * 0.07;
+  vec2  p = uv * vec2(res.x/res.y,1.0) * 3.0 + u_time * mix(0.01, 0.3, u_p1);
   float h = tp_h(p + u_bass * 0.4);
-  float n = (8.0 + u_mid * 6.0);
+  float n = u_p0 + u_mid * 3.0;
   float c = fract(h * n);
   float line = smoothstep(0.06, 0.0, min(c, 1.0-c));
   vec3 col = mix(vec3(0.0,0.05,0.12), vec3(0.0,0.18,0.08), smoothstep(0.2,0.6,h));
@@ -315,11 +352,16 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Éclairs",
+    params: [
+      { label: "Éclairs",   key: "u_p0", min: 1, max: 5,  default: 3, step: 1 },
+      { label: "Fréquence", key: "u_p1", min: 4, max: 20, default: 9, step: 1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = floor(u_time * 9.0);
+  float t = floor(u_time * u_p1);
   float bright = 0.0;
-  for (int b = 0; b < 3; b++) {
+  for (int b = 0; b < 5; b++) {
+    if (float(b) >= u_p0) break;
     float fb  = float(b);
     float bx  = 0.2 + hash(vec2(fb, floor(u_time*0.5+fb))) * 0.6;
     float x   = bx;
@@ -349,6 +391,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Marbre",
+    params: [
+      { label: "Échelle", key: "u_p0", min: 0.5, max: 8, default: 3,   step: 0.1  },
+      { label: "Vitesse", key: "u_p1", min: 0,   max: 1, default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 float mb_n(vec2 p) {
   vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
@@ -356,11 +402,11 @@ float mb_n(vec2 p) {
              mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
 }
 vec3 render(vec2 uv, vec2 res) {
-  vec2  p = uv * vec2(res.x/res.y,1.0) * 3.0;
-  float t = u_time * 0.18;
+  vec2  p = uv * vec2(res.x/res.y,1.0) * u_p0;
+  float t = u_time * mix(0.05, 0.6, u_p1);
   float turb=0.0, a=1.0; vec2 q=p+t;
   for(int i=0;i<4;i++){turb+=a*mb_n(q);q=q*2.0+vec2(1.7,9.2);a*=0.5;}
-  float v = sin((p.x+p.y)*3.0 + turb*4.0*(1.0+u_bass) + t)*0.5+0.5;
+  float v = sin((p.x+p.y)*u_p0 + turb*4.0*(1.0+u_bass) + t)*0.5+0.5;
   vec3 col = mix(vec3(0.02,0.02,0.04), vec3(0.05,0.6,0.88), pow(v,2.0));
   col = mix(col, vec3(0.9,0.4,0.04), pow(v,8.0)*(0.4+u_mid*0.8));
   col = mix(col, vec3(1.0,0.95,0.8), pow(v,18.0)*u_level);
@@ -371,16 +417,21 @@ vec3 render(vec2 uv, vec2 res) {
 
   {
     name: "Lissajous",
+    params: [
+      { label: "Échelle",   key: "u_p0", min: 0, max: 1, default: 0.5, step: 0.01 },
+      { label: "Épaisseur", key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0) * 2.1;
-  float scale = 0.8 + u_level * 0.35;
+  float scale = mix(0.4, 1.8, u_p0) + u_level * 0.3;
   // XY scope : deux demi-waveforms en X et Y
   float wx = (waveAt(uv.x * 0.5) * 2.0 - 1.0) * scale;
   float wy = (waveAt(uv.y * 0.5 + 0.5) * 2.0 - 1.0) * scale;
+  float thick = mix(0.008, 0.04, u_p1);
   float dx = abs(p.y - wx), dy = abs(p.x - wy);
-  float lx = smoothstep(0.022, 0.0, dx) + exp(-dx * 38.0) * 0.45;
-  float ly = smoothstep(0.022, 0.0, dy) + exp(-dy * 38.0) * 0.45;
+  float lx = smoothstep(thick, 0.0, dx) + exp(-dx * 38.0) * 0.45;
+  float ly = smoothstep(thick, 0.0, dy) + exp(-dy * 38.0) * 0.45;
   float cross = lx * ly;
   vec3 col = vec3(0.0, 0.62, 0.28) * max(lx, ly) * (0.4 + u_level * 0.8);
   col += vec3(1.0, 1.0, 0.45) * cross * 5.0;
@@ -389,6 +440,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Aurora",
+    params: [
+      { label: "Hauteur", key: "u_p0", min: 0.1, max: 0.9, default: 0.44, step: 0.01 },
+      { label: "Vitesse", key: "u_p1", min: 0,   max: 1,   default: 0.35, step: 0.01 },
+    ],
     src: /* glsl */ `
 float aur_n(vec2 p) {
   vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
@@ -396,10 +451,10 @@ float aur_n(vec2 p) {
              mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
 }
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time * 0.28;
+  float t = u_time * mix(0.08, 0.7, u_p1);
   float w1 = aur_n(vec2(uv.x * 3.0 + t,        t * 0.5 )) * 0.50;
   float w2 = aur_n(vec2(uv.x * 6.0 - t * 0.7,  t * 0.3 )) * 0.25;
-  float curtain = 0.44 + w1 + w2 + u_bass * 0.14;
+  float curtain = u_p0 + w1 + w2 + u_bass * 0.14;
   float d = abs(uv.y - curtain);
   float band = exp(-d *  7.5) * (0.45 + u_level * 0.7);
   float thin = exp(-d * 22.0) * 0.65;
@@ -414,14 +469,18 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Spirale",
+    params: [
+      { label: "Tours",   key: "u_p0", min: 1, max: 20, default: 6,   step: 0.5  },
+      { label: "Vitesse", key: "u_p1", min: 0, max: 1,  default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0);
   float r = length(p);
   float a = atan(p.y, p.x);
   float t = u_time;
-  float turns = 6.0 + u_mid * 4.0;
-  float sv = r * turns - (a + PI) / TWO_PI + t * (0.4 + u_bass * 1.0);
+  float turns = u_p0 + u_mid * 2.0;
+  float sv = r * turns - (a + PI) / TWO_PI + t * (mix(0.1, 1.5, u_p1) + u_bass * 0.5);
   float d  = abs(fract(sv) - 0.5);
   float thick = 0.07 + fftAt(r) * 0.22;
   float arm  = smoothstep(thick, 0.0, d);
@@ -433,9 +492,13 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Circuit",
+    params: [
+      { label: "Échelle", key: "u_p0", min: 3,  max: 24, default: 8,    step: 0.5  },
+      { label: "Vitesse", key: "u_p1", min: 0,  max: 1,  default: 0.35, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float scale = 8.0 + u_mid * 4.0;
+  float scale = u_p0 + u_mid * 3.0;
   vec2 p  = uv * vec2(res.x/res.y, 1.0) * scale;
   float t = u_time;
   vec2 id = floor(p), fr = fract(p) - 0.5;
@@ -444,7 +507,7 @@ vec3 render(vec2 uv, vec2 res) {
   float lineH = smoothstep(0.04,0.0,abs(fr.y)) * step(abs(fr.x),0.49) * hz;
   float lineV = smoothstep(0.04,0.0,abs(fr.x)) * step(abs(fr.y),0.49) * vt;
   float via   = smoothstep(0.12, 0.06, length(fr));
-  float speed = 1.5 + u_bass * 2.5;
+  float speed = mix(0.5, 4.0, u_p1) + u_bass * 1.5;
   float posH  = fract(id.x * 0.37 + t * speed * sign(sd  - 0.5));
   float posV  = fract(id.y * 0.37 + t * speed * sign(sd2 - 0.5));
   float sigH  = smoothstep(0.18,0.0,abs(fr.x-(posH-0.5))) * step(abs(fr.y),0.04) * hz;
@@ -459,15 +522,19 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Orbe",
+    params: [
+      { label: "Rayon",  key: "u_p0", min: 0.1, max: 0.48, default: 0.35, step: 0.01 },
+      { label: "Plasma", key: "u_p1", min: 2,   max: 16,   default: 8,    step: 1    },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0);
   float r = length(p);
   float a = atan(p.y, p.x);
   float t = u_time;
-  float sphere = smoothstep(0.35 + u_bass * 0.08, 0.30, r);
-  vec2 sp = vec2(a / TWO_PI + 0.5, r / 0.35);
-  float plasma = sin(sp.x * 8.0 + t * 2.0 + u_bass * 4.0)
+  float sphere = smoothstep(u_p0 + u_bass * 0.08, u_p0 - 0.05, r);
+  vec2 sp = vec2(a / TWO_PI + 0.5, r / u_p0);
+  float plasma = sin(sp.x * u_p1 + t * 2.0 + u_bass * 4.0)
                * sin(sp.y * 6.0 - t * 1.5)
                * sin((sp.x + sp.y) * 10.0 + t * 0.7);
   plasma = plasma * 0.5 + 0.5;
@@ -480,13 +547,18 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Signal",
+    params: [
+      { label: "Vitesse",   key: "u_p0", min: 0, max: 1, default: 0.35, step: 0.01 },
+      { label: "Amplitude", key: "u_p1", min: 0, max: 1, default: 0.5,  step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time;
-  float tx = fract(uv.x + t * (0.35 + u_level * 0.25)) - 0.5;
+  float tx = fract(uv.x + t * (mix(0.1, 1.2, u_p0) + u_level * 0.2)) - 0.5;
+  float peakAmp = mix(0.4, 1.5, u_p1) + u_bass * 0.3;
   // QRS complex ECG
   float sig  = exp(-abs(tx + 0.05) * 80.0) * -0.30;
-  sig += exp(-abs(tx)        * 40.0) * ( 0.80 + u_bass * 0.55);
+  sig += exp(-abs(tx)        * 40.0) * peakAmp;
   sig += exp(-abs(tx - 0.05) * 80.0) * -0.20;
   sig += exp(-abs(tx - 0.15) * 15.0) *  0.15;
   float wave = 0.5 + sig;
@@ -506,18 +578,23 @@ vec3 render(vec2 uv, vec2 res) {
 
   {
     name: "Neurones",
+    params: [
+      { label: "Vitesse signal", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Intensité",      key: "u_p1", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float asp = res.x / res.y;
   vec2 p = uv * vec2(asp, 1.0);
   float t = u_time;
   float bright = 0.0;
+  float sigSpeed = mix(1.0, 8.0, u_p0);
   for (int i = 0; i < 7; i++) {
     float fi = float(i);
     vec2 n1 = vec2(hash(vec2(fi, 10.0)) * asp, 0.08 + hash(vec2(fi, 20.0)) * 0.84);
     float pulse = 0.5 + 0.5 * sin(t * (0.7 + hash(vec2(fi, 30.0)) * 1.2) + fi * 0.9);
     // noeud
-    bright += 0.012 / (length(p - n1) + 0.02) * pulse * (0.4 + u_level * 0.8);
+    bright += 0.012 / (length(p - n1) + 0.02) * pulse * (0.4 + u_level * 0.8) * (0.5 + u_p1);
     // axones vers 2 voisins
     for (int jj = 1; jj <= 2; jj++) {
       float fj = mod(fi + float(jj) * 2.0 + 1.0, 7.0);
@@ -525,8 +602,8 @@ vec3 render(vec2 uv, vec2 res) {
       vec2 ab  = n2 - n1;
       float s  = clamp(dot(p - n1, ab) / max(dot(ab, ab), 1e-4), 0.0, 1.0);
       float dl = length(p - (n1 + ab * s));
-      float sig = sin(t * 3.5 - s * 9.0 + fi * 2.3) * 0.5 + 0.5;
-      bright += 0.003 / (dl + 0.007) * sig * pulse * (0.25 + u_bass * 0.55);
+      float sig = sin(t * sigSpeed - s * 9.0 + fi * 2.3) * 0.5 + 0.5;
+      bright += 0.003 / (dl + 0.007) * sig * pulse * (0.25 + u_bass * 0.55) * (0.5 + u_p1);
     }
   }
   float v = min(bright, 1.5);
@@ -535,14 +612,18 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Vortex",
+    params: [
+      { label: "Spires",  key: "u_p0", min: 2, max: 12, default: 5,    step: 0.5  },
+      { label: "Vitesse", key: "u_p1", min: 0, max: 1,  default: 0.35, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
   float r = length(p);
   float a = atan(p.y, p.x);
   float t = u_time;
-  float twist  = a - (1.0 / max(r, 0.05)) * 0.25 - t * (0.5 + u_bass * 1.5);
-  float spiral = sin(twist * 5.0 + r * 8.0);
+  float twist  = a - (1.0 / max(r, 0.05)) * 0.25 - t * (mix(0.1, 2.0, u_p1) + u_bass * 1.0);
+  float spiral = sin(twist * u_p0 + r * 8.0);
   float rings  = sin(r * 22.0 - t * 2.5 + u_mid * 3.0);
   float v = (spiral * 0.6 + rings * 0.4) * 0.5 + 0.5;
   v *= smoothstep(0.0, 0.04, r); // trou noir au centre
@@ -554,14 +635,21 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Pulse",
+    params: [
+      { label: "Vitesse",  key: "u_p0", min: 0, max: 1,  default: 0.35, step: 0.01 },
+      { label: "Anneaux",  key: "u_p1", min: 3, max: 10, default: 5,    step: 1    },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
   float r = length(p);
   float t = u_time;
   float bright = 0.0;
-  for (int i = 0; i < 5; i++) {
-    float ring = mod(t * (0.28 + u_bass * 0.45) - float(i) * 0.22, 1.1);
+  float ringSpeed = mix(0.1, 0.8, u_p0) + u_bass * 0.3;
+  int nRings = int(clamp(u_p1, 3.0, 10.0));
+  for (int i = 0; i < 10; i++) {
+    if (i >= nRings) break;
+    float ring = mod(t * ringSpeed - float(i) * 0.22, 1.1);
     float fade = 1.0 - ring / 1.1;
     bright += smoothstep(0.025, 0.0, abs(r - ring * 0.7)) * fade * fade * 1.5;
   }
@@ -574,6 +662,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Bruit",
+    params: [
+      { label: "Échelle", key: "u_p0", min: 0.5, max: 5, default: 1,    step: 0.1  },
+      { label: "Vitesse", key: "u_p1", min: 0,   max: 1, default: 0.35, step: 0.01 },
+    ],
     src: /* glsl */ `
 float n2(vec2 p) {
   vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
@@ -586,8 +678,8 @@ float fbm(vec2 p) {
   return v;
 }
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = uv * vec2(res.x/res.y, 1.0);
-  float t = u_time * 0.22;
+  vec2 p = uv * vec2(res.x/res.y, 1.0) * u_p0;
+  float t = u_time * mix(0.05, 0.7, u_p1);
   vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2,1.3) + t * 0.85));
   float f = fbm(p + q * (1.4 + u_bass * 0.9));
   vec3 col = mix(vec3(0.01,0.0,0.02), vec3(0.45,0.05,0.01), f);
@@ -598,9 +690,13 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Hex",
+    params: [
+      { label: "Densité", key: "u_p0", min: 3,  max: 24, default: 8,   step: 0.5  },
+      { label: "Vitesse", key: "u_p1", min: 0,  max: 1,  default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p  = uv * vec2(res.x/res.y, 1.0) * (8.0 + u_mid * 6.0);
+  vec2 p  = uv * vec2(res.x/res.y, 1.0) * (u_p0 + u_mid * 4.0);
   float t = u_time;
   vec2 r = vec2(1.0, 1.732), h = r * 0.5;
   vec2 a = mod(p,   r) - h;
@@ -609,7 +705,7 @@ vec3 render(vec2 uv, vec2 res) {
   vec2 id = round(p - gv);               // ID cellule
   float dEdge = 0.5 - max(abs(gv.x)*0.866025 + abs(gv.y)*0.5, abs(gv.y));
   float ch = hash(id * 0.1731);
-  float pulse = (0.5 + 0.5*sin(t*(0.3+ch*0.5)+ch*TWO_PI)) * (0.2+u_bass*1.0);
+  float pulse = (0.5 + 0.5*sin(t*(mix(0.1, 0.8, u_p1) + ch * 0.3)+ch*TWO_PI)) * (0.2+u_bass*1.0);
   float edge = smoothstep(0.0,  0.07, dEdge);
   float fill = smoothstep(0.07, 0.38, dEdge) * pulse;
   vec3 col = vec3(0.0, 0.02, 0.03);
@@ -623,26 +719,34 @@ vec3 render(vec2 uv, vec2 res) {
 
   {
     name: "Oscilloscope",
+    params: [
+      { label: "Épaisseur", key: "u_p0", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Grille",    key: "u_p1", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float w  = waveAt(uv.x);
   float d  = abs(uv.y - w);
-  float line  = smoothstep(0.018, 0.0, d);
+  float line  = smoothstep(mix(0.005, 0.05, u_p0), 0.0, d);
   float glow  = exp(-d * 55.0) * 0.45;
-  float ghost = exp(-abs(uv.y - (1.0 - w)) * 100.0) * 0.09; // réflexion fantôme
+  float ghost = exp(-abs(uv.y - (1.0 - w)) * 100.0) * 0.09; // reflexion fantome
   float ity = (line + glow + ghost) * (0.4 + u_level * 0.9);
   // grille phosphore
-  float gx = smoothstep(0.006, 0.0, mod(uv.x, 0.1) - 0.095);
-  float gy = smoothstep(0.006, 0.0, mod(uv.y, 0.125) - 0.120);
+  float gx = smoothstep(0.006, 0.0, mod(uv.x, 0.1) - 0.095) * u_p1;
+  float gy = smoothstep(0.006, 0.0, mod(uv.y, 0.125) - 0.120) * u_p1;
   vec3 col = mix(vec3(0.0, 0.55, 0.2), vec3(0.75, 1.0, 0.85), line);
   return col * ity + vec3(0.0, 0.09, 0.03) * (gx + gy);
 }`,
   },
   {
     name: "Cellules",
+    params: [
+      { label: "Densité", key: "u_p0", min: 1,  max: 15, default: 5,   step: 0.5  },
+      { label: "Vitesse", key: "u_p1", min: 0,  max: 1,  default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 st  = uv * vec2(res.x / res.y, 1.0) * (5.0 + u_bass * 7.0);
+  vec2 st  = uv * vec2(res.x / res.y, 1.0) * (u_p0 + u_bass * 3.0);
   vec2 id  = floor(st);
   vec2 fr  = fract(st);
   float t  = u_time;
@@ -650,7 +754,7 @@ vec3 render(vec2 uv, vec2 res) {
   for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
     vec2 nb   = vec2(i, j);
     vec2 seed = id + nb;
-    float spd = 0.18 + hash(seed) * 0.28;
+    float spd = mix(0.05, 0.5, u_p1) * (0.5 + hash(seed));
     float phi = hash(seed + 7.1) * TWO_PI;
     vec2 anim = vec2(sin(t * spd + phi), cos(t * spd * 0.85 + phi + 1.1));
     vec2 pt   = nb + 0.5 + 0.38 * anim - fr;
@@ -689,7 +793,7 @@ vec3 render(vec2 uv, vec2 res) {
   }
   if (si < 0.0) return vec3(0.0);
   float v = fract(si / u_p2 + u_time * 0.04);
-  // palette dark : bleu nuit → cyan → orange brûlé → jaune
+  // palette dark : bleu nuit -> cyan -> orange brule -> jaune
   vec3 col = mix(vec3(0.0, 0.04, 0.18), vec3(0.05, 0.65, 0.85), smoothstep(0.0, 0.5, v));
   col = mix(col, vec3(0.92, 0.40, 0.04), smoothstep(0.5, 0.8, v));
   col = mix(col, vec3(0.98, 0.92, 0.50), smoothstep(0.8, 1.0, v));
@@ -716,7 +820,7 @@ vec3 render(vec2 uv, vec2 res) {
   float spacing = 1.0 / max(u_p1, 1.0);
   float rings = smoothstep(0.013, 0.0, mod(r, spacing) - (spacing - 0.016));
   float axes  = smoothstep(0.005, 0.0, min(abs(p.x), abs(p.y)));
-  // blips persistants pseudo-aléatoires
+  // blips persistants pseudo-aleatoires
   float bA  = floor(a * 10.0) / 10.0;
   float bR  = 0.15 + hash(vec2(floor(bA * 7.3), 1.0)) * 0.72;
   float age = mod(u_time * 0.4 - hash(vec2(floor(bA * 7.3), 2.0)) * 12.0, 6.0);
@@ -731,17 +835,22 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Interférence",
+    params: [
+      { label: "Fréquence", key: "u_p0", min: 5,  max: 50, default: 22,  step: 1    },
+      { label: "Vitesse",   key: "u_p1", min: 0,  max: 1,  default: 0.4, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
   float t = u_time;
+  float tsp = mix(2.0, 12.0, u_p1);
   vec2 s1 = vec2( 0.30 * cos(t * 0.30),        0.20 * sin(t * 0.38));
   vec2 s2 = vec2(-0.26 * sin(t * 0.33 + 1.0),  0.27 * cos(t * 0.24));
   vec2 s3 = vec2( 0.12 * cos(t * 0.47 + 2.0), -0.23 * sin(t * 0.42 + 1.5));
-  float f  = 22.0 + u_bass * 16.0;
-  float w1 = sin(length(p - s1) * f           - t * 5.0);
-  float w2 = sin(length(p - s2) * (f * 1.07)  + t * 4.3);
-  float w3 = sin(length(p - s3) * (f * 0.94)  - t * 3.8) * (0.4 + u_mid * 0.8);
+  float f  = u_p0 + u_bass * 10.0;
+  float w1 = sin(length(p - s1) * f           - t * tsp);
+  float w2 = sin(length(p - s2) * (f * 1.07)  + t * (tsp * 0.86));
+  float w3 = sin(length(p - s3) * (f * 0.94)  - t * (tsp * 0.76)) * (0.4 + u_mid * 0.8);
   float v  = (w1 + w2 + w3) / 3.0 * 0.5 + 0.5;
   vec3 col = mix(vec3(0.0, 0.01, 0.02), vec3(0.02, 0.38, 0.28), v);
   col = mix(col, vec3(0.95, 0.44, 0.04), pow(v, 7.0) * (0.4 + u_bass * 0.8));
