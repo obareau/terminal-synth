@@ -9,7 +9,9 @@
     "build": "tsc --noEmit && tsx build.ts",
     "start": "tsx build.ts && electron .",
     "dev": "tsx build.ts && electron .",
-    "package": "tsx build.ts --production && electron-builder --win portable"
+    "package": "tsx build.ts --production && electron-builder --win portable",
+    "package:mac": "tsx build.ts --production && electron-builder --mac",
+    "package:linux": "tsx build.ts --production && electron-builder --linux"
   },
   "build": {
     "appId": "com.robotariis.terminal-synth",

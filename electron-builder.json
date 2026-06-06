@@ -1,0 +1,40 @@
+{
+  "appId": "com.robotariis.terminal-synth",
+  "productName": "terminal-synth",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ]
+  },
+  "mac": {
+    "target": [
+      "dmg",
+      "zip"
+    ],
+    "arch": [
+      "x64",
+      "arm64"
+    ]
+  },
+  "linux": {
+    "target": [
+      "AppImage"
+    ],
+    "arch": [
+      "x64"
+    ],
+    "category": "Utility"
+  }
+}

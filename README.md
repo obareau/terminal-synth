@@ -6,16 +6,50 @@ Synthesizer* (Imaginando). Bras visuel de **ROBOTARIIS**.
 
 **Statut** : MVP · v0.1.0 · Electron + TypeScript + WebGL2
 
-## MVP (présent)
+## v0.1.0 Highlights
 
-- Fenêtre WebGL2 plein écran rendant un **shader** (3 intégrés : Plasma indus, Tunnel, Scan grid).
-- **Audio-réactif** : FFT du micro/carte son → bandes graves/médiums/aigus + niveau → uniforms.
-- **Mode ASCII** (toggle) : le rendu est converti en art ASCII (vert sur noir, lueur).
-- UI sombre minimale : choix du shader, activation audio, ASCII, plein écran, VU-mètre.
+### Visuals & Effects
+- **26+ GLSL generators** with full real-time parameter control (u_p0-p3 uniforms)
+- **Floyd-Steinberg dithering effect** for ordered color quantization
+- **11 blend modes** for layer composition (Normal, Add, Multiply, Screen, Overlay, Darken, Lighten, Difference, Divide, Hard Light, XOR)
+- **6 perturbators** (audio-triggered glitch effects): Déchirure, Dropout, Strobe, Corrupt, Tremor, Phosphore
+- **Terrain (Joy Division)** completely rewritten to match Unknown Pleasures album cover visual
+- **ASCII mode** with adjustable character density
 
-Uniforms exposés aux shaders : `u_time`, `u_resolution`, `u_bass`, `u_mid`, `u_treble`, `u_level`.
+### Audio & MIDI
+- Real-time FFT analysis (bass, mid, treble, level)
+- System loopback audio input + microphone support
+- MIDI input for generative control (organ/noise modes)
 
-## Lancer
+### UI & Workflow
+- **3-column professional layout** (sources, canvas, effects/perturbators)
+- **Keyboard shortcuts**: 1-9/q-p/a-k for source selection, Tab for focus mode
+- **Layer system**: A (primary) + B (secondary) with blend mode and opacity
+- **RECTA TUI overlay**: terminal-style metadata transmission
+- **Preset system**: save/load (JSON-based)
+- **Video export**: WebM codec with audio track
+
+## Installation
+
+### Windows (Pre-Built Executable)
+
+1. Download `terminal-synth 0.1.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+2. Run directly (no installation needed)
+3. Grant audio/MIDI permissions when prompted
+
+Path after download: `C:\Users\[YourUsername]\Downloads\terminal-synth 0.1.0.exe`
+
+### macOS & Linux (Build from Source)
+
+```bash
+git clone https://github.com/obareau/terminal-synth.git
+cd terminal-synth
+npm install
+npm run package
+# Executable in: ./release/
+```
+
+## Lancer (Development)
 
 ```bash
 npm install
