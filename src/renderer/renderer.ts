@@ -12,6 +12,7 @@ import { EFFECTS } from "./effects";
 import { parseISF } from "./isf";
 import { BLEND_MODES } from "./gl";
 import { DISRUPTORS } from "./disruptors";
+import { autoplay } from "./autoplay";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -672,3 +673,25 @@ exportBtn.addEventListener("click", async () => {
     }, 3000);
   }
 });
+
+// --- Autoplay: Random automation synced to BPM ---
+const autoplayBtn = $<HTMLButtonElement>("autoplay");
+autoplay.init(120); // Default BPM
+
+autoplayBtn.addEventListener("click", () => {
+  if (autoplay.getStatus().isRunning) {
+    autoplay.stop();
+    autoplayBtn.classList.remove("on");
+    autoplayBtn.textContent = "🎲";
+  } else {
+    autoplay.start();
+    autoplayBtn.classList.add("on");
+    autoplayBtn.textContent = "🎲 AUTO";
+  }
+});
+
+// Update BPM if detected from audio
+setInterval(() => {
+  // TODO: Get BPM from audio analysis if available
+  // autoplay.setBPM(detectedBPM);
+}, 1000);
