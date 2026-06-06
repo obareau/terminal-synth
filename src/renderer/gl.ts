@@ -32,6 +32,9 @@ float fftAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.25)).r
 float waveAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
 vec3 textCol(vec2 uv) { return texture(u_text, uv).rgb; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+#define PI      3.14159265358979323846
+#define TWO_PI  6.28318530717958647692
+#define HALF_PI 1.5707963267948966192
 `;
 const GEN_FOOTER = `
 void main() {

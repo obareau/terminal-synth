@@ -159,4 +159,123 @@ vec3 render(vec2 uv, vec2 res) {
   return base + grid;
 }`,
   },
+  // ── Nouveaux générateurs ──────────────────────────────────────────────────
+
+  {
+    name: "Oscilloscope",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float w  = waveAt(uv.x);
+  float d  = abs(uv.y - w);
+  float line  = smoothstep(0.018, 0.0, d);
+  float glow  = exp(-d * 55.0) * 0.45;
+  float ghost = exp(-abs(uv.y - (1.0 - w)) * 100.0) * 0.09; // réflexion fantôme
+  float ity = (line + glow + ghost) * (0.4 + u_level * 0.9);
+  // grille phosphore
+  float gx = smoothstep(0.006, 0.0, mod(uv.x, 0.1) - 0.095);
+  float gy = smoothstep(0.006, 0.0, mod(uv.y, 0.125) - 0.120);
+  vec3 col = mix(vec3(0.0, 0.55, 0.2), vec3(0.75, 1.0, 0.85), line);
+  return col * ity + vec3(0.0, 0.09, 0.03) * (gx + gy);
+}`,
+  },
+  {
+    name: "Cellules",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 st  = uv * vec2(res.x / res.y, 1.0) * (5.0 + u_bass * 7.0);
+  vec2 id  = floor(st);
+  vec2 fr  = fract(st);
+  float t  = u_time;
+  float minD = 9.0, minD2 = 9.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 nb   = vec2(i, j);
+    vec2 seed = id + nb;
+    float spd = 0.18 + hash(seed) * 0.28;
+    float phi = hash(seed + 7.1) * TWO_PI;
+    vec2 anim = vec2(sin(t * spd + phi), cos(t * spd * 0.85 + phi + 1.1));
+    vec2 pt   = nb + 0.5 + 0.38 * anim - fr;
+    float d   = dot(pt, pt);
+    if (d < minD)        { minD2 = minD; minD = d; }
+    else if (d < minD2) { minD2 = d; }
+  }
+  float edge = sqrt(minD2) - sqrt(minD);
+  float glow = exp(-edge * 14.0) * (0.35 + u_mid * 1.3);
+  vec3 col = vec3(0.0, 0.03, 0.02);
+  col += vec3(0.04, 0.85, 0.35) * glow;
+  col += vec3(0.9, 0.38, 0.04) * pow(glow, 6.0) * u_bass;
+  return col;
+}`,
+  },
+  {
+    name: "Fractale",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 z = (uv - 0.5) * 3.4 * vec2(res.x / res.y, 1.0);
+  float t = u_time * 0.12;
+  vec2 c = vec2(-0.74 + 0.38 * cos(t + u_bass * 2.0),
+                 0.18 + 0.30 * sin(t * 1.3 + u_mid * 1.8));
+  float si = -1.0;
+  for (int n = 0; n < 48; n++) {
+    if (dot(z, z) > 4.0) {
+      si = max(0.0, float(n) - log2(log2(dot(z, z))));
+      break;
+    }
+    z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+  }
+  if (si < 0.0) return vec3(0.0);
+  float v = fract(si / 9.0 + u_time * 0.04);
+  // palette dark : bleu nuit → cyan → orange brûlé → jaune
+  vec3 col = mix(vec3(0.0, 0.04, 0.18), vec3(0.05, 0.65, 0.85), smoothstep(0.0, 0.5, v));
+  col = mix(col, vec3(0.92, 0.40, 0.04), smoothstep(0.5, 0.8, v));
+  col = mix(col, vec3(0.98, 0.92, 0.50), smoothstep(0.8, 1.0, v));
+  return col * (0.5 + u_level * 0.7);
+}`,
+  },
+  {
+    name: "Radar",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0) * 2.0;
+  float r = length(p);
+  float a = atan(p.y, p.x);
+  float t = u_time * (0.4 + u_bass * 1.4);
+  // balayage rotatif
+  float scan = mod(t, TWO_PI) - PI;
+  float da   = mod(a - scan + TWO_PI, TWO_PI);
+  float sweep = exp(-da * 2.2) * step(r, 0.96) * step(0.015, r);
+  // structure HUD : cercles + axes
+  float rings = smoothstep(0.013, 0.0, mod(r, 0.25) - 0.234);
+  float axes  = smoothstep(0.005, 0.0, min(abs(p.x), abs(p.y)));
+  // blips persistants pseudo-aléatoires
+  float bA  = floor(a * 10.0) / 10.0;
+  float bR  = 0.15 + hash(vec2(floor(bA * 7.3), 1.0)) * 0.72;
+  float age = mod(u_time * 0.4 - hash(vec2(floor(bA * 7.3), 2.0)) * 12.0, 6.0);
+  float blip = step(0.91, hash(vec2(floor(bA * 7.3), 0.0)));
+  blip *= exp(-age * 0.7) * step(abs(r - bR), 0.04) * step(abs(a - bA), 0.09);
+  vec3 col = vec3(0.0, 0.022, 0.01);
+  col += vec3(0.0, 0.28, 0.10) * (rings + axes) * 0.4;
+  col += vec3(0.0, 0.88, 0.30) * sweep * 0.7;
+  col += vec3(0.55, 1.0, 0.65) * blip * 3.5;
+  return col * (0.55 + u_level * 0.6);
+}`,
+  },
+  {
+    name: "Interférence",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time;
+  vec2 s1 = vec2( 0.30 * cos(t * 0.30),        0.20 * sin(t * 0.38));
+  vec2 s2 = vec2(-0.26 * sin(t * 0.33 + 1.0),  0.27 * cos(t * 0.24));
+  vec2 s3 = vec2( 0.12 * cos(t * 0.47 + 2.0), -0.23 * sin(t * 0.42 + 1.5));
+  float f  = 22.0 + u_bass * 16.0;
+  float w1 = sin(length(p - s1) * f           - t * 5.0);
+  float w2 = sin(length(p - s2) * (f * 1.07)  + t * 4.3);
+  float w3 = sin(length(p - s3) * (f * 0.94)  - t * 3.8) * (0.4 + u_mid * 0.8);
+  float v  = (w1 + w2 + w3) / 3.0 * 0.5 + 0.5;
+  vec3 col = mix(vec3(0.0, 0.01, 0.02), vec3(0.02, 0.38, 0.28), v);
+  col = mix(col, vec3(0.95, 0.44, 0.04), pow(v, 7.0) * (0.4 + u_bass * 0.8));
+  return col;
+}`,
+  },
 ];

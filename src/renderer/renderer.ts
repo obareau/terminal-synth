@@ -64,7 +64,7 @@ shaderSel.addEventListener("change", () => loadShader(Number(shaderSel.value)));
 loadShader(0);
 
 // --- Chaîne d'effets (génération → entropie → feedback → glitch → filtre) ---
-const defaultAmounts = [0.3, 0.4, 0.3, 0.4];
+const defaultAmounts = [0.3, 0.4, 0.3, 0.4, 0.45, 0.3, 0.5];
 const fxState = EFFECTS.map((_e, i) => ({ enabled: false, amount: defaultAmounts[i] ?? 0.3 }));
 const fxProg = EFFECTS.map((e) => pipeline.compileEffect(e.body));
 

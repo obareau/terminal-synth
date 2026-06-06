@@ -79,4 +79,56 @@ vec3 process(vec2 uv) {
   return c;
 }`,
   },
+  // ── Nouveaux effets ───────────────────────────────────────────────────────
+
+  {
+    name: "Aberration",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a   = u_amount;
+  vec2 dir  = uv - 0.5;
+  float s   = a * (0.018 + u_bass * 0.025);
+  float r   = prev(clamp(uv + dir * s * 1.8, 0.0, 1.0)).r;
+  float g   = prev(uv).g;
+  float b   = prev(clamp(uv - dir * s * 1.8, 0.0, 1.0)).b;
+  return vec3(r, g, b);
+}`,
+  },
+  {
+    name: "Bloom",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  vec3  col   = prev(uv);
+  float a     = u_amount;
+  vec2  px    = 1.0 / u_resolution;
+  vec3  bloom = vec3(0.0);
+  float total = 0.0;
+  for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) {
+    float w = exp(-float(x*x + y*y) * 0.35);
+    vec3  s = prev(uv + vec2(x, y) * px * (2.5 + a * 5.0));
+    float lum = dot(s, vec3(0.299, 0.587, 0.114));
+    bloom += s * max(0.0, lum - (0.45 - a * 0.35)) * w;
+    total += w;
+  }
+  bloom /= total;
+  return col + bloom * a * (0.9 + u_treble * 0.6);
+}`,
+  },
+  {
+    name: "Miroir",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a    = u_amount;
+  float segs = 2.0 + floor(a * 6.0);   // 2..8 segments
+  vec2  p    = uv - 0.5;
+  float ang  = atan(p.y, p.x) + u_time * 0.08 * a;
+  float r    = length(p);
+  float segA = PI / segs;
+  ang = mod(ang + PI, segA * 2.0);
+  if (ang > segA) ang = segA * 2.0 - ang;
+  ang -= PI;
+  vec2 muv = clamp(0.5 + r * vec2(cos(ang), sin(ang)), 0.001, 0.999);
+  return mix(prev(uv), prev(muv), a);
+}`,
+  },
 ];
