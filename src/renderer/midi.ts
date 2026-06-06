@@ -22,6 +22,15 @@ export class MidiInput {
   readonly held = new Map<number, number>(); // note → vélocité 0..1
   private last = performance.now();
 
+  stop(): void {
+    this.enabled = false;
+    this.held.clear();
+    this.energy = 0;
+    this.mod = 0;
+    this.bend = 0;
+    this.deviceName = "";
+  }
+
   async start(): Promise<void> {
     const nav = navigator as unknown as {
       requestMIDIAccess?: (opts?: { sysex: boolean }) => Promise<MIDIAccessLike>;

@@ -53,7 +53,11 @@ function loadShader(i: number): void {
     pipeline.setGenerator(SHADERS[i]!.src);
     currentShader = i;
   } catch (e) {
-    console.error(e);
+    console.error("[GL]", e);
+    // affiche l'erreur GL dans la barre de statut 4s
+    const prev = meter.textContent;
+    meter.textContent = String(e).slice(0, 120);
+    setTimeout(() => { meter.textContent = prev ?? ""; }, 4000);
   }
 }
 shaderSel.addEventListener("change", () => loadShader(Number(shaderSel.value)));
@@ -92,14 +96,20 @@ EFFECTS.forEach((e, i) => {
 
 // --- Contrôles ---
 audioBtn.addEventListener("click", async () => {
-  try {
-    await audio.start(srcSel.value as AudioSource);
-    audioBtn.textContent = "🔊 on";
-    audioBtn.classList.add("on");
-  } catch (e) {
-    console.error(e);
-    audioBtn.textContent = "audio ✗";
+  if (audio.enabled) {
+    await audio.stop();
+    audioBtn.textContent = "audio";
     audioBtn.classList.remove("on");
+  } else {
+    try {
+      await audio.start(srcSel.value as AudioSource);
+      audioBtn.textContent = "🔊 on";
+      audioBtn.classList.add("on");
+    } catch (e) {
+      console.error(e);
+      audioBtn.textContent = "audio ✗";
+      audioBtn.classList.remove("on");
+    }
   }
 });
 
@@ -123,13 +133,19 @@ declare global {
 }
 
 midiBtn.addEventListener("click", async () => {
-  try {
-    await midi.start();
-    midiBtn.textContent = "🎛 " + midi.deviceName;
-    midiBtn.classList.add("on");
-  } catch (e) {
-    console.error(e);
-    midiBtn.textContent = "MIDI ✗";
+  if (midi.enabled) {
+    midi.stop();
+    midiBtn.textContent = "🎛 MIDI";
+    midiBtn.classList.remove("on");
+  } else {
+    try {
+      await midi.start();
+      midiBtn.textContent = "🎛 " + midi.deviceName;
+      midiBtn.classList.add("on");
+    } catch (e) {
+      console.error(e);
+      midiBtn.textContent = "MIDI ✗";
+    }
   }
 });
 midiModeSel.addEventListener("change", () => {
@@ -153,7 +169,11 @@ isfBtn.addEventListener("click", async () => {
   ]);
   if (!result) return;
   const shader = parseISF(result.name, result.content);
-  if (!shader) { console.error("[ISF] parse failed"); return; }
+  if (!shader) {
+    isfBtn.textContent = "ISF ✗";
+    setTimeout(() => { isfBtn.textContent = "ISF…"; }, 3000);
+    return;
+  }
   const entry = { name: shader.name, src: shader.glsl };
   const existingIdx = SHADERS.findIndex((s) => s.name === shader.name);
   if (existingIdx >= 0) {
@@ -195,7 +215,11 @@ function resizeCanvas(): void {
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-const ASCII_COLS = 90; // moins de colonnes = caractères plus gros / plus lisibles
+let ASCII_COLS = 90;
+const asciiColsRng = $<HTMLInputElement>("ascii-cols");
+asciiColsRng.value = String(ASCII_COLS);
+asciiColsRng.addEventListener("input", () => { ASCII_COLS = Number(asciiColsRng.value); });
+
 function asciiGrid(): { cols: number; rows: number } {
   const cw = app.clientWidth;
   const ch = app.clientHeight;

@@ -78,16 +78,17 @@ export function parseISF(filename: string, source: string): IsfShader | null {
       .filter(Boolean)
       .join("\n");
 
-    // 7. Wrapper : _isf_out est un global partagé entre _isf_main() et render()
+    // 7. Wrapper : _isf_out et _uv sont des globals partagés avec _isf_main()
     const wrapped = `
 ${uniformDecls}
 
 vec4 _isf_out = vec4(0.0);
+vec2 _uv = vec2(0.0);
 
 ${glsl}
 
 vec3 render(vec2 uv, vec2 res) {
-  vec2 _uv = uv;
+  _uv = uv;
   _isf_out = vec4(0.0);
   _isf_main();
   return _isf_out.rgb;
