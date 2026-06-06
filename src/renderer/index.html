@@ -55,12 +55,22 @@
     .fx-name { min-width: 4.5em; }
     .fx input[type="range"] { width: 70px; accent-color: #9be29b; }
     .fx input[type="checkbox"] { accent-color: #9be29b; }
+
+    #text {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
+      margin: 0; padding: 0.6em 0.9em 1.1em;
+      font-family: "Cascadia Mono", Consolas, monospace; font-size: 15px; line-height: 1.35;
+      color: #9be29b; text-shadow: 0 0 6px rgba(120, 255, 140, 0.5);
+      white-space: pre-wrap; word-break: break-word; pointer-events: none;
+      max-width: 70ch; mix-blend-mode: screen;
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <canvas id="gl"></canvas>
     <pre id="ascii" hidden></pre>
+    <pre id="text" hidden></pre>
     <div id="bar">
       <span class="brand">terminal-synth</span>
       <select id="shader" title="Shader / générateur"></select>
@@ -75,6 +85,7 @@
         <option value="noise">Noise</option>
       </select>
       <button id="ascii-toggle" title="Mode ASCII">ASCII</button>
+      <button id="text-toggle" title="Overlay texte (transmissions)">TXT</button>
       <button id="full" title="Plein écran">⛶</button>
       <span class="spacer"></span>
       <span id="meter"></span>

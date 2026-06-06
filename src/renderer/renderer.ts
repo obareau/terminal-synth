@@ -4,6 +4,8 @@ import { Pipeline, type Stage } from "./gl";
 import { AudioInput, type Bands, type AudioSource } from "./audio";
 import { pixelsToAscii } from "./ascii";
 import { MidiInput, type MidiMode } from "./midi";
+import { TextOverlay } from "./text";
+import { TEXTS } from "./texts";
 import { SHADERS } from "./shaders";
 import { EFFECTS } from "./effects";
 
@@ -16,6 +18,7 @@ const shaderSel = $<HTMLSelectElement>("shader");
 const audioBtn = $<HTMLButtonElement>("audio");
 const srcSel = $<HTMLSelectElement>("audio-src");
 const asciiBtn = $<HTMLButtonElement>("ascii-toggle");
+const textBtn = $<HTMLButtonElement>("text-toggle");
 const fullBtn = $<HTMLButtonElement>("full");
 const midiBtn = $<HTMLButtonElement>("midi");
 const midiModeSel = $<HTMLSelectElement>("midi-mode");
@@ -25,6 +28,7 @@ const chain = $("chain");
 const pipeline = new Pipeline(canvas);
 const audio = new AudioInput();
 const midi = new MidiInput();
+const text = new TextOverlay($("text"), TEXTS);
 let asciiMode = false;
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
@@ -121,6 +125,11 @@ midiModeSel.addEventListener("change", () => {
   midi.mode = midiModeSel.value as MidiMode;
 });
 
+textBtn.addEventListener("click", () => {
+  text.toggle(!text.enabled);
+  textBtn.classList.toggle("on", text.enabled);
+});
+
 fullBtn.addEventListener("click", () => {
   window.synth?.toggleFullscreen();
 });
@@ -197,6 +206,9 @@ function frame(now: number): void {
   } else {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
   }
+
+  text.energy = Math.max(bands.bass, e);
+  text.update(now);
 
   const pct = (v: number) => String(Math.round(v * 100)).padStart(3, " ");
   let line = `bass${pct(bands.bass)} mid${pct(bands.mid)} hi${pct(bands.treble)}`;
