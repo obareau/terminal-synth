@@ -51,6 +51,8 @@ export class AudioInput {
     this.enabled = true;
   }
 
+  get mediaStream(): MediaStream | undefined { return this.stream; }
+
   async stop(): Promise<void> {
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = undefined;

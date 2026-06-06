@@ -346,9 +346,16 @@ recBtn.addEventListener("click", async () => {
     return;
   }
   recChunks = [];
-  const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-    ? "video/webm;codecs=vp9" : "video/webm";
+  const withAudio = "video/webm;codecs=vp9,opus";
+  const withoutAudio = "video/webm;codecs=vp9";
+  const audioAvail = audio.enabled && !!audio.mediaStream;
+  const mimeType = MediaRecorder.isTypeSupported(audioAvail ? withAudio : withoutAudio)
+    ? (audioAvail ? withAudio : withoutAudio) : "video/webm";
   const stream = canvas.captureStream(60);
+  // ajouter les pistes audio si capturées (système ou micro)
+  if (audioAvail) {
+    audio.mediaStream!.getAudioTracks().forEach((t) => stream.addTrack(t));
+  }
   recorder = new MediaRecorder(stream, { mimeType });
   recorder.ondataavailable = (e) => { if (e.data.size > 0) recChunks.push(e.data); };
   recorder.onstop = async () => {
