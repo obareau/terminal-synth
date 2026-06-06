@@ -150,7 +150,9 @@ export class Pipeline {
     gl.shaderSource(s, src);
     gl.compileShader(s);
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      throw new Error("Shader : " + gl.getShaderInfoLog(s));
+      const log = gl.getShaderInfoLog(s) ?? "";
+      console.error("[GL] compile error:\n" + log + "\n\nSource:\n" + src);
+      throw new Error("Shader : " + log);
     }
     return s;
   }

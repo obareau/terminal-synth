@@ -33,6 +33,11 @@ function createWindow(): void {
   );
 
   win.loadFile(path.join(__dirname, "index.html"));
+
+  // F12 → DevTools (debug shaders / erreurs GL)
+  win.webContents.on("before-input-event", (_e, input) => {
+    if (input.key === "F12" && input.type === "keyDown") win.webContents.toggleDevTools();
+  });
 }
 
 app.whenReady().then(() => {

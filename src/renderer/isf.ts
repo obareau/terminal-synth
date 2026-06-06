@@ -78,9 +78,20 @@ export function parseISF(filename: string, source: string): IsfShader | null {
       .filter(Boolean)
       .join("\n");
 
-    // 7. Wrapper : _isf_out et _uv sont des globals partagés avec _isf_main()
+    // 7. Déclarer les image inputs comme sampler2D non liés (échantillonnent noir,
+    //    mais le shader compile même s'il y fait référence)
+    const imageInputs = (meta.INPUTS ?? []).filter((i) => i.TYPE === "image");
+    const imageSamplerDecls = imageInputs.map((i) => `uniform sampler2D ${i.NAME};`).join("\n");
+
+    // 8. Constantes ISF prédéfinies + globals partagés avec _isf_main()
     const wrapped = `
+#define PI    3.14159265358979323846
+#define TWO_PI 6.28318530717958647692
+#define HALF_PI 1.5707963267948966192
+#define PASSINDEX 0
+
 ${uniformDecls}
+${imageSamplerDecls}
 
 vec4 _isf_out = vec4(0.0);
 vec2 _uv = vec2(0.0);
@@ -95,6 +106,8 @@ vec3 render(vec2 uv, vec2 res) {
 }`;
 
     const name = filename.replace(/\.(fs|frag|glsl)$/i, "");
+    console.log(`[ISF] "${name}" traduit → ouvre DevTools (F12) pour voir le GLSL`);
+    console.log("[ISF GLSL]\n" + wrapped);
     return { name, glsl: wrapped, inputs };
   } catch (err) {
     console.error("[ISF] parse error:", err);
