@@ -159,6 +159,106 @@ vec3 render(vec2 uv, vec2 res) {
   return base + grid;
 }`,
   },
+  // ── Batch 5 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Terrain (Joy Division)",
+    src: /* glsl */ `
+float jd_n(vec2 p) {
+  vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
+             mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+}
+float jd_ridge(float x, float k, float t, float bass) {
+  float a = 0.16 + bass * 0.24;
+  return a * jd_n(vec2(x*2.4+t, k*0.4))
+       + a * 0.4 * jd_n(vec2(x*6.5-t*0.8, k*0.95+5.3));
+}
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.09;
+  int N = 42;
+  float fN = float(N);
+  // Parcours de bas en haut (band 0 = bas = premier plan)
+  vec3 result = vec3(0.0);
+  bool done = false;
+  for (int k = 0; k < N && !done; k++) {
+    float fk  = float(k);
+    float bY  = 1.0 - (fk + 0.5) / fN; // centre Y de la bande en coords écran
+    float h   = jd_ridge(uv.x, fk, t, u_bass);
+    h += waveAt(uv.x) * 0.04 * u_level;
+    h = max(0.0, h);
+    float ridgeY = bY - h; // le sommet monte (baisse uv.y)
+    float dy = uv.y - ridgeY;
+    if (dy > 0.012) {            // sous le sommet = remplissage montagne (noir)
+      done = true;
+    } else if (abs(dy) < 0.012) { // sur le sommet
+      float bright = smoothstep(0.012, 0.0, abs(dy)) * (0.7 + u_level * 0.45);
+      result = vec3(0.88, 0.95, 1.0) * bright;
+      done = true;
+    }
+    // au-dessus = ciel → bande suivante (plus loin)
+  }
+  return result;
+}`,
+  },
+  {
+    name: "Laser scan",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t  = u_time;
+  float sp = 0.55 + u_bass * 0.7;
+  // triangle wave : aller-retour
+  float sc = fract(t * sp * 0.5) * 2.0;
+  float scanX = sc > 1.0 ? 2.0 - sc : sc;
+  float dx = abs(uv.x - scanX);
+  float beam  = exp(-dx * 130.0) * (0.9 + u_level * 0.2);
+  float trail = exp(-dx * 20.0) * 0.22;
+  // FFT révélée sous le laser
+  float fft = fftAt(uv.x);
+  float bar = step(1.0 - uv.y * 0.85, fft) * exp(-dx * 50.0);
+  // Waveform tracée par le laser
+  float wline = exp(-length(vec2(uv.x - scanX, uv.y - (waveAt(scanX)*0.75+0.12))) * 50.0);
+  vec3 col = vec3(0.0);
+  col += vec3(1.0, 0.12, 0.02) * (beam + trail) * (0.5 + u_level * 0.6);
+  col += vec3(1.0, 0.5,  0.1 ) * bar;
+  col += vec3(0.9, 0.4,  0.0 ) * wline * 0.5;
+  return col;
+}`,
+  },
+  {
+    name: "Laser write",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t   = u_time;
+  float sp  = 1.5 + u_bass * 1.8;
+  // Laser qui parcourt l'écran en zigzag et grave le texte RECTA
+  float row  = floor(uv.y * 12.0);
+  float dir  = mod(row, 2.0) < 1.0 ? 1.0 : -1.0;
+  float scanX = fract(t * sp * 0.04 + row * 0.083) ;
+  if (dir < 0.0) scanX = 1.0 - scanX;
+  float scanY = (row + 0.5) / 12.0;
+
+  // Texte RECTA (texture u_text)
+  float txt = textCol(uv).g;
+
+  // Faisceau laser
+  vec2 scan = vec2(scanX, scanY);
+  float d   = length(uv - scan);
+  float r   = 0.025 + u_level * 0.015;
+  float beam = exp(-d * d / (r * r)) * (0.8 + u_level * 0.3);
+
+  // Là où le laser passe sur du texte : surbrillance intense
+  float burn = txt * exp(-d * 45.0) * 4.0;
+
+  // Résidu : texte déjà gravé (phosphorescence)
+  float residue = txt * 0.55 * (0.4 + u_level * 0.4);
+
+  vec3 col = vec3(0.8, 0.08, 0.01) * residue;
+  col += vec3(1.0, 0.55, 0.08) * beam;
+  col += vec3(1.0, 0.9,  0.4 ) * burn;
+  return col;
+}`,
+  },
   // ── Batch 4 ───────────────────────────────────────────────────────────────
 
   {

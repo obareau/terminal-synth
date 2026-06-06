@@ -11,6 +11,7 @@ import { SHADERS } from "./shaders";
 import { EFFECTS } from "./effects";
 import { parseISF } from "./isf";
 import { BLEND_MODES } from "./gl";
+import { DISRUPTORS } from "./disruptors";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -155,6 +156,66 @@ EFFECTS.forEach((e, i) => {
   });
   wrap.append(cb, name, rng);
   chain.appendChild(wrap);
+});
+
+// --- Perturbateurs ---
+interface DisruptorState {
+  prog: ReturnType<typeof pipeline.compileEffect>;
+  enabled: boolean;
+  sensitivity: number;  // 0..1 (seuil de déclenchement)
+  amount: number;       // intensité quand actif
+  cooldownMs: number;
+  durationMs: number;
+  lastFire: number;
+  fireUntil: number;
+}
+
+const disruptorsList = document.getElementById("disruptors-list")!;
+const disruptorState: DisruptorState[] = DISRUPTORS.map((d) => {
+  let prog: ReturnType<typeof pipeline.compileEffect>;
+  try { prog = pipeline.compileEffect(d.body); }
+  catch (err) {
+    console.error(`[GL] perturbateur "${d.name}" :`, err);
+    prog = pipeline.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
+  }
+  return {
+    prog,
+    enabled: false,
+    sensitivity: d.defaultSensitivity,
+    amount: 0.85,
+    cooldownMs: d.defaultCooldownMs,
+    durationMs: d.defaultDurationMs,
+    lastFire: 0,
+    fireUntil: 0,
+  };
+});
+
+DISRUPTORS.forEach((d, i) => {
+  const st   = disruptorState[i]!;
+  const row  = document.createElement("div");
+  row.className = "fx";
+  row.style.cssText = "grid-template-columns:20px 1fr 64px";
+
+  const cb = document.createElement("input");
+  cb.type  = "checkbox";
+  cb.addEventListener("change", () => {
+    st.enabled = cb.checked;
+    row.classList.toggle("on", cb.checked);
+  });
+
+  const nm = document.createElement("span");
+  nm.className = "fx-name";
+  nm.textContent = d.name;
+  nm.title = `cooldown ${d.defaultCooldownMs}ms · burst ${d.defaultDurationMs}ms`;
+
+  const sens = document.createElement("input");
+  sens.type  = "range"; sens.min = "0"; sens.max = "1"; sens.step = "0.01";
+  sens.value = String(st.sensitivity);
+  sens.title = "Sensibilité";
+  sens.addEventListener("input", () => { st.sensitivity = Number(sens.value); });
+
+  row.append(cb, nm, sens);
+  disruptorsList.appendChild(row);
 });
 
 // --- Contrôles ---
@@ -496,10 +557,27 @@ function frame(now: number): void {
     if (!st.enabled) continue;
     let amt = st.amount;
     if (midi.enabled) {
-      if (noise && (i === 0 || i === 2)) amt = Math.max(amt, e); // entropie + glitch sur les hits
-      else if (!noise && i === 1) amt = Math.max(amt, e * 0.6); // feedback soutenu en orgue
+      if (noise && (i === 0 || i === 2)) amt = Math.max(amt, e);
+      else if (!noise && i === 1) amt = Math.max(amt, e * 0.6);
     }
     stages.push({ fx: fxProg[i], amount: amt });
+  }
+
+  // Perturbateurs : déclenchés par pic audio (valeur non lissée)
+  const rawEnergy = Math.max(bands.bass, e);
+  const nowMs = performance.now();
+  for (const ds of disruptorState) {
+    if (!ds.enabled) continue;
+    if (nowMs < ds.fireUntil) {
+      stages.push({ fx: ds.prog, amount: ds.amount });
+    } else if (nowMs - ds.lastFire > ds.cooldownMs) {
+      const threshold = 1.0 - ds.sensitivity * 0.75;
+      if (rawEnergy > threshold || Math.random() < rawEnergy * ds.sensitivity * 0.02) {
+        ds.lastFire = nowMs;
+        ds.fireUntil = nowMs + ds.durationMs * (0.6 + Math.random() * 0.8);
+        stages.push({ fx: ds.prog, amount: ds.amount });
+      }
+    }
   }
 
   if (asciiMode) {
