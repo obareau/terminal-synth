@@ -7,7 +7,7 @@ import { MidiInput, type MidiMode } from "./midi";
 import { TextOverlay } from "./text";
 import { TacticDisplay } from "./textsource";
 import { TEXTS } from "./texts";
-import { SHADERS } from "./shaders";
+import { SHADERS, type ShaderParam } from "./shaders";
 import { EFFECTS } from "./effects";
 import { parseISF } from "./isf";
 import { BLEND_MODES } from "./gl";
@@ -20,7 +20,8 @@ const canvas = $<HTMLCanvasElement>("gl");
 const pre = $<HTMLPreElement>("ascii");
 const shaderSel = $<HTMLSelectElement>("shader");
 const sourcesList = $("sources-list");
-const layerAName = $("layer-a-name");
+const layerAName  = $("layer-a-name");
+const paramsPanel = $("params-panel");
 const audioBtn = $<HTMLButtonElement>("audio");
 const srcSel = $<HTMLSelectElement>("audio-src");
 const asciiBtn = $<HTMLButtonElement>("ascii-toggle");
@@ -100,16 +101,44 @@ layerBSel.addEventListener("change", loadLayerB);
 blendSel.addEventListener("input", syncBlend);
 layerBOpa.addEventListener("input", syncBlend);
 syncBlend();
+// Valeurs courantes des params du shader actif (réinitialisées au changement)
+let currentParamValues: number[] = [];
+
+function buildParamsPanel(shader: typeof SHADERS[0]): void {
+  paramsPanel.innerHTML = "";
+  const params = shader.params ?? [];
+  paramsPanel.style.display = params.length ? "" : "none";
+  currentParamValues = params.map(p => p.default);
+  pipeline.setGenParams(currentParamValues);
+  params.forEach((p: ShaderParam, i: number) => {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const lbl = document.createElement("span"); lbl.className = "param-label"; lbl.textContent = p.label;
+    const val = document.createElement("span"); val.className = "param-val";   val.textContent = p.default.toFixed(p.step && p.step >= 1 ? 0 : 2);
+    const rng = document.createElement("input");
+    rng.type = "range"; rng.min = String(p.min); rng.max = String(p.max);
+    rng.step = String(p.step ?? (p.max - p.min) / 100); rng.value = String(p.default);
+    rng.addEventListener("input", () => {
+      const v = Number(rng.value);
+      currentParamValues[i] = v;
+      val.textContent = v.toFixed(p.step && p.step >= 1 ? 0 : 2);
+      pipeline.setGenParams(currentParamValues);
+    });
+    row.append(lbl, rng, val);
+    paramsPanel.appendChild(row);
+  });
+}
+
 function loadShader(i: number): void {
   try {
     pipeline.setGenerator(SHADERS[i]!.src);
     currentShader = i;
+    buildParamsPanel(SHADERS[i]!);
     // sync liste visuelle
     sourcesList.querySelectorAll(".src-item").forEach(el => el.classList.remove("active"));
     sourcesList.querySelector(`.src-item[data-idx="${i}"]`)?.classList.add("active");
     (sourcesList.querySelector(`.src-item[data-idx="${i}"]`) as HTMLElement | null)
       ?.scrollIntoView({ block: "nearest" });
-    // sync label layer A
     layerAName.textContent = SHADERS[i]?.name ?? "—";
   } catch (e) {
     console.error("[GL]", e);
@@ -389,7 +418,9 @@ asciiColsRng.value = String(ASCII_COLS);
 asciiColsRng.addEventListener("input", () => { ASCII_COLS = Number(asciiColsRng.value); });
 
 // --- RECTA speed ---
+tactics.holdMs = 8000;
 const rectaSpeedRng = $<HTMLInputElement>("recta-speed");
+rectaSpeedRng.value = "8000";
 rectaSpeedRng.addEventListener("input", () => { tactics.holdMs = Number(rectaSpeedRng.value); });
 
 // --- Presets ---
@@ -536,12 +567,11 @@ function frame(now: number): void {
   const energy = Math.max(bands.bass, e);
   const hit = energy > 0.55 && prevEnergy <= 0.55;
   prevEnergy = energy;
-  if (currentShader === RECTA_INDEX) {
-    if (hit) tactics.forceNext(now);
-    tactics.update(now);
-    tactics.draw(now, energy);
-    pipeline.updateText(tactics.canvas);
-  }
+  // Toujours mettre à jour les tactiques (Laser write et autres shaders en ont besoin)
+  if (hit) tactics.forceNext(now);
+  tactics.update(now);
+  tactics.draw(now, energy);
+  pipeline.updateText(tactics.canvas);
 
   const u = {
     time,

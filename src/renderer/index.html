@@ -208,6 +208,11 @@
     }
     #meter { font-size: 10px; color: var(--text-dim); margin-left: 4px; }
 
+    /* ── Params panel ────────────────────────────────────────────── */
+    .param-row { display:grid; grid-template-columns:1fr 80px 28px; gap:4px; align-items:center; margin-bottom:4px; }
+    .param-label { font-size:10px; color:var(--text-sec); }
+    .param-val   { font-size:10px; color:var(--text-hi); text-align:right; }
+
     /* ── Focus exit hint ─────────────────────────────────────────── */
     #focus-hint {
       display: none;
@@ -254,6 +259,9 @@
     <div id="sources-list"></div>
     <!-- select conservé pour la compatibilité preset -->
     <select id="shader" hidden></select>
+
+    <!-- Paramètres du générateur actif -->
+    <div id="params-panel" style="border-top:1px solid #1c1c1c;padding:6px 9px;display:none;flex-shrink:0;background:#0e0e0e"></div>
 
     <div id="layer-section">
       <div class="ph" style="margin:-7px -9px 4px;padding:4px 9px">Layers</div>

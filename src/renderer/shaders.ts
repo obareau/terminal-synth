@@ -6,9 +6,15 @@
  * Uniforms disponibles : u_time, u_resolution, u_bass, u_mid, u_treble, u_level (0..1).
  */
 
+export interface ShaderParam {
+  label: string;
+  key: "u_p0" | "u_p1" | "u_p2" | "u_p3";
+  min: number; max: number; default: number; step?: number;
+}
 export interface Shader {
   name: string;
   src: string;
+  params?: ShaderParam[];
 }
 
 export const SHADERS: Shader[] = [
@@ -39,19 +45,23 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Plasma indus",
+    params: [
+      { label: "Échelle",  key: "u_p0", min: 1, max: 15, default: 6, step: 0.5 },
+      { label: "Vitesse",  key: "u_p1", min: 0, max: 1,  default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * 0.3;
+  vec2  p    = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float sc   = u_p0;                      // échelle (défaut 6)
+  float t    = u_time * u_p1;            // vitesse (défaut 0.3)
   float warp = 0.6 + u_bass * 1.6;
-  float v = sin(p.x * 6.0 * warp + t)
-          + sin(p.y * 6.0 - t * 1.3)
-          + sin((p.x + p.y) * 5.0 + t * 0.7);
-  v += sin(length(p) * 10.0 - t * 2.0) * (0.5 + u_mid);
-  float g = 0.5 + 0.5 * sin(v + t);
-  vec3 col = mix(vec3(0.02, 0.05, 0.07), vec3(0.9, 0.45, 0.10), g); // teal sombre -> orange
-  float grain = fract(sin(dot(uv * res, vec2(12.9898, 78.233)) + t) * 43758.5453);
-  col += u_treble * 0.3 * grain;
+  float v = sin(p.x * sc * warp + t)
+          + sin(p.y * sc - t * 1.3)
+          + sin((p.x + p.y) * (sc * 0.83) + t * 0.7);
+  v += sin(length(p) * (sc * 1.67) - t * 2.0) * (0.5 + u_mid);
+  float g   = 0.5 + 0.5 * sin(v + t);
+  vec3  col = mix(vec3(0.02, 0.05, 0.07), vec3(0.9, 0.45, 0.10), g);
+  col += u_treble * 0.3 * hash(uv * res + t);
   return col * (0.55 + u_level * 0.9);
 }`,
   },
@@ -100,12 +110,16 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Matrix rain",
+    params: [
+      { label: "Colonnes", key: "u_p0", min: 20, max: 90, default: 56, step: 1 },
+      { label: "Vitesse",  key: "u_p1", min: 0,  max: 1,  default: 0.3, step: 0.01 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time;
-  float speed = 0.7 + u_bass * 2.5;
+  float t     = u_time;
+  float speed = mix(0.3, 3.5, u_p1) + u_bass * 2.0;
 
-  float cols = 56.0;
+  float cols = u_p0;
   float col  = floor(uv.x * cols);
   float cx   = fract(uv.x * cols);
   float seed  = hash(vec2(col, 1.0));
@@ -163,40 +177,52 @@ vec3 render(vec2 uv, vec2 res) {
 
   {
     name: "Terrain (Joy Division)",
+    params: [
+      { label: "Lignes",    key: "u_p0", min: 0,   max: 1,   default: 0.45, step: 0.01 },
+      { label: "Amplitude", key: "u_p1", min: 0,   max: 1,   default: 0.50, step: 0.01 },
+      { label: "Échelle X", key: "u_p2", min: 0,   max: 1,   default: 0.35, step: 0.01 },
+    ],
     src: /* glsl */ `
+// Noise fractal multi-octave
 float jd_n(vec2 p) {
-  vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
              mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
 }
-float jd_ridge(float x, float k, float t, float bass) {
-  float a = 0.16 + bass * 0.24;
-  return a * jd_n(vec2(x*2.4+t, k*0.4))
-       + a * 0.4 * jd_n(vec2(x*6.5-t*0.8, k*0.95+5.3));
+float jd_h(float x, float fk, float t, float scX) {
+  vec2 p = vec2(x*scX+t, fk*0.42);
+  return jd_n(p)*0.60 + jd_n(p*2.05+vec2(1.7,9.2))*0.28 + jd_n(p*4.2-vec2(5.3,1.7))*0.12;
 }
+// Rendu front-to-back avec hidden-line correct :
+// chaque ligne a une crête qui monte AU-DESSUS de sa position de base.
+// On parcourt du premier plan (bas) vers l'arrière-plan (haut),
+// en suivant le minimum de crête visible → les lignes devant masquent celles derrière.
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time * 0.09;
-  int N = 42;
-  float fN = float(N);
-  // Parcours de bas en haut (band 0 = bas = premier plan)
+  float t   = u_time * 0.07;
+  float fN  = mix(24.0, 56.0, u_p0);
+  float amp = mix(0.03, 0.22, u_p1) * (1.0 + u_bass * 0.55);
+  float scX = mix(1.2,  7.0,  u_p2);
+  float y   = uv.y;
+  float minR = 2.0;   // minimum ridge Y atteint (écran = 0 haut, 1 bas)
   vec3 result = vec3(0.0);
-  bool done = false;
-  for (int k = 0; k < N && !done; k++) {
-    float fk  = float(k);
-    float bY  = 1.0 - (fk + 0.5) / fN; // centre Y de la bande en coords écran
-    float h   = jd_ridge(uv.x, fk, t, u_bass);
-    h += waveAt(uv.x) * 0.04 * u_level;
-    h = max(0.0, h);
-    float ridgeY = bY - h; // le sommet monte (baisse uv.y)
-    float dy = uv.y - ridgeY;
-    if (dy > 0.012) {            // sous le sommet = remplissage montagne (noir)
-      done = true;
-    } else if (abs(dy) < 0.012) { // sur le sommet
-      float bright = smoothstep(0.012, 0.0, abs(dy)) * (0.7 + u_level * 0.45);
-      result = vec3(0.88, 0.95, 1.0) * bright;
-      done = true;
+  for (int k = 54; k >= 0; k--) {        // fixed bound, skip si k >= fN
+    if (float(k) >= fN) continue;
+    float fk     = float(k);
+    float baseY  = fk / fN;              // position de base de cette ligne
+    float h      = jd_h(uv.x, fk, t, scX) * amp;
+    h += waveAt(uv.x) * amp * 0.28 * u_level;
+    float ridgeY = baseY - h;            // la crête monte au-dessus de baseY (Y plus petit)
+    if (ridgeY < minR) {                 // cette crête est plus haute que tout ce qu'on a vu
+      float dy = abs(y - ridgeY);
+      if (dy < 0.013) {                  // pixel sur la crête
+        float br    = 1.0 - dy / 0.013;
+        float depth = fk / fN;           // 0=avant (chaud), 1=arrière (froid)
+        vec3  col   = mix(vec3(1.0, 0.95, 0.85), vec3(0.55, 0.78, 1.0), depth);
+        result = col * br * br * (0.28 + depth * 0.72);
+      }
+      minR = ridgeY;
     }
-    // au-dessus = ciel → bande suivante (plus loin)
+    if (y > minR + 0.016) break;         // bien en dessous de la crête frontale → noir
   }
   return result;
 }`,
@@ -642,10 +668,15 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Fractale",
+    params: [
+      { label: "Zoom",    key: "u_p0", min: 0.5, max: 8,  default: 3.4, step: 0.1  },
+      { label: "Vitesse", key: "u_p1", min: 0,   max: 1,  default: 0.3, step: 0.01 },
+      { label: "Palette", key: "u_p2", min: 4,   max: 20, default: 9,   step: 1    },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 z = (uv - 0.5) * 3.4 * vec2(res.x / res.y, 1.0);
-  float t = u_time * 0.12;
+  vec2 z = (uv - 0.5) * u_p0 * vec2(res.x / res.y, 1.0);
+  float t = u_time * mix(0.04, 0.4, u_p1);
   vec2 c = vec2(-0.74 + 0.38 * cos(t + u_bass * 2.0),
                  0.18 + 0.30 * sin(t * 1.3 + u_mid * 1.8));
   float si = -1.0;
@@ -657,7 +688,7 @@ vec3 render(vec2 uv, vec2 res) {
     z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
   }
   if (si < 0.0) return vec3(0.0);
-  float v = fract(si / 9.0 + u_time * 0.04);
+  float v = fract(si / u_p2 + u_time * 0.04);
   // palette dark : bleu nuit → cyan → orange brûlé → jaune
   vec3 col = mix(vec3(0.0, 0.04, 0.18), vec3(0.05, 0.65, 0.85), smoothstep(0.0, 0.5, v));
   col = mix(col, vec3(0.92, 0.40, 0.04), smoothstep(0.5, 0.8, v));
@@ -667,18 +698,23 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Radar",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Cercles", key: "u_p1", min: 2, max: 8, default: 4,   step: 1    },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0) * 2.0;
   float r = length(p);
   float a = atan(p.y, p.x);
-  float t = u_time * (0.4 + u_bass * 1.4);
+  float t = u_time * (mix(0.15, 1.2, u_p0) + u_bass * 1.4);
   // balayage rotatif
   float scan = mod(t, TWO_PI) - PI;
   float da   = mod(a - scan + TWO_PI, TWO_PI);
   float sweep = exp(-da * 2.2) * step(r, 0.96) * step(0.015, r);
-  // structure HUD : cercles + axes
-  float rings = smoothstep(0.013, 0.0, mod(r, 0.25) - 0.234);
+  // structure HUD : cercles (u_p1 = nombre)
+  float spacing = 1.0 / max(u_p1, 1.0);
+  float rings = smoothstep(0.013, 0.0, mod(r, spacing) - (spacing - 0.016));
   float axes  = smoothstep(0.005, 0.0, min(abs(p.x), abs(p.y)));
   // blips persistants pseudo-aléatoires
   float bA  = floor(a * 10.0) / 10.0;

@@ -21,6 +21,10 @@ uniform float u_mid;
 uniform float u_treble;
 uniform float u_level;
 uniform float u_amount;
+uniform float u_p0;
+uniform float u_p1;
+uniform float u_p2;
+uniform float u_p3;
 `;
 
 const GEN_HEADER = `#version 300 es
@@ -98,6 +102,7 @@ void main() {
 
 const UNIFORM_NAMES = [
   "u_resolution","u_time","u_bass","u_mid","u_treble","u_level","u_amount",
+  "u_p0","u_p1","u_p2","u_p3",
   "u_prev","u_feedback","u_audio","u_text",
 ];
 
@@ -127,6 +132,7 @@ export class Pipeline {
   private h = 0;
   private blendMode    = 0;
   private blendOpacity = 1.0;
+  private genParams    = [0, 0, 0, 0];
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2", { antialias: false });
@@ -225,6 +231,9 @@ export class Pipeline {
   setBlend(mode: number, opacity: number): void {
     this.blendMode = mode; this.blendOpacity = opacity;
   }
+  setGenParams(p: number[]): void {
+    for (let i = 0; i < 4; i++) this.genParams[i] = p[i] ?? 0;
+  }
 
   // ── FBO management ──────────────────────────────────────────────────────────
 
@@ -274,6 +283,7 @@ export class Pipeline {
     gl.uniform1f(p.loc["u_treble"]??null, u.treble);
     gl.uniform1f(p.loc["u_level"]??null,  u.level);
     gl.uniform1f(p.loc["u_amount"]??null, amount);
+    for (let i = 0; i < 4; i++) gl.uniform1f(p.loc[`u_p${i}`]??null, this.genParams[i] ?? 0);
   }
 
   private pass(p: Program, target: WebGLFramebuffer | null, u: Uniforms, amount: number, srcTex?: WebGLTexture | null): void {
