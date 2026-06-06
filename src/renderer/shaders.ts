@@ -159,7 +159,124 @@ vec3 render(vec2 uv, vec2 res) {
   return base + grid;
 }`,
   },
-  // ── Nouveaux générateurs ──────────────────────────────────────────────────
+  // ── Batch 2 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Neurones",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float asp = res.x / res.y;
+  vec2 p = uv * vec2(asp, 1.0);
+  float t = u_time;
+  float bright = 0.0;
+  for (int i = 0; i < 7; i++) {
+    float fi = float(i);
+    vec2 n1 = vec2(hash(vec2(fi, 10.0)) * asp, 0.08 + hash(vec2(fi, 20.0)) * 0.84);
+    float pulse = 0.5 + 0.5 * sin(t * (0.7 + hash(vec2(fi, 30.0)) * 1.2) + fi * 0.9);
+    // noeud
+    bright += 0.012 / (length(p - n1) + 0.02) * pulse * (0.4 + u_level * 0.8);
+    // axones vers 2 voisins
+    for (int jj = 1; jj <= 2; jj++) {
+      float fj = mod(fi + float(jj) * 2.0 + 1.0, 7.0);
+      vec2 n2  = vec2(hash(vec2(fj, 10.0)) * asp, 0.08 + hash(vec2(fj, 20.0)) * 0.84);
+      vec2 ab  = n2 - n1;
+      float s  = clamp(dot(p - n1, ab) / max(dot(ab, ab), 1e-4), 0.0, 1.0);
+      float dl = length(p - (n1 + ab * s));
+      float sig = sin(t * 3.5 - s * 9.0 + fi * 2.3) * 0.5 + 0.5;
+      bright += 0.003 / (dl + 0.007) * sig * pulse * (0.25 + u_bass * 0.55);
+    }
+  }
+  float v = min(bright, 1.5);
+  return mix(vec3(0.0, 0.55, 0.25), vec3(0.5, 0.95, 0.35), smoothstep(0.0, 1.0, v * 0.7)) * v;
+}`,
+  },
+  {
+    name: "Vortex",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float r = length(p);
+  float a = atan(p.y, p.x);
+  float t = u_time;
+  float twist  = a - (1.0 / max(r, 0.05)) * 0.25 - t * (0.5 + u_bass * 1.5);
+  float spiral = sin(twist * 5.0 + r * 8.0);
+  float rings  = sin(r * 22.0 - t * 2.5 + u_mid * 3.0);
+  float v = (spiral * 0.6 + rings * 0.4) * 0.5 + 0.5;
+  v *= smoothstep(0.0, 0.04, r); // trou noir au centre
+  vec3 col = mix(vec3(0.02, 0.0, 0.06), vec3(0.05, 0.3, 0.7), v);
+  col = mix(col, vec3(0.7, 0.15, 0.85), pow(v, 3.0));
+  col = mix(col, vec3(0.95, 0.95, 1.0), pow(v, 8.0) * u_level);
+  return col * (0.5 + u_level * 0.7);
+}`,
+  },
+  {
+    name: "Pulse",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float r = length(p);
+  float t = u_time;
+  float bright = 0.0;
+  for (int i = 0; i < 5; i++) {
+    float ring = mod(t * (0.28 + u_bass * 0.45) - float(i) * 0.22, 1.1);
+    float fade = 1.0 - ring / 1.1;
+    bright += smoothstep(0.025, 0.0, abs(r - ring * 0.7)) * fade * fade * 1.5;
+  }
+  bright += exp(-r * 9.0) * (0.3 + u_bass * 1.0);
+  bright *= 0.8 + 0.2 * hash(vec2(floor(r * 60.0), floor(atan(p.y,p.x)*20.0)));
+  vec3 col = vec3(0.04, 0.35, 0.75) * bright;
+  col += vec3(0.95, 0.5, 0.05) * pow(bright, 3.5) * u_bass;
+  return col * (0.5 + u_level * 0.7);
+}`,
+  },
+  {
+    name: "Bruit",
+    src: /* glsl */ `
+float n2(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+}
+float fbm(vec2 p) {
+  float v=0.0, a=0.5;
+  for (int i=0;i<5;i++){v+=a*n2(p); p=p*2.1+vec2(1.7,9.2); a*=0.5;}
+  return v;
+}
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = uv * vec2(res.x/res.y, 1.0);
+  float t = u_time * 0.22;
+  vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2,1.3) + t * 0.85));
+  float f = fbm(p + q * (1.4 + u_bass * 0.9));
+  vec3 col = mix(vec3(0.01,0.0,0.02), vec3(0.45,0.05,0.01), f);
+  col = mix(col, vec3(0.9,0.38,0.03), smoothstep(0.4,0.7,f));
+  col = mix(col, vec3(1.0,0.88,0.6),  smoothstep(0.7,1.0,f) * (0.3+u_level*0.9));
+  return col;
+}`,
+  },
+  {
+    name: "Hex",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p  = uv * vec2(res.x/res.y, 1.0) * (8.0 + u_mid * 6.0);
+  float t = u_time;
+  vec2 r = vec2(1.0, 1.732), h = r * 0.5;
+  vec2 a = mod(p,   r) - h;
+  vec2 b = mod(p+h, r) - h;
+  vec2 gv = dot(a,a) < dot(b,b) ? a : b; // offset depuis centre hex
+  vec2 id = round(p - gv);               // ID cellule
+  float dEdge = 0.5 - max(abs(gv.x)*0.866025 + abs(gv.y)*0.5, abs(gv.y));
+  float ch = hash(id * 0.1731);
+  float pulse = (0.5 + 0.5*sin(t*(0.3+ch*0.5)+ch*TWO_PI)) * (0.2+u_bass*1.0);
+  float edge = smoothstep(0.0,  0.07, dEdge);
+  float fill = smoothstep(0.07, 0.38, dEdge) * pulse;
+  vec3 col = vec3(0.0, 0.02, 0.03);
+  col += vec3(0.0, 0.55, 0.45) * edge * 0.55;
+  col += vec3(0.0, 0.20, 0.50) * fill;
+  col += vec3(0.9, 0.40, 0.08) * pow(fill, 3.0) * u_bass;
+  return col;
+}`,
+  },
+  // ── Batch 1 ───────────────────────────────────────────────────────────────
 
   {
     name: "Oscilloscope",

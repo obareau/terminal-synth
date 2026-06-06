@@ -79,7 +79,86 @@ vec3 process(vec2 uv) {
   return c;
 }`,
   },
-  // ── Nouveaux effets ───────────────────────────────────────────────────────
+  // ── Batch 2 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Pixelate",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a    = u_amount;
+  float size = max(0.004, mix(0.004, 0.12, a*a) * (1.0 + u_bass * 0.4 * a));
+  vec2  puv  = floor(uv / size) * size + size * 0.5;
+  return prev(clamp(puv, 0.001, 0.999));
+}`,
+  },
+  {
+    name: "Thermal",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a   = u_amount;
+  vec3  c   = prev(uv);
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  // noir → violet → rouge → orange → blanc
+  vec3 th = vec3(0.0);
+  th = mix(th, vec3(0.35, 0.00, 0.50), smoothstep(0.00, 0.22, lum));
+  th = mix(th, vec3(0.80, 0.00, 0.10), smoothstep(0.22, 0.45, lum));
+  th = mix(th, vec3(1.00, 0.45, 0.00), smoothstep(0.45, 0.68, lum));
+  th = mix(th, vec3(1.00, 1.00, 0.90), smoothstep(0.68, 1.00, lum));
+  return mix(c, th, a);
+}`,
+  },
+  {
+    name: "Zoom",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a   = u_amount;
+  vec2  dir = uv - 0.5;
+  float s   = a * (0.015 + u_level * 0.022);
+  vec3  col = vec3(0.0);
+  float w   = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float t  = float(i) / 7.0;
+    float wt = 1.0 - t * 0.5;
+    col += prev(clamp(uv - dir * s * t, 0.001, 0.999)) * wt;
+    w   += wt;
+  }
+  return col / w;
+}`,
+  },
+  {
+    name: "VHS",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a  = u_amount;
+  float t  = u_time;
+  float band  = hash(vec2(floor(uv.y * 240.0), floor(t * 9.0)));
+  float shift = step(0.93 - a * 0.25, band) * (hash(vec2(band, t)) - 0.5) * a * 0.18;
+  vec2  suv = vec2(clamp(uv.x + shift, 0.001, 0.999), uv.y);
+  vec3  c   = prev(suv);
+  float bl  = a * 0.007;
+  c.r = mix(c.r, prev(clamp(suv + vec2( bl, 0.0), 0.001, 0.999)).r, a * 0.45);
+  c.b = mix(c.b, prev(clamp(suv - vec2( bl, 0.0), 0.001, 0.999)).b, a * 0.45);
+  c  *= 1.0 - a * 0.12 * sin(uv.y * 720.0 * PI);
+  c  += (hash(uv * u_resolution + t) - 0.5) * a * 0.07;
+  return c;
+}`,
+  },
+  {
+    name: "Seuil",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a    = u_amount;
+  vec3  c    = prev(uv);
+  float lvl  = mix(256.0, 3.0, a);
+  vec3  post = floor(c * lvl) / lvl;
+  vec2  px   = 2.0 / u_resolution;
+  vec3  dx   = prev(uv + vec2(px.x, 0.0)) - prev(uv - vec2(px.x, 0.0));
+  vec3  dy   = prev(uv + vec2(0.0, px.y)) - prev(uv - vec2(0.0, px.y));
+  float edge = length(dx) + length(dy);
+  return post + vec3(0.9, 0.45, 0.05) * edge * 6.0 * a * (0.5 + u_bass * 0.6);
+}`,
+  },
+  // ── Batch 1 ───────────────────────────────────────────────────────────────
 
   {
     name: "Aberration",
