@@ -26,6 +26,9 @@ const GEN_HEADER = `#version 300 es
 precision highp float;
 out vec4 fragColor;
 ${COMMON_UNIFORMS}
+uniform sampler2D u_audio; // 256×2 : ligne 0 = spectre, ligne 1 = forme d'onde
+float fftAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
+float waveAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
 `;
 const GEN_FOOTER = `
 void main() {
@@ -51,7 +54,7 @@ void main() {
 }`;
 
 const UNIFORM_NAMES = [
-  "u_resolution", "u_time", "u_bass", "u_mid", "u_treble", "u_level", "u_amount", "u_prev", "u_feedback",
+  "u_resolution", "u_time", "u_bass", "u_mid", "u_treble", "u_level", "u_amount", "u_prev", "u_feedback", "u_audio",
 ];
 
 export interface Uniforms {
@@ -81,6 +84,7 @@ export class Pipeline {
   // 2 cibles ping-pong + 1 historique (frame précédent)
   private tex: (WebGLTexture | null)[] = [null, null, null];
   private fbo: (WebGLFramebuffer | null)[] = [null, null, null];
+  private audioTex: WebGLTexture;
   private w = 0;
   private h = 0;
 
@@ -91,6 +95,27 @@ export class Pipeline {
     this.vao = gl.createVertexArray()!;
     this.vs = this.compileShader(gl.VERTEX_SHADER, VERT);
     this.copy = this.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
+    this.audioTex = this.makeAudioTex();
+  }
+
+  private makeAudioTex(): WebGLTexture {
+    const gl = this.gl;
+    const t = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 256, 2, 0, gl.RED, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+
+  /** Met à jour la texture audio : `data` de 512 octets (256 spectre + 256 waveform). */
+  updateAudio(data: Uint8Array): void {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.audioTex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 256, 2, gl.RED, gl.UNSIGNED_BYTE, data);
   }
 
   private compileShader(type: number, src: string): WebGLShader {
@@ -180,6 +205,10 @@ export class Pipeline {
     gl.bindFramebuffer(gl.FRAMEBUFFER, target);
     gl.viewport(0, 0, this.w, this.h);
     this.bindUniforms(p, u, amount);
+    // texture audio (spectre + waveform) → unité 2, dispo pour les générateurs
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, this.audioTex);
+    gl.uniform1i(p.loc["u_audio"] ?? null, 2);
     if (srcTex !== undefined) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, srcTex);

@@ -49,6 +49,31 @@ vec3 render(vec2 uv, vec2 res) {
 }`,
   },
   {
+    name: "FFT bars",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float v = fftAt(uv.x);                          // hauteur de la barre (0..1)
+  float bar = step(uv.y, v);                       // rempli sous la valeur
+  vec3 col = mix(vec3(0.0, 0.04, 0.03), vec3(0.10, 0.90, 0.40), bar);
+  col += vec3(0.9, 0.3, 0.05) * smoothstep(0.012, 0.0, abs(uv.y - v)); // crête chaude
+  // séparation des barres
+  col *= 0.4 + 0.6 * step(0.12, fract(uv.x * 96.0));
+  return col;
+}`,
+  },
+  {
+    name: "Waveform",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float w = waveAt(uv.x);                          // 0..1, 0.5 = zéro
+  float d = abs(uv.y - w);
+  float line = smoothstep(0.02, 0.0, d);
+  vec3 col = vec3(0.0, 0.02, 0.04) + vec3(0.10, 0.70, 0.90) * line;
+  col += vec3(0.10, 0.70, 0.90) * 0.15 * smoothstep(0.12, 0.0, d); // halo
+  return col;
+}`,
+  },
+  {
     name: "Scan grid",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {

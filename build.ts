@@ -20,6 +20,16 @@ async function main(): Promise<void> {
     external: ["electron"],
   });
 
+  // Preload (pont sécurisé renderer ↔ main).
+  await esbuild.build({
+    ...common,
+    entryPoints: ["src/preload.ts"],
+    outfile: "dist/preload.js",
+    platform: "node",
+    format: "cjs",
+    external: ["electron"],
+  });
+
   // Renderer (navigateur : WebGL2 / Web Audio / Web MIDI).
   await esbuild.build({
     ...common,

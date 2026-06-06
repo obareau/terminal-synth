@@ -40,12 +40,22 @@ src/
 build.ts               # bundle esbuild (main = node, renderer = browser) + copie html
 ```
 
-## Roadmap (idées)
+## Roadmap
 
-- **MIDI-in** (Web MIDI) : notes/CC → uniforms ; recevoir de Live / BANG!.
-- **Ableton Link** / sync tempo.
-- **Presets** + multi-couches (blend de shaders).
-- **Support ISF** (bibliothèque de shaders ouverts) + import Shadertoy.
-- **Export** : vidéo (`MediaRecorder` / rendu offline → ffmpeg) + *asciicast* pour le mode terminal.
-- **Glyph atlas** pour un ASCII plus rapide/coloré ; sortie **Spout/NDI** (VJ).
-- Bascule moteur **natif Rust** (`wgpu` + `cpal` + `midir`) si besoin de perf VJ.
+**Fait**
+- Audio-réactif sur la **sortie système Windows** (loopback) ou micro ; vues **FFT bars** / **Waveform**.
+- **Pipeline** d'effets chaînés (entropie → feedback → glitch → filtre).
+- **Plein écran** natif (⛶ / F, Échap pour sortir).
+- **MIDI-in (contrôle)** + 2 modes de jeu : **Orgue** (dark ambient, soutenu) / **Noise** (percussif).
+
+**En cours / suite**
+- **Générateurs polyphoniques** : N passes générateur empilées (notes tenues = calques),
+  vélocité = brillance, aftertouch = modulation ; blend additif.
+- **Mapping MIDI complet** : zone basse = effets (note+aftertouch), zone médium = générateurs.
+- **Overlay texte** (lore ROBOTARIIS — « tactiques Recta »), style terminal/glitch.
+- **Lecture de fichier MIDI** pour séquencer les visuels.
+- **Export** vidéo (`MediaRecorder` → ffmpeg) + *asciicast* (easter-egg).
+
+**Plus tard**
+- Support **ISF** + import Shadertoy ; **presets** de chaîne ; sortie **Spout/NDI** (VJ) ;
+  bascule moteur **natif Rust** si besoin de perf.

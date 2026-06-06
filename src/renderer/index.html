@@ -63,8 +63,17 @@
     <pre id="ascii" hidden></pre>
     <div id="bar">
       <span class="brand">terminal-synth</span>
-      <select id="shader" title="Shader"></select>
-      <button id="audio" title="Activer l'entrée audio">🎤 audio</button>
+      <select id="shader" title="Shader / générateur"></select>
+      <select id="audio-src" title="Source audio">
+        <option value="system">🔊 Système</option>
+        <option value="mic">🎤 Micro</option>
+      </select>
+      <button id="audio" title="Activer l'entrée audio">audio</button>
+      <button id="midi" title="Activer le MIDI">🎛 MIDI</button>
+      <select id="midi-mode" title="Mode de jeu MIDI">
+        <option value="organ">Orgue</option>
+        <option value="noise">Noise</option>
+      </select>
       <button id="ascii-toggle" title="Mode ASCII">ASCII</button>
       <button id="full" title="Plein écran">⛶</button>
       <span class="spacer"></span>
