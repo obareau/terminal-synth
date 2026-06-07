@@ -1272,33 +1272,117 @@ vec3 render(vec2 uv, vec2 res) {
   return col;
 }`,
   },
-  // ── Shaders réels du monde (Shadertoy-style, flexibilité système démontrée) ──
+  // ── Shaders GLSL réels d'Internet (Shadertoy-style) ──────────────────────────
   {
-    name: "Truchet (real-world style)",
+    name: "Voronoi cells",
     src: /* glsl */ `
-// Adaptation d'un pattern Truchet - démontre la flexibilité du système
-// On peut copier/coller du GLSL d'Internet sans modification
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = uv * 4.0;
-  vec2 i = floor(p);
-  vec2 f = fract(p);
+  uv *= 8.0;
+  vec2 i_uv = floor(uv);
+  vec2 f_uv = fract(uv);
 
-  // Truchet pattern
-  float rnd = hash(i);
-  vec2 c = vec2(0.5);
-  float d = min(length(f - c), length(f - c + (rnd > 0.5 ? vec2(1.0, 0.0) : vec2(0.0, 1.0))));
+  float minDist = 1.0;
+  vec3 col = vec3(0.0);
 
-  float line = smoothstep(0.08, 0.06, d);
-  vec3 col = mix(vec3(0.1), vec3(0.8, 0.3, 0.1), line);
-  col += vec3(0.5, 0.2, 0.8) * fftAt(uv.x * 0.5) * 0.5;
+  for (float y = -1.0; y <= 1.0; y++) {
+    for (float x = -1.0; x <= 1.0; x++) {
+      vec2 neighbor = vec2(x, y);
+      vec2 cell = i_uv + neighbor;
+      vec2 cellCenter = cell + hash(cell + u_time * 0.1);
+
+      float dist = length(f_uv + neighbor - cellCenter);
+      if (dist < minDist) {
+        minDist = dist;
+        col = mix(vec3(0.1, 0.8, 0.6), vec3(0.9, 0.2, 0.4), hash(cell));
+      }
+    }
+  }
+
+  col += smoothstep(0.05, 0.0, minDist) * vec3(1.0);
+  col *= 0.5 + 0.5 * u_level;
   return col;
 }`,
   },
   {
-    name: "Mandelbrot explorer",
+    name: "Perlin-like noise",
     src: /* glsl */ `
-// Classic Mandelbrot set - démontre les shaders complets
-// Ce shader a tout ce qu'il faut (main, uniforms)
+float perlin_like(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  float a = hash(i), b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  float n1 = perlin_like(uv * 3.0 + t);
+  float n2 = perlin_like(uv * 6.0 - t * 0.7);
+  float n3 = perlin_like(uv * 12.0 + t * 1.3);
+
+  float fbm = n1 * 0.5 + n2 * 0.25 + n3 * 0.125;
+  vec3 col = mix(vec3(0.1, 0.2, 0.4), vec3(0.8, 0.4, 0.1), fbm);
+  col += fftAt(uv.x) * 0.3;
+  return col;
+}`,
+  },
+  {
+    name: "Stripes wave",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float freq = 8.0 + u_bass * 8.0;
+  float wave = sin(uv.x * freq + u_time * 2.0 - uv.y * 3.0);
+  float stripe = abs(wave) * 0.5;
+
+  vec3 col = vec3(0.0);
+  col.r = stripe + sin(u_time * 0.5) * 0.2;
+  col.g = stripe + cos(u_time * 0.7) * 0.2;
+  col.b = stripe + sin(u_time * 0.3) * 0.2;
+
+  col += fftAt(uv.x * 0.3) * vec3(0.4, 0.2, 0.8);
+  return col * (0.6 + u_level * 0.6);
+}`,
+  },
+  {
+    name: "Radial symmetry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 pos = uv - 0.5;
+  float angle = atan(pos.y, pos.x);
+  float radius = length(pos);
+
+  float sides = 6.0 + u_mid * 8.0;
+  float pattern = cos(angle * sides + u_time);
+  float rings = sin(radius * 12.0 - u_time);
+
+  float combined = pattern * rings;
+  vec3 col = mix(vec3(0.1, 0.05, 0.2), vec3(0.9, 0.3, 0.7), combined * 0.5 + 0.5);
+  col *= smoothstep(1.0, 0.3, radius);
+  return col;
+}`,
+  },
+  {
+    name: "Chromatic shift",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  float shift = 0.01 + u_bass * 0.05;
+
+  float r = sin(uv.x * 10.0 + t) * 0.5 + 0.5;
+  r = texture(u_audio, vec2(uv.x + shift, 0.25)).r;
+
+  float g = sin(uv.y * 10.0 + t * 1.3) * 0.5 + 0.5;
+  g = texture(u_audio, vec2(uv.x, 0.25)).r;
+
+  float b = sin((uv.x + uv.y) * 10.0 + t * 0.7) * 0.5 + 0.5;
+  b = texture(u_audio, vec2(uv.x - shift, 0.25)).r;
+
+  return vec3(r, g, b) * (0.7 + u_level * 0.5);
+}`,
+  },
+  {
+    name: "Mandelbrot (complete)",
+    src: /* glsl */ `
 #version 300 es
 precision highp float;
 out vec4 fragColor;
