@@ -135,7 +135,7 @@ export class Pipeline {
   private genParams    = [0, 0, 0, 0];
 
   constructor(canvas: HTMLCanvasElement) {
-    const gl = canvas.getContext("webgl2", { antialias: false });
+    const gl = canvas.getContext("webgl2", { antialias: false, preserveDrawingBuffer: true });
     if (!gl) throw new Error("WebGL2 indisponible");
     this.gl  = gl;
     this.vao = gl.createVertexArray()!;

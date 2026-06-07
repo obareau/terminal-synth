@@ -24,10 +24,10 @@ class TextLayer {
     enabled: false,
     words: ["SYNTH", "CHAOS", "GLITCH", "PSYCHO", "VORTEX", "SIGNAL"],
     pixelationLevel: 4,
-    fontSize: 150,
+    fontSize: 70,
     color: "#00ff00",
     opacity: 0.8,
-    duration: 2000,
+    duration: 150,
     audioReactive: true,
   };
 
@@ -35,6 +35,10 @@ class TextLayer {
   private wordChangeTime: number = 0;
   private audioEnergy: number = 0;
   private audioFrequency: number = 0;
+  private wordLoopCount: number = 0; // Track number of words shown in current session
+  private maxWordsPerSession: number = 3; // Show 2-3 words max then disappear
+  private disabledAt: number = 0; // Track when layer was disabled
+  private reappearDelay: number = 5000; // Wait 5 seconds before reappearing
 
   /**
    * Initialize text layer
@@ -75,12 +79,26 @@ class TextLayer {
    * Main animation loop
    */
   private animate() {
+    const now = performance.now();
+
+    // Check if we should reappear after being disabled
+    if (!this.config.enabled && this.disabledAt > 0) {
+      if (now - this.disabledAt > this.reappearDelay) {
+        this.config.enabled = true;
+        this.disabledAt = 0;
+        this.wordLoopCount = 0;
+        this.pickRandomWord();
+        this.wordChangeTime = now;
+        if (this.canvas) {
+          this.canvas.style.display = "block";
+        }
+      }
+    }
+
     if (!this.config.enabled || !this.ctx || !this.canvas) {
       requestAnimationFrame(() => this.animate());
       return;
     }
-
-    const now = performance.now();
 
     // Change word periodically
     if (now - this.wordChangeTime > this.config.duration) {
@@ -109,7 +127,7 @@ class TextLayer {
     const pixelSize = this.config.pixelationLevel;
 
     // Set font
-    const baseFontSize = Math.min(w, h) * (this.config.fontSize / 100) * 0.3;
+    const baseFontSize = Math.min(w, h) * (this.config.fontSize / 100) * 0.2;
     this.ctx.font = `bold ${baseFontSize}px 'Courier New', monospace`;
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
@@ -200,6 +218,17 @@ class TextLayer {
     if (this.config.words.length > 0) {
       const idx = Math.floor(Math.random() * this.config.words.length);
       this.currentWord = this.config.words[idx];
+      this.wordLoopCount++;
+
+      // After 3 words, disable the layer and mark when
+      if (this.wordLoopCount >= this.maxWordsPerSession) {
+        this.wordLoopCount = 0;
+        this.config.enabled = false;
+        this.disabledAt = performance.now();
+        if (this.canvas) {
+          this.canvas.style.display = "none";
+        }
+      }
     }
   }
 
@@ -326,6 +355,11 @@ class TextLayer {
    */
   toggle() {
     this.config.enabled = !this.config.enabled;
+    if (this.config.enabled) {
+      this.wordLoopCount = 0; // Reset counter when enabling
+      this.pickRandomWord();
+      this.wordChangeTime = performance.now();
+    }
     if (this.canvas) {
       this.canvas.style.display = this.config.enabled ? "block" : "none";
     }
