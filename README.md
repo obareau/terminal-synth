@@ -33,6 +33,26 @@ npm run package    # Build production
 
 ---
 
+## 🎬 Screenshots
+
+### Série Géométrique Minimaliste
+![Geometric Patterns - Lignes diagonales et patterns élégants](assets/screenshots/01-geometric.png)
+**Générateur:** Geometric Shape Series — Patterns élégants en monochrome
+
+### Système Orbital (Spiral Orbits)
+![Orbital Systems - Spirale de nœuds animés](assets/screenshots/02-orbital.png)
+**Générateur:** Spiral Orbits — Système dynamique avec animation fluide
+
+### Scanlines CRT Rétro
+![Scanlines Effect - Lignes horizontales animées style CRT](assets/screenshots/03-scanlines.png)
+**Générateur:** Wire Grid / Scanlines — Esthétique rétro et industrielle
+
+### Grille Animée Audio-Réactive
+![Grid Animation - Carrés pulsants en temps réel](assets/screenshots/04-grid.png)
+**Générateur:** Grid Nodes — Réagit à l'audio en direct
+
+---
+
 ## ✨ Caractéristiques
 
 ### 🎨 Rendu Visuel
