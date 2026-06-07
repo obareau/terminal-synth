@@ -46,9 +46,7 @@
       "depends": [
         "libx11-6",
         "libxss1",
-        "libgconf-2-4",
-        "libnss3",
-        "libxkbfile1"
+        "libnss3"
       ],
       "maintainer": "Olivier Bareau <olivier.bareau@gmail.com>",
       "priority": "optional"
