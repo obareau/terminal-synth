@@ -15,4 +15,6 @@ contextBridge.exposeInMainWorld("synth", {
     ipcRenderer.invoke("spout:frame", w, h, pixels),
   openOutputWindow: (): Promise<boolean> =>
     ipcRenderer.invoke("window:open-output"),
+  getStats: (): Promise<{ cpu: number; gpu: number }> =>
+    ipcRenderer.invoke("stats:get-usage"),
 });

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, screen } from "electron";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import * as os from "node:os";
 
 let controlWindow: BrowserWindow | null = null;
 let outputWindow: BrowserWindow | null = null;
@@ -69,6 +70,25 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // Get CPU/GPU usage stats
+  ipcMain.handle("stats:get-usage", () => {
+    const cpus = os.cpus();
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const usedMemory = totalMemory - freeMemory;
+    const cpuPercent = Math.round((usedMemory / totalMemory) * 100);
+
+    // Estimate CPU usage from load average
+    const loadAvg = os.loadavg()[0];
+    const cpuCount = cpus.length;
+    const cpuUsage = Math.round((loadAvg / cpuCount) * 100);
+
+    return {
+      cpu: Math.min(100, cpuUsage),
+      gpu: 0, // GPU monitoring not available without external tools
+    };
+  });
+
   // Open output window on secondary display (or return false if single-screen)
   ipcMain.handle("window:open-output", () => {
     const displays = screen.getAllDisplays();
