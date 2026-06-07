@@ -1387,69 +1387,1258 @@ vec3 render(vec2 uv, vec2 res) {
 }`,
   },
   {
-    name: "Kaleidoscope 3D",
+    name: "Scanlines",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * 2.0;
-  float t = u_time * 0.5;
+  float t = u_time;
 
-  // Répétition kaléidoscopique
-  p = abs(p);
-  p = abs(p - 1.0);
-  if(p.x < p.y) p = p.yx;
+  // Ligne de scan CRT rétro
+  float scanline = sin(uv.y * res.y * 0.5 + t) * 0.5 + 0.5;
+  float intensity = 0.7 + 0.3 * scanline;
 
-  float d = length(p - vec2(0.5));
+  // Bruit horizontal style CRT
+  float noise = hash(vec2(uv.x * 20.0, floor(uv.y * res.y)));
 
-  // Motif rotatif
-  float angle = atan(p.y, p.x) + t;
-  float r = length(p) * 5.0;
+  // Dégradé vertical minimaliste
+  float vert = uv.y * 0.5 + 0.5;
 
-  // Couleurs basées sur le pattern
-  vec3 col = vec3(
-    0.5 + 0.5 * sin(angle + r + t),
-    0.5 + 0.5 * sin(angle - r + t + 2.0),
-    0.5 + 0.5 * sin(r + t + 4.0)
-  );
+  // Audio reactivity en monochrome
+  float audio_line = abs(sin(uv.x * 10.0 - t * 2.0)) * u_bass;
 
-  // Audio reactivity
-  col += vec3(u_bass, u_mid, u_treble) * 0.3;
+  vec3 col = vec3(vert * intensity) * (0.5 + noise * 0.2);
+  col += vec3(1.0) * audio_line * 0.3;
+  col *= 0.8 + 0.2 * u_level;
 
-  return col * smoothstep(0.5, 0.0, d);
+  return col;
 }`,
   },
   {
-    name: "Cosmic Void",
+    name: "Wire Grid",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = uv * 3.0;
+  float t = u_time * 0.5;
+
+  // Grille filaire minimaliste
+  float grid_size = 8.0;
+  vec2 grid = abs(fract(uv * grid_size) - 0.5);
+  float grid_line = min(grid.x, grid.y);
+
+  // Lignes horizontales animées
+  float h_line = abs(sin((uv.y * grid_size + t) * 3.14159)) - 0.4;
+  h_line = step(0.0, h_line) * step(0.0, 0.1 - abs(h_line));
+
+  // Distorsion minimaliste
+  float dist = abs(sin(uv.x * 20.0 + t * 2.0) * 0.02);
+  float final_line = step(0.02, grid_line);
+
+  float brightness = final_line * (0.6 + 0.4 * h_line);
+  brightness += u_bass * 0.2;
+
+  return vec3(brightness * 0.8) * (0.5 + u_level * 0.5);
+}`,
+  },
+  {
+    name: "Circuit Board",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.3;
 
-  // Amas de "stars" animées
-  vec3 col = vec3(0.0);
+  // Traces de circuit minimalistes
+  vec2 p = uv * 4.0;
+  vec2 id = floor(p);
+  vec2 f = fract(p);
 
-  for(float i = 0.0; i < 5.0; i++) {
-    vec2 offset = vec2(sin(i + t), cos(i * 0.7 + t)) * (0.5 + 0.3*sin(i));
-    vec2 pos = p + offset;
+  // Lignes horizontales et verticales
+  float h_trace = step(0.45, f.y) * step(f.y, 0.55);
+  float v_trace = step(0.45, f.x) * step(f.x, 0.55);
 
-    // Motif fractale
-    float d = 1.0;
-    for(float j = 0.0; j < 3.0; j++) {
-      pos = abs(pos) - 0.5 - 0.2*sin(t + i + j);
-      if(dot(pos, pos) > 4.0) break;
-      d *= length(pos);
-    }
+  // Points de connection (via)
+  float via = length(f - 0.5);
+  float via_circle = step(via, 0.08);
 
-    vec3 star_col = vec3(
-      0.2 + 0.8*sin(i + t),
-      0.3 + 0.7*sin(i*0.5 + t),
-      0.9 - 0.5*sin(i*0.3 + t)
-    );
+  // Animation des traces
+  float pulse = sin(id.x * 0.5 + id.y * 0.3 + t) * 0.5 + 0.5;
 
-    col += star_col * 0.05 / (d + 0.1);
+  float trace_bright = (h_trace + v_trace) * pulse;
+  float total = max(trace_bright, via_circle);
+
+  total += u_bass * 0.15;
+
+  return vec3(total * 0.7) * (0.6 + u_level * 0.4);
+}`,
+  },
+  {
+    name: "Binary Stream",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+
+  // Flux binaire (0 et 1)
+  float col_size = 12.0;
+  float row_size = 6.0;
+
+  vec2 grid = floor(vec2(uv.x * col_size, (uv.y + t * 0.3) * row_size));
+  float idx = mod(hash(grid) * 100.0, 2.0);
+
+  // Afficher 0 ou 1
+  vec2 f = fract(vec2(uv.x * col_size, (uv.y + t * 0.3) * row_size));
+
+  // Caractère simple: ligne pour 1, carré pour 0
+  float char_line = 0.0;
+  if(idx < 1.0) {
+    // "1" = ligne verticale
+    char_line = step(0.4, f.x) * step(f.x, 0.6) * step(0.2, f.y) * step(f.y, 0.8);
+  } else {
+    // "0" = carré
+    char_line = step(0.3, f.x) * step(f.x, 0.7) * step(0.2, f.y) * step(f.y, 0.8);
+    char_line += (step(0.3, f.x) * step(f.x, 0.4) + step(0.6, f.x) * step(f.x, 0.7)) * (step(0.2, f.y) * step(f.y, 0.8));
   }
 
-  col += vec3(0.01, 0.02, 0.05) * (1.0 - length(uv - 0.5) * 2.0);
-  return col * (0.5 + u_level * 0.8);
+  float brightness = max(char_line, 0.05 * u_bass);
+
+  return vec3(brightness * 0.8);
+}`,
+  },
+  {
+    name: "Glitch Minimal",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+
+  // Corruption minimaliste
+  vec2 p = uv;
+
+  // Décalage aléatoire par scanlines
+  float scan = floor(p.y * 20.0);
+  float glitch_intensity = abs(sin(scan * 0.1 + t * 3.0)) * step(0.8, fract(scan * 0.3 + t));
+
+  // Offset et duplication
+  float offset = glitch_intensity * 0.08;
+  float r = texture(u_audio, vec2(p.x + offset, p.y * 0.25)).r;
+  float g = texture(u_audio, vec2(p.x, (p.y + offset) * 0.25)).r;
+  float b = texture(u_audio, vec2(p.x - offset, p.y * 0.25)).r;
+
+  // Pattern blocky
+  float block = floor(p.x * 16.0);
+  float block_glitch = step(0.9, fract(block * 0.1 + t * 2.0)) * glitch_intensity;
+
+  float brightness = max(max(r, g), b) * (1.0 - block_glitch) + block_glitch;
+
+  return vec3(brightness * 0.7);
+}`,
+  },
+  {
+    name: "Node Grid",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.3;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Grille régulière de nœuds
+  float grid_scale = 5.0;
+  vec2 grid_pos = floor(uv * grid_scale);
+  vec2 grid_frac = fract(uv * grid_scale);
+
+  // Distance au nœud le plus proche
+  float min_dist = 10.0;
+  vec2 closest_node = vec2(0.0);
+
+  for(int dx = -1; dx <= 1; dx++) {
+    for(int dy = -1; dy <= 1; dy++) {
+      vec2 node_grid = grid_pos + vec2(float(dx), float(dy));
+      vec2 node_world = (node_grid + 0.5) / grid_scale;
+
+      // Perturbation animée
+      float h = hash(node_grid);
+      node_world += vec2(sin(t + h * 10.0), cos(t * 0.8 + h * 8.0)) * 0.04;
+
+      float d = distance(uv, node_world);
+      if(d < min_dist) {
+        min_dist = d;
+        closest_node = node_world;
+      }
+
+      // Dessiner le nœud
+      float ring = smoothstep(0.015, 0.008, d) * smoothstep(0.008, 0.012, d);
+      col += vec3(ring * 0.85);
+    }
+  }
+
+  // Lignes vers 4 plus proches voisins
+  for(int i = 0; i < 4; i++) {
+    float angle = float(i) * 1.5708;  // 4 directions
+    vec2 dir = normalize(vec2(cos(angle), sin(angle)));
+    float step_size = 1.0 / grid_scale;
+
+    // Tracer jusqu'au nœud suivant
+    for(float s = 0.0; s <= 1.5; s += 0.1) {
+      vec2 point = closest_node + dir * step_size * s;
+      if(point.x < 0.0 || point.x > 1.0 || point.y < 0.0 || point.y > 1.0) break;
+
+      vec2 perp = vec2(-dir.y, dir.x);
+      float dist_to_line = abs(dot(uv - point, perp));
+
+      if(dist_to_line < 0.008) {
+        float line = smoothstep(0.01, 0.0, dist_to_line);
+        col += vec3(line * 0.6);
+      }
+    }
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.05);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Spiral Nodes",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Spirale de nœuds
+  for(int i = 0; i < 15; i++) {
+    float fi = float(i);
+    float angle = fi * 0.5 + t * 0.3;
+    float radius = 0.3 + fi * 0.08;
+
+    vec2 node_pos = vec2(cos(angle), sin(angle)) * radius;
+    float d = length(p - node_pos);
+
+    // Nœud
+    float ring = smoothstep(0.08, 0.06, d) * smoothstep(0.06, 0.075, d);
+    col += vec3(ring * 0.9);
+
+    // Connexion avec le nœud précédent
+    if(i > 0) {
+      float prev_angle = (fi - 1.0) * 0.5 + t * 0.3;
+      float prev_radius = 0.3 + (fi - 1.0) * 0.08;
+      vec2 prev_pos = vec2(cos(prev_angle), sin(prev_angle)) * prev_radius;
+
+      vec2 line_dir = normalize(prev_pos - node_pos);
+      vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+      float dist_along = dot(p - node_pos, line_dir);
+      float dist_to_line = abs(dot(p - node_pos, line_perp));
+      float line_len = distance(node_pos, prev_pos);
+
+      if(dist_along >= 0.0 && dist_along <= line_len && dist_to_line < 0.008) {
+        float line = smoothstep(0.01, 0.0, dist_to_line);
+        col += vec3(line * 0.7);
+      }
+    }
+  }
+
+  col *= 0.75 + 0.25 * u_level;
+  col += vec3(u_bass * 0.08);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Tree Network",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.4;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Arbre hiérarchique de nœuds
+  for(int level = 0; level < 4; level++) {
+    int node_count = int(pow(2.0, float(level)));
+    float y_offset = 0.8 - float(level) * 0.3;
+
+    for(int i = 0; i < node_count; i++) {
+      if(i >= 8) break;  // Limite pour perf
+
+      float fi = float(i);
+      float x = (fi + 0.5) / float(node_count) * 2.0 - 1.0;
+      vec2 node_pos = vec2(x, y_offset);
+
+      // Perturbation
+      node_pos += vec2(sin(t + fi * 0.7) * 0.1, cos(t * 0.5 + fi) * 0.05);
+
+      float d = length(p - node_pos);
+      float ring = smoothstep(0.06, 0.04, d) * smoothstep(0.04, 0.055, d);
+      col += vec3(ring * 0.9);
+
+      // Connexion parent
+      if(level > 0) {
+        int parent = i / 2;
+        float parent_x = (float(parent) + 0.5) / float(node_count / 2) * 2.0 - 1.0;
+        vec2 parent_pos = vec2(parent_x, y_offset + 0.3);
+        parent_pos += vec2(sin(t + float(parent) * 0.7) * 0.1, cos(t * 0.5 + float(parent)) * 0.05);
+
+        vec2 line_dir = normalize(parent_pos - node_pos);
+        vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+        float dist_along = dot(p - node_pos, line_dir);
+        float dist_to_line = abs(dot(p - node_pos, line_perp));
+        float line_len = distance(node_pos, parent_pos);
+
+        if(dist_along >= 0.0 && dist_along <= line_len && dist_to_line < 0.006) {
+          float line = smoothstep(0.008, 0.0, dist_to_line);
+          col += vec3(line * 0.65);
+        }
+      }
+    }
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.06);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Wave Nodes",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.6;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Vagues horizontales de nœuds
+  int row_count = 8;
+  for(int row = 0; row < row_count; row++) {
+    float y = float(row) / float(row_count) * 2.0 - 1.0;
+    int nodes_in_row = 12;
+
+    for(int i = 0; i < nodes_in_row; i++) {
+      float fi = float(i);
+      float x = (fi + 0.5) / float(nodes_in_row) * 2.0 - 1.0;
+
+      // Perturbation en vague
+      float wave = sin(fi * 0.5 + t * 2.0 + float(row) * 0.3) * 0.15;
+      vec2 node_pos = vec2(x + wave, y);
+
+      float d = length(p - node_pos);
+      float ring = smoothstep(0.05, 0.03, d) * smoothstep(0.03, 0.048, d);
+      col += vec3(ring * 0.85);
+
+      // Connexion horizontale
+      if(i > 0) {
+        float prev_wave = sin((fi - 1.0) * 0.5 + t * 2.0 + float(row) * 0.3) * 0.15;
+        vec2 prev_pos = vec2(x - 1.0 / float(nodes_in_row) + prev_wave, y);
+
+        vec2 line_dir = normalize(prev_pos - node_pos);
+        vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+        float dist_along = dot(p - node_pos, line_dir);
+        float dist_to_line = abs(dot(p - node_pos, line_perp));
+
+        if(dist_along >= 0.0 && dist_along <= distance(node_pos, prev_pos) && dist_to_line < 0.006) {
+          float line = smoothstep(0.008, 0.0, dist_to_line);
+          col += vec3(line * 0.6);
+        }
+      }
+    }
+  }
+
+  col *= 0.75 + 0.25 * u_level;
+  col += vec3(u_bass * 0.1);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Cluster Network",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // 5 clusters de nœuds
+  for(int cluster = 0; cluster < 5; cluster++) {
+    float fc = float(cluster);
+    float cluster_angle = fc * 1.25 + t * 0.2;
+    float cluster_radius = 0.6;
+    vec2 cluster_center = vec2(cos(cluster_angle), sin(cluster_angle)) * cluster_radius;
+
+    // 6 nœuds par cluster
+    for(int i = 0; i < 6; i++) {
+      float fi = float(i);
+      float angle = fi * 1.047 + t * 0.5 + fc * 2.0;
+      float radius = 0.15;
+
+      vec2 node_pos = cluster_center + vec2(cos(angle), sin(angle)) * radius;
+      float d = length(p - node_pos);
+
+      float ring = smoothstep(0.045, 0.03, d) * smoothstep(0.03, 0.042, d);
+      col += vec3(ring * 0.9);
+
+      // Connexions intra-cluster
+      if(i > 0) {
+        float prev_angle = (fi - 1.0) * 1.047 + t * 0.5 + fc * 2.0;
+        vec2 prev_pos = cluster_center + vec2(cos(prev_angle), sin(prev_angle)) * radius;
+
+        vec2 line_dir = normalize(prev_pos - node_pos);
+        vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+        float dist_along = dot(p - node_pos, line_dir);
+        float dist_to_line = abs(dot(p - node_pos, line_perp));
+        float line_len = distance(node_pos, prev_pos);
+
+        if(dist_along >= 0.0 && dist_along <= line_len && dist_to_line < 0.005) {
+          float line = smoothstep(0.007, 0.0, dist_to_line);
+          col += vec3(line * 0.6);
+        }
+      }
+    }
+
+    // Connexions inter-clusters
+    if(cluster < 4) {
+      float next_angle = (fc + 1.0) * 1.25 + t * 0.2;
+      vec2 next_center = vec2(cos(next_angle), sin(next_angle)) * cluster_radius;
+
+      vec2 line_dir = normalize(next_center - cluster_center);
+      vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+      float dist_to_line = abs(dot(p - cluster_center, line_perp));
+      float dist_along = dot(p - cluster_center, line_dir);
+      float line_len = distance(cluster_center, next_center);
+
+      if(dist_along >= 0.0 && dist_along <= line_len && dist_to_line < 0.004) {
+        float line = smoothstep(0.006, 0.0, dist_to_line);
+        col += vec3(line * 0.4);
+      }
+    }
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.07);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Grid Lines",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.3;
+  vec2 p = uv;
+
+  // Grille simple avec modulation animée
+  float grid_size = 12.0;
+  vec2 grid = abs(fract(p * grid_size) - 0.5);
+  float grid_line = min(grid.x, grid.y);
+
+  // Animation : les lignes s'épaississent et se rétrécissent
+  float thickness = 0.08 + 0.04 * sin(t * 2.0);
+  float line = step(grid_line, thickness);
+
+  // Dégradé basé sur position
+  float grad = uv.y * 0.5 + 0.5;
+  vec3 col = vec3(line * grad);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.05);
+  return col;
+}`,
+  },
+  {
+    name: "Squares Pattern",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = uv;
+
+  // Carrés animés
+  float square_size = 0.2;
+  vec2 sq = fract(p / square_size);
+  float d_to_edge = min(min(sq.x, sq.y), min(1.0 - sq.x, 1.0 - sq.y));
+
+  float border = smoothstep(0.08, 0.02, d_to_edge);
+
+  // Remplissage avec animation
+  float fill_amount = 0.5 + 0.5 * sin(t + length(uv) * 5.0);
+  float fill = step(fill_amount, 0.5 + d_to_edge);
+
+  vec3 col = vec3(border * 0.9 + fill * 0.3);
+
+  col *= 0.75 + 0.25 * u_level;
+  col += vec3(u_bass * 0.06);
+  return col;
+}`,
+  },
+  {
+    name: "Cross Pattern",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.4;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  // Croix principal
+  float h_line = abs(p.y);
+  float v_line = abs(p.x);
+  float cross = min(h_line, v_line);
+
+  float thickness = 0.1 + 0.05 * sin(t * 2.0);
+  float main_cross = step(cross, thickness);
+
+  // Croix animées qui tournent
+  float angle = atan(p.y, p.x) + t * 0.5;
+  float radius = length(p);
+
+  float rotated_cross = min(abs(sin(angle)), abs(cos(angle)));
+  float rot_line = smoothstep(radius * 0.3, 0.0, rotated_cross - 0.15);
+
+  vec3 col = vec3(main_cross * 0.8 + rot_line * 0.4);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.08);
+  return col;
+}`,
+  },
+  {
+    name: "Hexagon Maze",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.3;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Grille hexagonale
+  float hex_size = 0.25;
+  vec2 hex_pos = uv / hex_size;
+
+  // Offset tous les deux rangées
+  if(mod(hex_pos.y, 2.0) > 1.0) {
+    hex_pos.x += 0.5;
+  }
+
+  vec2 hex_center = floor(hex_pos) * hex_size;
+  if(mod(floor(hex_pos).y, 2.0) > 0.5) {
+    hex_center.x += hex_size * 0.5;
+  }
+
+  // Tracer hexagones
+  for(int i = 0; i < 6; i++) {
+    float angle = float(i) * 1.047;
+    vec2 vertex = hex_center + vec2(cos(angle), sin(angle)) * hex_size * 0.3;
+
+    float d = distance(uv, vertex);
+    float ring = smoothstep(0.04, 0.01, d) * smoothstep(0.01, 0.035, d);
+    col += vec3(ring * 0.8);
+  }
+
+  col *= 0.75 + 0.25 * u_level;
+  col += vec3(u_bass * 0.05);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Lines Pulse",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.8;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Lignes parallèles animées
+  for(int i = -5; i <= 5; i++) {
+    float fi = float(i);
+    float line_y = p.y + sin(t + fi * 0.3) * 0.3;
+
+    float thickness = 0.05 + 0.03 * sin(t * 2.0 + fi);
+    float line = smoothstep(thickness, 0.0, abs(line_y - fi * 0.25));
+
+    col += vec3(line * (0.6 + 0.4 * abs(sin(fi * 0.5))));
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.1);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Dots Matrix",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = uv;
+
+  // Matrice de points
+  float dot_size = 0.08;
+  vec2 dots = fract(p * 12.0);
+
+  float d_to_center = length(dots - 0.5);
+  float dot_radius = dot_size * (0.5 + 0.5 * sin(t + length(uv) * 10.0));
+
+  float dot = smoothstep(dot_radius + 0.02, dot_radius - 0.01, d_to_center);
+
+  // Remplissage animé
+  float fill = smoothstep(dot_radius, 0.0, d_to_center);
+
+  vec3 col = vec3(dot * 0.9 + fill * 0.4);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.07);
+  return col;
+}`,
+  },
+  {
+    name: "Concentric Circles",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  float r = length(p);
+
+  // Cercles concentriques animés
+  float circle = sin(r * 20.0 - t * 3.0) * 0.5 + 0.5;
+  float line = smoothstep(0.1, 0.0, abs(circle - 0.5));
+
+  // Modulation radiale
+  float glow = exp(-r * 3.0) * 0.6;
+
+  vec3 col = vec3(line * 0.9 + glow * 0.3);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.08);
+  return col;
+}`,
+  },
+  {
+    name: "Radial Lines",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.4;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  float angle = atan(p.y, p.x);
+  float r = length(p);
+
+  // Lignes radiantes
+  float line_count = 12.0;
+  float radial = abs(sin(angle * line_count)) * smoothstep(0.01, 0.0, abs(sin(angle * line_count)) - 0.5);
+
+  // Modulation d'épaisseur animée
+  float thickness = 0.3 + 0.2 * sin(t * 2.0 + r * 5.0);
+  float lines = smoothstep(thickness, thickness - 0.1, r);
+
+  vec3 col = vec3(radial * lines * 0.85);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.07);
+  return col;
+}`,
+  },
+  {
+    name: "Sine Waves",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.6;
+  vec2 p = uv;
+
+  // Ondes sinusoïdales superposées
+  float wave1 = sin(p.x * 8.0 - t * 2.0) * 0.3;
+  float wave2 = sin(p.x * 5.0 + t * 1.5) * 0.2;
+  float wave3 = cos(p.x * 3.0 - t * 0.8) * 0.1;
+
+  float y_offset = wave1 + wave2 + wave3;
+
+  // Dessiner les courbes
+  float dist_to_wave = abs(p.y - (0.5 + y_offset));
+  float line = smoothstep(0.04, 0.0, dist_to_wave);
+
+  // Gradient basé sur X
+  float grad = p.x;
+  vec3 col = vec3(line * (0.5 + grad * 0.5));
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.06);
+  return col;
+}`,
+  },
+  {
+    name: "Lattice Structure",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.3;
+  vec2 p = uv;
+
+  // Structure en treillis avec rotation
+  float angle = t * 0.5;
+  vec2 rot_p = vec2(
+    p.x * cos(angle) - p.y * sin(angle),
+    p.x * sin(angle) + p.y * cos(angle)
+  );
+
+  // Grille diagonale
+  float lattice_size = 0.15;
+  vec2 lattice = fract(rot_p / lattice_size);
+
+  float h_line = smoothstep(0.05, 0.0, abs(lattice.y - 0.5));
+  float v_line = smoothstep(0.05, 0.0, abs(lattice.x - 0.5));
+
+  vec3 col = vec3((h_line + v_line) * 0.75);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.05);
+  return col;
+}`,
+  },
+  {
+    name: "Voronoi Diagram",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.4;
+  vec2 p = uv;
+
+  float min_dist = 10.0;
+  float edge_dist = 10.0;
+
+  // Centres de Voronoi
+  for(int i = 0; i < 9; i++) {
+    float fi = float(i);
+    vec2 center = vec2(
+      0.3 + mod(fi, 3.0) * 0.35,
+      0.3 + floor(fi / 3.0) * 0.35
+    );
+
+    // Perturbation animée
+    center += vec2(sin(t + fi * 2.0), cos(t * 0.7 + fi)) * 0.05;
+
+    float d = distance(p, center);
+    if(d < min_dist) {
+      edge_dist = min_dist - d;
+      min_dist = d;
+    }
+  }
+
+  // Dessiner les bords
+  float edge = smoothstep(0.03, 0.0, min_dist);
+
+  vec3 col = vec3(edge * 0.8);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.06);
+  return col;
+}`,
+  },
+  {
+    name: "Orbits",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Centres orbitaux
+  for(int i = 0; i < 4; i++) {
+    float fi = float(i);
+    vec2 center = vec2(cos(fi * 1.57), sin(fi * 1.57)) * 0.5;
+
+    // Orbites
+    for(int j = 0; j < 3; j++) {
+      float fj = float(j);
+      float radius = 0.2 + fj * 0.15;
+      float orbit_angle = t * (2.0 - fj * 0.5) + fi * 0.5;
+
+      vec2 planet_pos = center + vec2(cos(orbit_angle), sin(orbit_angle)) * radius;
+
+      float d = length(p - planet_pos);
+      float planet = smoothstep(0.04, 0.02, d) * smoothstep(0.02, 0.035, d);
+
+      col += vec3(planet * 0.8);
+
+      // Orbite tracée
+      float orbit_line = smoothstep(0.01, 0.0, abs(length(p - center) - radius));
+      col += vec3(orbit_line * 0.3);
+    }
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.05);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Rotating Rects",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.4;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Rectangles en rotation
+  for(int i = 0; i < 6; i++) {
+    float fi = float(i);
+    float angle = t * (1.0 + fi * 0.2) + fi * 1.047;
+
+    // Rotation
+    vec2 rot_p = vec2(
+      p.x * cos(angle) - p.y * sin(angle),
+      p.x * sin(angle) + p.y * cos(angle)
+    );
+
+    // Rectangle
+    float size = 0.2 + fi * 0.08;
+    float rect = smoothstep(0.08, 0.05, max(abs(rot_p.x), abs(rot_p.y)) - size);
+
+    col += vec3(rect * (0.5 + 0.5 * fi / 6.0));
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.07);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Polygon Grid",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.3;
+  vec2 p = uv;
+
+  vec3 col = vec3(0.0);
+
+  // Grille de polygones
+  float poly_size = 0.15;
+  vec2 grid_id = floor(p / poly_size);
+
+  for(int i = -1; i <= 1; i++) {
+    for(int j = -1; j <= 1; j++) {
+      vec2 cell = grid_id + vec2(float(i), float(j));
+      vec2 cell_center = (cell + 0.5) * poly_size;
+
+      // Nombre de côtés animé
+      float sides = 3.0 + 2.0 * sin(t + length(cell));
+
+      // Polygone
+      for(float k = 0.0; k < 6.0; k++) {
+        float angle = k * 2.0 * 3.14159 / sides + t * 0.5;
+        vec2 vertex = cell_center + vec2(cos(angle), sin(angle)) * poly_size * 0.4;
+
+        float d = distance(p, vertex);
+        float ring = smoothstep(0.03, 0.01, d);
+        col += vec3(ring * 0.6);
+      }
+    }
+  }
+
+  col *= 0.75 + 0.25 * u_level;
+  col += vec3(u_bass * 0.06);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Expanding Rings",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.8;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  float r = length(p);
+
+  // Anneaux qui s'expandent
+  float ring = mod(r - t * 0.5, 0.2);
+  float line = smoothstep(0.08, 0.02, abs(ring - 0.1));
+
+  // Modulation radiale
+  float fade = exp(-r * 1.5);
+
+  vec3 col = vec3(line * fade * 0.9);
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.08);
+  return col;
+}`,
+  },
+  {
+    name: "Twisted Bands",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  // Bandes qui se tordent
+  float x_twist = p.x + sin(p.y * 5.0 + t) * 0.3;
+  float wave = sin(x_twist * 3.0 - t * 2.0) * 0.5 + 0.5;
+
+  float band = smoothstep(0.3, 0.0, abs(wave - 0.5)) * smoothstep(0.3, 0.2, abs(p.y));
+
+  vec3 col = vec3(band * (0.5 + 0.5 * wave));
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.06);
+  return col;
+}`,
+  },
+  {
+    name: "Double Orbits",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.4;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // 2 systèmes orbitaux opposés
+  for(int system = 0; system < 2; system++) {
+    float fs = float(system);
+    vec2 center = vec2(cos(fs * 3.14159), sin(fs * 3.14159)) * 0.4;
+
+    // 4 orbites par système
+    for(int orbit = 0; orbit < 4; orbit++) {
+      float fo = float(orbit);
+      float radius = 0.15 + fo * 0.12;
+      float speed = 2.0 - fo * 0.3;
+
+      // Planètes
+      for(int i = 0; i < 3; i++) {
+        float fi = float(i);
+        float angle = t * speed + fi * 2.094 + fs * 1.57;
+        vec2 planet_pos = center + vec2(cos(angle), sin(angle)) * radius;
+
+        float d = length(p - planet_pos);
+        float planet = smoothstep(0.035, 0.015, d) * smoothstep(0.015, 0.03, d);
+        col += vec3(planet * (0.6 + 0.4 * fi / 3.0));
+
+        // Orbite fine
+        float orbit_line = smoothstep(0.008, 0.0, abs(length(p - center) - radius));
+        col += vec3(orbit_line * 0.25);
+      }
+    }
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.06);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Spiral Orbits",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Spirale d'orbites
+  for(int i = 0; i < 20; i++) {
+    float fi = float(i);
+
+    // Paramètres spiralés
+    float angle = t * 0.3 + fi * 0.3;
+    float radius = 0.1 + fi * 0.08;
+    float spiral_offset = fi * 0.05;
+
+    // Centre de la spirale
+    vec2 center = vec2(cos(angle), sin(angle)) * spiral_offset;
+
+    // Planète
+    vec2 planet_pos = center + vec2(cos(angle * 2.0), sin(angle * 2.0)) * radius;
+    float d = length(p - planet_pos);
+
+    float planet = smoothstep(0.03, 0.01, d) * smoothstep(0.01, 0.027, d);
+    float brightness = 0.3 + 0.7 * fi / 20.0;
+    col += vec3(planet * brightness);
+
+    // Orbite
+    float orbit_line = smoothstep(0.005, 0.0, abs(length(p - center) - radius));
+    col += vec3(orbit_line * 0.2);
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.07);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Ellipse Orbits",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // 5 orbites elliptiques
+  for(int i = 0; i < 5; i++) {
+    float fi = float(i);
+    float eccentricity = 0.3 + fi * 0.1;  // excentricité
+    float major_axis = 0.15 + fi * 0.15;
+    float minor_axis = major_axis * (1.0 - eccentricity);
+
+    // Angle et position sur ellipse
+    float angle = t * (2.0 - fi * 0.2);
+    vec2 ellipse_pos = vec2(
+      cos(angle) * major_axis,
+      sin(angle) * minor_axis
+    );
+
+    float d = length(p - ellipse_pos);
+    float planet = smoothstep(0.04, 0.02, d) * smoothstep(0.02, 0.035, d);
+    col += vec3(planet * (0.5 + 0.5 * fi / 5.0));
+
+    // Dessiner l'orbite elliptique
+    float orbit_sample = smoothstep(0.008, 0.0, abs(
+      length(p) - length(vec2(
+        cos(atan(p.y, p.x)) * major_axis,
+        sin(atan(p.y, p.x)) * minor_axis
+      ))
+    ));
+    col += vec3(orbit_sample * 0.25);
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.06);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Binary Stars",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.4;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Star 1
+  vec2 star1_pos = vec2(-0.35, 0.0);
+  float d_star1 = length(p - star1_pos);
+  float star1 = smoothstep(0.06, 0.04, d_star1) * smoothstep(0.04, 0.055, d_star1);
+  col += vec3(star1 * 0.9);
+  col += vec3(exp(-d_star1 * 8.0) * 0.3);
+
+  // Star 2
+  vec2 star2_pos = vec2(0.35, 0.0);
+  float d_star2 = length(p - star2_pos);
+  float star2 = smoothstep(0.06, 0.04, d_star2) * smoothstep(0.04, 0.055, d_star2);
+  col += vec3(star2 * 0.9);
+  col += vec3(exp(-d_star2 * 8.0) * 0.3);
+
+  // Orbites autour star 1
+  for(int i = 0; i < 3; i++) {
+    float fi = float(i);
+    float radius = 0.1 + fi * 0.08;
+    float angle = t * (2.5 - fi * 0.3);
+
+    vec2 planet_pos = star1_pos + vec2(cos(angle), sin(angle)) * radius;
+    float d = length(p - planet_pos);
+
+    float planet = smoothstep(0.035, 0.015, d) * smoothstep(0.015, 0.03, d);
+    col += vec3(planet * 0.7);
+
+    float orbit_line = smoothstep(0.006, 0.0, abs(length(p - star1_pos) - radius));
+    col += vec3(orbit_line * 0.2);
+  }
+
+  // Orbites autour star 2
+  for(int i = 0; i < 3; i++) {
+    float fi = float(i);
+    float radius = 0.1 + fi * 0.08;
+    float angle = t * (2.5 - fi * 0.3) + 1.047;
+
+    vec2 planet_pos = star2_pos + vec2(cos(angle), sin(angle)) * radius;
+    float d = length(p - planet_pos);
+
+    float planet = smoothstep(0.035, 0.015, d) * smoothstep(0.015, 0.03, d);
+    col += vec3(planet * 0.7);
+
+    float orbit_line = smoothstep(0.006, 0.0, abs(length(p - star2_pos) - radius));
+    col += vec3(orbit_line * 0.2);
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.07);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Orbital Chaos",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.6;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Système chaotique avec beaucoup de petites orbites
+  for(int layer = 0; layer < 3; layer++) {
+    float fl = float(layer);
+    float layer_offset = fl * 0.3;
+
+    for(int i = 0; i < 8; i++) {
+      float fi = float(i);
+      float angle1 = fi * 0.785 + t * (1.5 + fl * 0.5);
+      float radius1 = 0.2 + fl * 0.15;
+
+      vec2 center = vec2(cos(angle1), sin(angle1)) * radius1;
+
+      // Sous-orbites
+      for(int j = 0; j < 2; j++) {
+        float fj = float(j);
+        float angle2 = t * (3.0 + fj) + fi * 0.5;
+        float radius2 = 0.08 + fj * 0.06;
+
+        vec2 planet_pos = center + vec2(cos(angle2), sin(angle2)) * radius2;
+        float d = length(p - planet_pos);
+
+        float planet = smoothstep(0.02, 0.008, d);
+        col += vec3(planet * (0.4 + 0.6 * fj));
+      }
+    }
+  }
+
+  col *= 0.75 + 0.25 * u_level;
+  col += vec3(u_bass * 0.08);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Orbital Trail",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.5;
+  vec2 p = (uv - 0.5) * 2.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // Centre
+  vec2 center = vec2(0.0);
+  float d_center = length(p - center);
+  float sun = smoothstep(0.08, 0.06, d_center) * smoothstep(0.06, 0.07, d_center);
+  col += vec3(sun * 0.9);
+
+  // Planètes avec trails
+  for(int i = 0; i < 5; i++) {
+    float fi = float(i);
+    float radius = 0.15 + fi * 0.15;
+    float speed = 2.0 - fi * 0.3;
+    float angle = t * speed;
+
+    vec2 planet_pos = center + vec2(cos(angle), sin(angle)) * radius;
+
+    // Trail (trace antérieure)
+    for(float trail = 0.0; trail < 1.0; trail += 0.1) {
+      float trail_angle = angle - trail * 0.5;
+      vec2 trail_pos = center + vec2(cos(trail_angle), sin(trail_angle)) * radius;
+
+      float d_trail = length(p - trail_pos);
+      float trail_dot = smoothstep(0.02, 0.0, d_trail);
+      col += vec3(trail_dot * (1.0 - trail) * 0.3);
+    }
+
+    // Planète actuelle
+    float d = length(p - planet_pos);
+    float planet = smoothstep(0.04, 0.02, d) * smoothstep(0.02, 0.035, d);
+    col += vec3(planet * 0.8);
+
+    // Orbite
+    float orbit_line = smoothstep(0.007, 0.0, abs(length(p - center) - radius));
+    col += vec3(orbit_line * 0.2);
+  }
+
+  col *= 0.8 + 0.2 * u_level;
+  col += vec3(u_bass * 0.06);
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Tentacle Spheres",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * 0.6;
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= res.x / res.y;
+
+  vec3 col = vec3(0.0);
+
+  // 7-8 sphères avec positions très random et chaotiques
+  vec2 nodes[8];
+  float sizes[8];
+
+  for(int i = 0; i < 8; i++) {
+    float fi = float(i);
+
+    // Positions très aléatoires basées sur du hash
+    float h1 = hash(vec2(fi, 0.0));
+    float h2 = hash(vec2(fi, 1.0));
+    float h3 = hash(vec2(fi, 2.0));
+
+    // Mouvement brownien : dérive progressive avec du sin/cos chaotique
+    vec2 base = vec2(h1 * 2.0 - 1.0, h2 * 2.0 - 1.0) * 0.9;
+    float drift_x = sin(t * 0.5 + fi * 2.3) * sin(t * 0.3 + fi) * 0.3;
+    float drift_y = cos(t * 0.4 + fi * 1.7) * cos(t * 0.25 + fi * 0.5) * 0.3;
+
+    nodes[i] = base + vec2(drift_x, drift_y);
+    sizes[i] = 0.05 + h3 * 0.04;  // Tailles variables
+  }
+
+  // Dessiner les nœuds (vides, juste le contour)
+  for(int i = 0; i < 8; i++) {
+    float d = length(p - nodes[i]);
+    // Juste le ring du nœud, pas rempli
+    float ring = smoothstep(sizes[i] + 0.008, sizes[i] - 0.002, d) * smoothstep(sizes[i] - 0.008, sizes[i], d);
+    col += vec3(ring * 0.9);
+
+    // Lignes vers les autres sphères proches
+    for(int j = i + 1; j < 8; j++) {
+      vec2 target = nodes[j];
+      vec2 start = nodes[i];
+      float dist_to_target = distance(start, target);
+
+      // Seulement tracer les lignes aux plus proches voisins
+      if(dist_to_target > 1.5) continue;
+
+      // Tracer une ligne simple
+      vec2 line_dir = normalize(target - start);
+      vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+
+      float dist_along_line = dot(p - start, line_dir);
+      float dist_to_line = abs(dot(p - start, line_perp));
+
+      // Vérifier qu'on est entre les deux points
+      if(dist_along_line >= 0.0 && dist_along_line <= dist_to_target) {
+        if(dist_to_line < 0.008) {
+          float line = smoothstep(0.01, 0.0, dist_to_line);
+          // Dégradé basé sur la distance vers le centre
+          float brightness = 0.3 + 0.7 * (0.5 + 0.5 * sin(dist_along_line * 5.0 + float(i) * 0.5));
+          col += vec3(line * brightness * 0.8);
+        }
+      }
+    }
+  }
+
+  // Fond très sombre
+  float bg = 0.02 * (0.5 + 0.5 * sin(t * 0.1));
+  col += vec3(bg);
+
+  // Audio reactivity très marquée
+  col *= 0.7 + 0.3 * u_level;
+  col += vec3(u_bass * 0.12);
+
+  return clamp(col, vec3(0.0), vec3(1.0));
 }`,
   },
 ];

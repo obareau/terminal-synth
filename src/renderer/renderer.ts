@@ -60,6 +60,7 @@ const RECTA_INDEX = 0; // le générateur "RECTA (texte)" est en tête de SHADER
 let currentShader = 0;
 let prevEnergy = 0;
 let asciiMode = false;
+let asciiGlitchPermanentEnabled = false;
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
 
@@ -97,7 +98,10 @@ function getCategory(name: string): string {
   if (lower.includes("tunnel") || lower.includes("lissajous") || lower.includes("orbe") ||
       lower.includes("circuit") || lower.includes("spirale") || lower.includes("scan") ||
       lower.includes("laser") || lower.includes("terrain") || lower.includes("topographie") ||
-      lower.includes("fft") || lower.includes("waveform") || lower.includes("signal")) return "Geometry";
+      lower.includes("fft") || lower.includes("waveform") || lower.includes("signal") ||
+      lower.includes("sphere") || lower.includes("connected") || lower.includes("node") ||
+      lower.includes("tree") || lower.includes("cluster") || lower.includes("grid") ||
+      lower.includes("wave")) return "Geometry";
   if (lower.includes("aurora") || lower.includes("perlin") || lower.includes("voronoi") ||
       lower.includes("noise")) return "Noise";
   if (lower.includes("mandelbrot") || lower.includes("truchet") || lower.includes("chromatic") ||
@@ -534,6 +538,14 @@ document.addEventListener("keydown", (e) => {
   // b = layer B toggle
   if (e.key === "b" || e.key === "B") { layerBBtn.click(); return; }
 
+  // Easter egg: Alt+A = toggle ASCII glitch permanent overlay
+  if (e.altKey && (e.key === "a" || e.key === "A")) {
+    e.preventDefault();
+    asciiGlitchPermanentEnabled = !asciiGlitchPermanentEnabled;
+    console.log("🎨 ASCII Glitch Overlay: " + (asciiGlitchPermanentEnabled ? "ON" : "OFF"));
+    return;
+  }
+
   // 1-9, 0, q-p, a-k, ... → sélection du générateur
   const idx = SRC_KEYS.indexOf(e.key.toLowerCase());
   if (idx >= 0 && idx < SHADERS.length) { selectSource(idx); return; }
@@ -811,8 +823,8 @@ function frame(now: number): void {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
   }
 
-  // Permanent ASCII glitch layer (centered, always visible with inlay background)
-  if (Math.random() < 0.3) { // Update ~30% of frames to reduce CPU
+  // Permanent ASCII glitch layer (disabled by default, enable with Ctrl+Alt+A)
+  if (asciiGlitchPermanentEnabled && Math.random() < 0.3) { // Update ~30% of frames to reduce CPU
     const { cols, rows } = asciiGrid();
     const px = pipeline.render(stages, Math.floor(cols * 0.5), Math.floor(rows * 0.5), u, true);
     if (px) {
@@ -820,6 +832,9 @@ function frame(now: number): void {
       const asciiGlitch = $("ascii-glitch-permanent");
       asciiGlitch.innerHTML = glitchContent;
     }
+  } else if (!asciiGlitchPermanentEnabled) {
+    const asciiGlitch = $("ascii-glitch-permanent");
+    asciiGlitch.innerHTML = "";
   }
 
   // Spout : readback toutes les 8 images (~7 fps) pour limiter la charge IPC

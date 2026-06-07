@@ -328,4 +328,171 @@ vec3 process(vec2 uv) {
   return prev(clamp(displaced, 0.0, 1.0));
 }`,
   },
+
+  {
+    name: "Negative Burst",
+    defaultSensitivity: 0.7,
+    defaultDurationMs: 120,
+    defaultCooldownMs: 400,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec3 c = prev(uv);
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  // Inversion complète modulée par luminosité
+  vec3 inverted = 1.0 - c;
+  return mix(c, inverted, a * lum * 0.8);
+}`,
+  },
+
+  {
+    name: "Radial Warp",
+    defaultSensitivity: 0.65,
+    defaultDurationMs: 150,
+    defaultCooldownMs: 500,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 center = vec2(0.5);
+  vec2 p = uv - center;
+  float r = length(p);
+  float angle = atan(p.y, p.x);
+
+  // Distorsion radiale avec onde
+  float warp = 1.0 + sin(t * 3.0 + angle * 6.0) * 0.15 * a;
+  vec2 warped = center + p * warp;
+
+  return prev(clamp(warped, 0.0, 1.0));
+}`,
+  },
+
+  {
+    name: "Color Shift",
+    defaultSensitivity: 0.6,
+    defaultDurationMs: 100,
+    defaultCooldownMs: 350,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec3 c = prev(uv);
+
+  // Rotation des canaux RGB
+  float hue = t * 2.0;
+  vec3 shifted = vec3(
+    c.r * (0.5 + 0.5 * sin(hue)),
+    c.g * (0.5 + 0.5 * sin(hue + 2.094)),
+    c.b * (0.5 + 0.5 * sin(hue + 4.189))
+  );
+
+  return mix(c, shifted, a * 0.6);
+}`,
+  },
+
+  {
+    name: "Zoom Pulse",
+    defaultSensitivity: 0.7,
+    defaultDurationMs: 140,
+    defaultCooldownMs: 450,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 center = vec2(0.5);
+  vec2 p = (uv - center);
+
+  // Zoom in/out pulsant
+  float zoom = 1.0 + sin(t * 4.0) * 0.2 * a;
+  vec2 zoomed = center + p / zoom;
+
+  return prev(clamp(zoomed, 0.0, 1.0));
+}`,
+  },
+
+  {
+    name: "Interlace Jitter",
+    defaultSensitivity: 0.55,
+    defaultDurationMs: 110,
+    defaultCooldownMs: 380,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Lignes entrelacées qui tremblent
+  float line = mod(uv.y * u_resolution.y, 2.0);
+  float jitter = sin(t * 40.0 + uv.x * 10.0) * 0.01 * a;
+
+  vec2 jittered = uv + vec2(jitter * line, 0.0);
+  vec3 c = prev(clamp(jittered, 0.0, 1.0));
+
+  // Obscurcir les lignes alternées
+  float darken = mix(1.0, 0.7, step(0.5, line) * a);
+  return c * darken;
+}`,
+  },
+
+  {
+    name: "Mirror Flip",
+    defaultSensitivity: 0.5,
+    defaultDurationMs: 180,
+    defaultCooldownMs: 600,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Miroir diagonal avec rotation
+  float angle = t * 2.0;
+  vec2 p = uv - 0.5;
+  vec2 rotated = vec2(
+    p.x * cos(angle) - p.y * sin(angle),
+    p.x * sin(angle) + p.y * cos(angle)
+  );
+
+  vec2 mirrored = vec2(1.0 - abs(rotated.x), abs(rotated.y)) + 0.5;
+  return prev(clamp(mirrored, 0.0, 1.0));
+}`,
+  },
+
+  {
+    name: "Frequency Bars",
+    defaultSensitivity: 0.62,
+    defaultDurationMs: 95,
+    defaultCooldownMs: 320,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Barres de fréquence animées
+  float freq = sin(uv.x * 20.0 + t * 5.0) * 0.5 + 0.5;
+  float bar = step(abs(sin(uv.y * 30.0)), freq * a);
+
+  vec3 c = prev(uv);
+  return c * (1.0 - bar * a * 0.4) + vec3(bar * freq * a * 0.2);
+}`,
+  },
+
+  {
+    name: "Temporal Shift",
+    defaultSensitivity: 0.58,
+    defaultDurationMs: 125,
+    defaultCooldownMs: 480,
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Décalage temporel avec bruit
+  float shift = sin(t * 6.0) * 0.1 * a;
+  vec2 shifted = uv + vec2(sin(uv.y * 10.0 + t) * shift, cos(uv.x * 10.0 + t) * shift);
+
+  vec3 c = prev(clamp(shifted, 0.0, 1.0));
+  // Perte de saturations aléatoires
+  float sat = 1.0 - hash(vec2(floor(t * 20.0), floor(uv.y * 10.0))) * a * 0.3;
+  return c * sat;
+}`,
+  },
 ];
