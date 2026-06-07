@@ -55,22 +55,6 @@ function createWindow(): void {
     cb(permission === "media" || permission === "midi" || permission === "midiSysex");
   });
 
-  // Capture de la SORTIE système (loopback Windows) pour getDisplayMedia({audio:true}).
-  session.defaultSession.setDisplayMediaRequestHandler(
-    (_request, callback) => {
-      desktopCapturer
-        .getSources({ types: ["screen"] })
-        .then((sources) => {
-          if (sources && sources.length > 0) {
-            callback({ video: sources[0], audio: "loopback" });
-          } else {
-            callback({});
-          }
-        })
-        .catch(() => callback({}));
-    },
-    { useSystemPicker: false },
-  );
 
   win.loadFile(path.join(__dirname, "index.html"));
 
