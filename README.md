@@ -2,12 +2,12 @@
 
 > **Synthétiseur visuel dark/industriel** avec génération automatique de compositions, audio-réactivité temps réel, et rendu WebGL2 haute-performance.
 
-![Status](https://img.shields.io/badge/status-Production-brightgreen)
-![Version](https://img.shields.io/badge/version-0.9.5-blue)
+![Status](https://img.shields.io/badge/status-Alpha-yellow)
+![Version](https://img.shields.io/badge/version-0.9.9--alpha-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
-Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **37 générateurs**, **31 effets**, **17 perturbateurs**, automation générative avec 4 presets, couche texte pixellisée, et système d'enregistrement vidéo.
+Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **~90 générateurs minimalistes**, **23 perturbateurs audio-réactifs**, automation générative avec 4 presets, couche texte pixellisée, et système d'enregistrement vidéo.
 
 Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
@@ -38,12 +38,12 @@ npm run package    # Build production
 ### 🎨 Rendu Visuel
 | Feature | Details |
 |---------|---------|
-| **37 Générateurs** | Géométrie, fractals, noise, patterns organiques |
-| **31 Effets** | Feedback, glitch, distortion, dithering, scanlines, rotations |
-| **17 Perturbateurs** | Audio-triggered events (bursts, flickers, glitches) |
+| **~90 Générateurs** | Réseaux de nœuds, systèmes orbitaux, géométrie minimaliste, fractals, noise |
+| **6 Catégories** | All, Text, Plasma, Geometry, Noise, Interactive |
+| **23 Perturbateurs** | Audio-triggered effects (ripple, twist, glitch, zoom, aberration, etc.) |
+| **Esthétique** | Minimaliste Domestika, monochrome noir/blanc, design épuré |
 | **WebGL2 Pipeline** | Multi-pass ping-pong avec framebuffers |
 | **Modes de Fusion** | 11 blend modes (Normal, Add, Screen, Overlay, etc.) |
-| **Vignettage Global** | Effet d'obscurcissement des bords configurable |
 
 ### 🎵 Audio & MIDI
 | Feature | Details |
