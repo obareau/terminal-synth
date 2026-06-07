@@ -5,7 +5,9 @@ import * as fs from "node:fs";
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
-    height: 720,
+    height: 768,
+    minHeight: 768,
+    minWidth: 1280,
     backgroundColor: "#0a0a0a",
     title: "terminal-synth",
     autoHideMenuBar: true,
