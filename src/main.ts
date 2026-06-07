@@ -71,6 +71,10 @@ function createWindow(): void {
   });
 }
 
+// Check for test mode
+const testMode = process.argv.includes("--test-shaders");
+if (testMode) console.log("[Main] TEST MODE ENABLED");
+
 app.whenReady().then(() => {
   // Get CPU/GPU usage stats
   ipcMain.handle("stats:get-usage", () => {

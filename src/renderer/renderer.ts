@@ -1,6 +1,6 @@
 /** Glue : pipeline WebGL (génération + chaîne d'effets) + audio + UI + boucle. */
 
-import { Pipeline, type Stage } from "./gl";
+import { Pipeline, type Stage, type Program } from "./gl";
 import { AudioInput, type Bands, type AudioSource } from "./audio";
 import { pixelsToAscii, pixelsToAsciiColorGlitch } from "./ascii";
 import { MidiInput, type MidiMode } from "./midi";
@@ -101,8 +101,13 @@ function syncBlend(): void {
 }
 function loadLayerB(): void {
   if (!layerBEnabled) { pipeline.setGenerator2(null); return; }
-  try { pipeline.setGenerator2(SHADERS[Number(layerBSel.value)]!.src); }
-  catch(e) { console.error("[GL layer B]", e); }
+  const result = pipeline.setGenerator2(SHADERS[Number(layerBSel.value)]!.src);
+  if (!result.success) {
+    console.error("[GL layer B]", result.error);
+    const prev = meter.textContent;
+    meter.textContent = `Layer B error: ${result.error}`.slice(0, 120);
+    setTimeout(() => { meter.textContent = prev ?? ""; }, 4000);
+  }
 }
 layerBBtn.addEventListener("click", () => {
   layerBEnabled = !layerBEnabled;
@@ -143,22 +148,25 @@ function buildParamsPanel(shader: typeof SHADERS[0]): void {
 }
 
 function loadShader(i: number): void {
-  try {
-    pipeline.setGenerator(SHADERS[i]!.src);
-    currentShader = i;
-    buildParamsPanel(SHADERS[i]!);
-    // sync liste visuelle
-    sourcesList.querySelectorAll(".src-item").forEach(el => el.classList.remove("active"));
-    sourcesList.querySelector(`.src-item[data-idx="${i}"]`)?.classList.add("active");
-    (sourcesList.querySelector(`.src-item[data-idx="${i}"]`) as HTMLElement | null)
-      ?.scrollIntoView({ block: "nearest" });
-    layerAName.textContent = SHADERS[i]?.name ?? "—";
-  } catch (e) {
-    console.error("[GL]", e);
+  const shaderName = SHADERS[i]?.name ?? "unknown";
+  console.log(`[Renderer] Loading shader[${i}]: ${shaderName}`);
+  const result = pipeline.setGenerator(SHADERS[i]!.src);
+  if (!result.success) {
+    console.error("[Renderer] Generator failed:", shaderName, "→", result.error);
     const prev = meter.textContent;
-    meter.textContent = String(e).slice(0, 120);
+    meter.textContent = `Error: ${result.error}`.slice(0, 120);
     setTimeout(() => { meter.textContent = prev ?? ""; }, 4000);
+    return;
   }
+  console.log(`[Renderer] ✓ Loaded: ${shaderName}`);
+  currentShader = i;
+  buildParamsPanel(SHADERS[i]!);
+  // sync liste visuelle
+  sourcesList.querySelectorAll(".src-item").forEach(el => el.classList.remove("active"));
+  sourcesList.querySelector(`.src-item[data-idx="${i}"]`)?.classList.add("active");
+  (sourcesList.querySelector(`.src-item[data-idx="${i}"]`) as HTMLElement | null)
+    ?.scrollIntoView({ block: "nearest" });
+  layerAName.textContent = SHADERS[i]?.name ?? "—";
 }
 shaderSel.addEventListener("change", () => loadShader(Number(shaderSel.value)));
 loadShader(0);
@@ -167,11 +175,13 @@ loadShader(0);
 const defaultAmounts = [0.3, 0.4, 0.3, 0.4, 0.45, 0.3, 0.5, 0.4, 0.5, 0.35, 0.4, 0.4, 0.45, 0.35, 0.4, 0.4, 0.5, 0.4, 0.5, 0.4];
 const fxState = EFFECTS.map((_e, i) => ({ enabled: false, amount: defaultAmounts[i] ?? 0.3 }));
 const fxProg = EFFECTS.map((e) => {
-  try { return pipeline.compileEffect(e.body); }
-  catch (err) {
-    console.error(`[GL] effet "${e.name}" :`, err);
-    return pipeline.compileEffect("vec3 process(vec2 uv) { return prev(uv); }"); // passthrough
+  const result = pipeline.compileEffect(e.body);
+  if (!result.success) {
+    console.error(`[GL] effet "${e.name}" :`, result.error);
+    const fallback = pipeline.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
+    return fallback.success ? fallback.program! : null;
   }
+  return result.program!;
 });
 
 EFFECTS.forEach((e, i) => {
@@ -202,7 +212,7 @@ EFFECTS.forEach((e, i) => {
 
 // --- Perturbateurs ---
 interface DisruptorState {
-  prog: ReturnType<typeof pipeline.compileEffect>;
+  prog: Program | null;
   enabled: boolean;
   sensitivity: number;  // 0..1 (seuil de déclenchement)
   amount: number;       // intensité quand actif
@@ -214,11 +224,14 @@ interface DisruptorState {
 
 const disruptorsList = document.getElementById("disruptors-list")!;
 const disruptorState: DisruptorState[] = DISRUPTORS.map((d) => {
-  let prog: ReturnType<typeof pipeline.compileEffect>;
-  try { prog = pipeline.compileEffect(d.body); }
-  catch (err) {
-    console.error(`[GL] perturbateur "${d.name}" :`, err);
-    prog = pipeline.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
+  const result = pipeline.compileEffect(d.body);
+  let prog: Program | null = null;
+  if (!result.success) {
+    console.error(`[GL] perturbateur "${d.name}" :`, result.error);
+    const fallback = pipeline.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
+    prog = fallback.success ? fallback.program ?? null : null;
+  } else {
+    prog = result.program ?? null;
   }
   return {
     prog,
@@ -688,19 +701,21 @@ function frame(now: number): void {
   for (let i = 0; i < EFFECTS.length; i++) {
     const st = fxState[i];
     if (!st.enabled) continue;
+    const prog = fxProg[i];
+    if (!prog) continue;
     let amt = st.amount;
     if (midi.enabled) {
       if (noise && (i === 0 || i === 2)) amt = Math.max(amt, e);
       else if (!noise && i === 1) amt = Math.max(amt, e * 0.6);
     }
-    stages.push({ fx: fxProg[i], amount: amt });
+    stages.push({ fx: prog, amount: amt });
   }
 
   // Perturbateurs : déclenchés par pic audio (valeur non lissée)
   const rawEnergy = Math.max(bands.bass, e);
   const nowMs = performance.now();
   for (const ds of disruptorState) {
-    if (!ds.enabled) continue;
+    if (!ds.enabled || !ds.prog) continue;
     if (nowMs < ds.fireUntil) {
       stages.push({ fx: ds.prog, amount: ds.amount });
     } else if (nowMs - ds.lastFire > ds.cooldownMs) {

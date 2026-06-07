@@ -1272,4 +1272,55 @@ vec3 render(vec2 uv, vec2 res) {
   return col;
 }`,
   },
+  // ── Shaders réels du monde (Shadertoy-style, flexibilité système démontrée) ──
+  {
+    name: "Truchet (real-world style)",
+    src: /* glsl */ `
+// Adaptation d'un pattern Truchet - démontre la flexibilité du système
+// On peut copier/coller du GLSL d'Internet sans modification
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = uv * 4.0;
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+
+  // Truchet pattern
+  float rnd = hash(i);
+  vec2 c = vec2(0.5);
+  float d = min(length(f - c), length(f - c + (rnd > 0.5 ? vec2(1.0, 0.0) : vec2(0.0, 1.0))));
+
+  float line = smoothstep(0.08, 0.06, d);
+  vec3 col = mix(vec3(0.1), vec3(0.8, 0.3, 0.1), line);
+  col += vec3(0.5, 0.2, 0.8) * fftAt(uv.x * 0.5) * 0.5;
+  return col;
+}`,
+  },
+  {
+    name: "Mandelbrot explorer",
+    src: /* glsl */ `
+// Classic Mandelbrot set - démontre les shaders complets
+// Ce shader a tout ce qu'il faut (main, uniforms)
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 u_resolution;
+uniform float u_time;
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy - u_resolution.xy * 0.5) / u_resolution.y * 3.0;
+  uv += vec2(sin(u_time * 0.3) * 0.5, cos(u_time * 0.2) * 0.3);
+
+  vec2 c = uv;
+  vec2 z = vec2(0.0);
+  float iter = 0.0;
+
+  for (int i = 0; i < 64; i++) {
+    z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+    if (length(z) > 4.0) break;
+    iter += 1.0;
+  }
+
+  vec3 col = mix(vec3(0.0, 0.0, 0.1), vec3(0.9, 0.4, 0.1), iter / 64.0);
+  fragColor = vec4(col, 1.0);
+}`,
+  },
 ];

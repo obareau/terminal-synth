@@ -109,11 +109,27 @@ const UNIFORM_NAMES = [
 export interface Uniforms { time: number; bass: number; mid: number; treble: number; level: number; }
 export interface Program  { program: WebGLProgram; loc: Partial<Record<string, WebGLUniformLocation | null>>; }
 export interface Stage    { fx: Program; amount: number; }
+export interface CompileResult { success: boolean; program?: Program; error?: string; }
 
 export const BLEND_MODES = [
   "Normal","Add","Multiply","Screen","Overlay",
   "Darken","Lighten","Difference","Divide","Hard Light","XOR",
 ];
+
+// ── Shader detection & wrapping helpers ──────────────────────────────────────
+function hasFunction(src: string, name: string): boolean {
+  return new RegExp(`\\b${name}\\s*\\(`).test(src);
+}
+function hasMainFunction(src: string): boolean {
+  return /\bvoid\s+main\s*\(/.test(src);
+}
+function ensureFunction(src: string, name: string, defaultBody: string): string {
+  if (hasFunction(src, name)) return src;
+  return src + `\n${defaultBody}`;
+}
+function stripVersion(src: string): string {
+  return src.replace(/^#version[^\n]*\n/, "");
+}
 
 export class Pipeline {
   private gl: WebGL2RenderingContext;
@@ -139,10 +155,16 @@ export class Pipeline {
     if (!gl) throw new Error("WebGL2 indisponible");
     this.gl  = gl;
     this.vao = gl.createVertexArray()!;
-    this.vs  = this.compileShader(gl.VERTEX_SHADER, VERT);
-    this.copy = this.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
-    this.compositeProg = this.linkRaw(COMPOSITE_FRAG,
+    const vsResult = this.compileShader(gl.VERTEX_SHADER, VERT);
+    if (!vsResult.shader) throw new Error("Vertex shader: " + vsResult.error);
+    this.vs  = vsResult.shader;
+    const copyResult = this.compileEffect("vec3 process(vec2 uv) { return prev(uv); }");
+    if (!copyResult.success || !copyResult.program) throw new Error("Copy effect: " + copyResult.error);
+    this.copy = copyResult.program;
+    const compositeResult = this.linkRaw(COMPOSITE_FRAG,
       ["u_resolution","u_layerA","u_layerB","u_blend","u_opacity"]);
+    if (!compositeResult.success || !compositeResult.program) throw new Error("Composite: " + compositeResult.error);
+    this.compositeProg = compositeResult.program;
     this.audioTex = this.makeAudioTex();
     this.textTex  = this.makeTextTex();
   }
@@ -185,48 +207,77 @@ export class Pipeline {
 
   // ── Compilation ─────────────────────────────────────────────────────────────
 
-  private compileShader(type: number, src: string): WebGLShader {
+  private compileShader(type: number, src: string): { shader: WebGLShader; error: null } | { shader: null; error: string } {
     const gl = this.gl, s = gl.createShader(type)!;
     gl.shaderSource(s, src); gl.compileShader(s);
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      const log = gl.getShaderInfoLog(s) ?? "";
+      const log = gl.getShaderInfoLog(s) ?? "Unknown error";
       console.error("[GL] compile error:\n" + log + "\n\nSource:\n" + src);
-      throw new Error("Shader : " + log);
+      return { shader: null, error: log };
     }
-    return s;
+    return { shader: s, error: null };
   }
-  private link(fragSrc: string): Program {
+  private link(fragSrc: string): CompileResult {
     return this.linkRaw(fragSrc, UNIFORM_NAMES);
   }
-  private linkRaw(fragSrc: string, uniforms: string[]): Program {
+  private linkRaw(fragSrc: string, uniforms: string[]): CompileResult {
     const gl = this.gl;
-    const fs = this.compileShader(gl.FRAGMENT_SHADER, fragSrc);
+    const fsResult = this.compileShader(gl.FRAGMENT_SHADER, fragSrc);
+    if (!fsResult.shader) return { success: false, error: "Fragment shader: " + fsResult.error };
+    const fs = fsResult.shader;
     const p  = gl.createProgram()!;
     gl.attachShader(p, this.vs); gl.attachShader(p, fs);
     gl.linkProgram(p); gl.deleteShader(fs);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
-      throw new Error("Link : " + gl.getProgramInfoLog(p));
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      const linkError = gl.getProgramInfoLog(p) ?? "Unknown link error";
+      return { success: false, error: "Link: " + linkError };
+    }
     const loc: Partial<Record<string, WebGLUniformLocation | null>> = {};
     for (const n of uniforms) loc[n] = gl.getUniformLocation(p, n);
-    return { program: p, loc };
+    return { success: true, program: { program: p, loc } };
   }
 
-  setGenerator(body: string): void {
-    const next = this.link(GEN_HEADER + body + GEN_FOOTER);
-    if (this.gen) this.gl.deleteProgram(this.gen.program);
-    this.gen = next;
+  setGenerator(body: string): CompileResult {
+    const isComplete = hasMainFunction(body);
+    const wrapped = isComplete
+      ? body  // Already a complete shader
+      : GEN_HEADER + ensureFunction(body, "render", "vec3 render(vec2 uv, vec2 resolution) { return vec3(0.0); }") + GEN_FOOTER;
+    const result = this.link(wrapped);
+    console.log(`[Pipeline] Generator: ${isComplete ? "complete" : "fragment"} | ${result.success ? "✓" : "✗"}${result.error ? " (" + result.error.slice(0, 60) + ")" : ""}`);
+    if (result.success && result.program) {
+      if (this.gen) this.gl.deleteProgram(this.gen.program);
+      this.gen = result.program;
+    }
+    return result;
   }
-  setGenerator2(body: string | null): void {
+  setGenerator2(body: string | null): CompileResult {
     if (body === null) {
       if (this.gen2) this.gl.deleteProgram(this.gen2.program);
       this.gen2 = null;
-      return;
+      console.log(`[Pipeline] Generator2: disabled`);
+      return { success: true };
     }
-    const next = this.link(GEN_HEADER + body + GEN_FOOTER);
-    if (this.gen2) this.gl.deleteProgram(this.gen2.program);
-    this.gen2 = next;
+    const isComplete = hasMainFunction(body);
+    const wrapped = isComplete
+      ? body
+      : GEN_HEADER + ensureFunction(body, "render", "vec3 render(vec2 uv, vec2 resolution) { return vec3(0.0); }") + GEN_FOOTER;
+    const result = this.link(wrapped);
+    console.log(`[Pipeline] Generator2: ${isComplete ? "complete" : "fragment"} | ${result.success ? "✓" : "✗"}${result.error ? " (" + result.error.slice(0, 60) + ")" : ""}`);
+    if (result.success && result.program) {
+      if (this.gen2) this.gl.deleteProgram(this.gen2.program);
+      this.gen2 = result.program;
+    }
+    return result;
   }
-  compileEffect(body: string): Program { return this.link(FX_HEADER + body + FX_FOOTER); }
+  compileEffect(body: string): CompileResult {
+    const isComplete = hasMainFunction(body);
+    const wrapped = isComplete
+      ? body
+      : FX_HEADER + ensureFunction(body, "process", "vec3 process(vec2 uv) { return prev(uv); }") + FX_FOOTER;
+    const result = this.link(wrapped);
+    console.log(`[Pipeline] Effect: ${isComplete ? "complete" : "fragment"} | ${result.success ? "✓" : "✗"}${result.error ? " (" + result.error.slice(0, 60) + ")" : ""}`);
+    return result;
+  }
 
   setBlend(mode: number, opacity: number): void {
     this.blendMode = mode; this.blendOpacity = opacity;
