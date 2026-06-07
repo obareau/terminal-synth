@@ -86,8 +86,33 @@ function setupTabs(panelId: string) {
 setupTabs("left-panel");
 setupTabs("right-panel");
 
-// --- Générateurs : select caché + liste visuelle ---
+// --- Générateurs : catégorisés par type ---
 const SRC_KEYS = "1234567890qwertyuiopasdfghjklzxcvbnm";
+
+// Fonction pour catégoriser basée sur le nom
+function getCategory(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("recta") || lower.includes("matrix") || lower.includes("texte")) return "Text";
+  if (lower.includes("plasma") || lower.includes("éclair") || lower.includes("marble")) return "Plasma";
+  if (lower.includes("tunnel") || lower.includes("lissajous") || lower.includes("orbe") ||
+      lower.includes("circuit") || lower.includes("spirale") || lower.includes("scan") ||
+      lower.includes("laser") || lower.includes("terrain") || lower.includes("topographie") ||
+      lower.includes("fft") || lower.includes("waveform") || lower.includes("signal")) return "Geometry";
+  if (lower.includes("aurora") || lower.includes("perlin") || lower.includes("voronoi") ||
+      lower.includes("noise")) return "Noise";
+  if (lower.includes("mandelbrot") || lower.includes("truchet") || lower.includes("chromatic") ||
+      lower.includes("stripes") || lower.includes("radial")) return "Interactive";
+  return "All";
+}
+
+// Créer les items pour chaque onglet
+const allItems = new Map<string, HTMLElement[]>();
+allItems.set("All", []);
+allItems.set("Text", []);
+allItems.set("Plasma", []);
+allItems.set("Geometry", []);
+allItems.set("Noise", []);
+allItems.set("Interactive", []);
 
 SHADERS.forEach((s, i) => {
   // select caché (logique preset)
@@ -97,6 +122,9 @@ SHADERS.forEach((s, i) => {
   const o2 = o.cloneNode(true) as HTMLOptionElement;
   layerBSel.appendChild(o2);
 
+  // Déterminer la catégorie
+  const cat = getCategory(s.name);
+
   // liste visuelle cliquable
   const item = document.createElement("div");
   item.className = "src-item";
@@ -104,8 +132,32 @@ SHADERS.forEach((s, i) => {
   const key = SRC_KEYS[i] ?? "";
   item.innerHTML = `<span class="src-key">${key}</span><span class="src-name">${s.name}</span>`;
   item.addEventListener("click", () => selectSource(i));
-  sourcesList.appendChild(item);
+
+  // Ajouter à All et à la catégorie spécifique
+  allItems.get("All")!.push(item);
+  if (cat !== "All") {
+    const dupItem = item.cloneNode(true) as HTMLElement;
+    dupItem.addEventListener("click", () => selectSource(i));
+    allItems.get(cat)!.push(dupItem);
+  }
 });
+
+// Peupler les listes de chaque onglet
+const listContainers: Record<string, HTMLElement | null> = {
+  "All": document.getElementById("sources-list"),
+  "Text": document.getElementById("sources-list-text"),
+  "Plasma": document.getElementById("sources-list-plasma"),
+  "Geometry": document.getElementById("sources-list-geometry"),
+  "Noise": document.getElementById("sources-list-noise"),
+  "Interactive": document.getElementById("sources-list-interactive"),
+};
+
+for (const [cat, items] of allItems) {
+  const container = listContainers[cat];
+  if (container) {
+    items.forEach(item => container.appendChild(item));
+  }
+}
 
 function selectSource(i: number): void {
   shaderSel.value = String(i);
