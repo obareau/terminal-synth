@@ -398,10 +398,12 @@ document.addEventListener("keydown", (e) => {
   // Tab = focus mode (canvas plein écran interne)
   if (e.key === "Tab") { e.preventDefault(); toggleFocus(); return; }
 
-  // Shift+O = open output window (secondary display)
+  // Shift+O = open output window (secondary display) or performance mode (single screen)
   if (e.shiftKey && (e.key === "o" || e.key === "O") && isControlMode) {
     e.preventDefault();
-    window.synth?.openOutputWindow();
+    window.synth?.openOutputWindow().then((success) => {
+      if (!success) togglePerformanceMode(); // Single screen: use performance mode instead
+    });
     return;
   }
 

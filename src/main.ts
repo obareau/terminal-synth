@@ -79,8 +79,12 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // Open output window on secondary display
+  // Open output window on secondary display (or return false if single-screen)
   ipcMain.handle("window:open-output", () => {
+    const displays = screen.getAllDisplays();
+    if (displays.length === 1) {
+      return false; // Single screen: let renderer use performance mode instead
+    }
     createOutputWindow();
     return true;
   });
