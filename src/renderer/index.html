@@ -481,6 +481,10 @@
 
 <div id="focus-hint">Tab · Échap</div>
 <div id="performance-hud"></div>
+<script>
+// Force initial paint before renderer.js loads
+document.body.offsetHeight;
+</script>
 <script src="./renderer.js"></script>
 </body>
 </html>
