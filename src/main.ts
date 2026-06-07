@@ -60,7 +60,13 @@ function createWindow(): void {
     (_request, callback) => {
       desktopCapturer
         .getSources({ types: ["screen"] })
-        .then((sources) => callback({ video: sources[0], audio: "loopback" }))
+        .then((sources) => {
+          if (sources && sources.length > 0) {
+            callback({ video: sources[0], audio: "loopback" });
+          } else {
+            callback({});
+          }
+        })
         .catch(() => callback({}));
     },
     { useSystemPicker: false },
