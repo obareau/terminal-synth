@@ -300,6 +300,7 @@ declare global {
       openOutputWindow: () => Promise<boolean>;
       getStats: () => Promise<{ cpu: number; gpu: number }>;
     };
+    applyRenderFilter?: (mode: "none" | "monochrome" | "green" | "amber") => void;
   }
 }
 
