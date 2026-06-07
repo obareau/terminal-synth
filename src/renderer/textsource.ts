@@ -27,7 +27,7 @@ export class TacticDisplay {
   private readonly W = 1280;
   private readonly H = 720;
   private readonly FONT = `"Cascadia Mono", Consolas, "Courier New", monospace`;
-  private readonly FP   = 14;   // font px (content)
+  private FP   = 14;   // font px (content) - now adjustable
   private readonly LH   = 20;   // line height px
 
   constructor(lines: string[]) {
@@ -75,6 +75,10 @@ export class TacticDisplay {
     const dt = Math.min(80, now - this.lastTick);
     this.lastTick = now;
     this.typePos  = Math.min(this.current.length, this.typePos + this.typeSpeed * dt / 1000);
+  }
+
+  setFontSize(size: number): void {
+    this.FP = Math.max(8, Math.min(24, size)); // clamp 8-24px
   }
 
   // ── Dessin principal ────────────────────────────────────────────────
@@ -177,7 +181,7 @@ export class TacticDisplay {
       const padded  = display.padEnd(cols, " ").slice(0, cols);
 
       if (isTac) {
-        ctx.fillStyle = "#fff"; // brightware = green through shader
+        ctx.fillStyle = "#fff";
         ctx.font = `bold ${FP}px ${FONT}`;
       } else {
         ctx.fillStyle = "#aaa";
