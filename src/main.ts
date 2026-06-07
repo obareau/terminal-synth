@@ -1,6 +1,39 @@
-import { app, BrowserWindow, session, desktopCapturer, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, screen } from "electron";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import * as os from "node:os";
+
+let controlWindow: BrowserWindow | null = null;
+let outputWindow: BrowserWindow | null = null;
+
+function createOutputWindow(): void {
+  if (outputWindow) {
+    outputWindow.focus();
+    return;
+  }
+  const displays = screen.getAllDisplays();
+  const outputDisplay = displays[1] || displays[0]; // 2nd monitor if available
+  const win = new BrowserWindow({
+    x: outputDisplay.bounds.x,
+    y: outputDisplay.bounds.y,
+    width: outputDisplay.bounds.width,
+    height: outputDisplay.bounds.height,
+    backgroundColor: "#000000",
+    title: "terminal-synth · Output",
+    autoHideMenuBar: true,
+    fullscreen: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+  outputWindow = win;
+  win.loadFile(path.join(__dirname, "index.html") + "?mode=output");
+  win.on("closed", () => {
+    outputWindow = null;
+  });
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -9,7 +42,7 @@ function createWindow(): void {
     minHeight: 768,
     minWidth: 1280,
     backgroundColor: "#0a0a0a",
-    title: "terminal-synth",
+    title: "terminal-synth · Control",
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -18,21 +51,13 @@ function createWindow(): void {
     },
   });
 
+  controlWindow = win;
+
   // Autorise micro/ligne (FFT audio) et MIDI sans pop-up.
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
     cb(permission === "media" || permission === "midi" || permission === "midiSysex");
   });
 
-  // Capture de la SORTIE système (loopback Windows) pour getDisplayMedia({audio:true}).
-  session.defaultSession.setDisplayMediaRequestHandler(
-    (_request, callback) => {
-      desktopCapturer
-        .getSources({ types: ["screen"] })
-        .then((sources) => callback({ video: sources[0], audio: "loopback" }))
-        .catch(() => callback({}));
-    },
-    { useSystemPicker: false },
-  );
 
   win.loadFile(path.join(__dirname, "index.html"));
 
@@ -40,9 +65,42 @@ function createWindow(): void {
   win.webContents.on("before-input-event", (_e, input) => {
     if (input.key === "F12" && input.type === "keyDown") win.webContents.toggleDevTools();
   });
+
+  win.on("closed", () => {
+    controlWindow = null;
+  });
 }
 
 app.whenReady().then(() => {
+  // Get CPU/GPU usage stats
+  ipcMain.handle("stats:get-usage", () => {
+    const cpus = os.cpus();
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const usedMemory = totalMemory - freeMemory;
+    const cpuPercent = Math.round((usedMemory / totalMemory) * 100);
+
+    // Estimate CPU usage from load average
+    const loadAvg = os.loadavg()[0];
+    const cpuCount = cpus.length;
+    const cpuUsage = Math.round((loadAvg / cpuCount) * 100);
+
+    return {
+      cpu: Math.min(100, cpuUsage),
+      gpu: 0, // GPU monitoring not available without external tools
+    };
+  });
+
+  // Open output window on secondary display (or return false if single-screen)
+  ipcMain.handle("window:open-output", () => {
+    const displays = screen.getAllDisplays();
+    if (displays.length === 1) {
+      return false; // Single screen: let renderer use performance mode instead
+    }
+    createOutputWindow();
+    return true;
+  });
+
   // Ouvre un fichier et renvoie son contenu texte.
   ipcMain.handle("dialog:open-file", async (e, filters: Electron.FileFilter[]) => {
     const w = BrowserWindow.fromWebContents(e.sender);

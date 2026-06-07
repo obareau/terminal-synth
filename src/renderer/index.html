@@ -162,6 +162,41 @@
       white-space: pre; overflow: hidden; letter-spacing: 0;
       text-shadow: 0 0 4px rgba(120,255,140,.3);
     }
+    #ascii span {
+      color: inherit;
+      text-shadow: 0 0 2px rgba(120,255,140,.2);
+    }
+    /* Permanent ASCII glitch layer (centered, with semi-transparent background inlay) */
+    #ascii-glitch-permanent {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      font-family: var(--font); font-size: 28px; line-height: 28px;
+      color: var(--accent); background: transparent;
+      white-space: pre; overflow: hidden; letter-spacing: 0;
+      text-shadow: 0 0 4px rgba(120,255,140,.3);
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; z-index: 5;
+      pointer-events: none;
+      opacity: 0.25; /* Subtle transparency */
+    }
+    /* Inlay background for ASCII glitch visibility */
+    #ascii-glitch-permanent::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      z-index: -1;
+    }
+    #ascii-glitch-permanent span {
+      color: inherit;
+      text-shadow: 0 0 2px rgba(120,255,140,.2);
+    }
+    /* Vignette overlay (highest z-index, always on top) */
+    #vignette-overlay {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      box-shadow: inset 0 0 150px rgba(0,0,0,0.8), inset 0 0 80px rgba(0,0,0,0.6);
+      pointer-events: none; z-index: 100;
+    }
     #text {
       position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
       padding: .6em .9em 1em;
@@ -224,6 +259,39 @@
       pointer-events: none;
     }
     body.focus #focus-hint { display: block; }
+
+    /* ── Output-only mode (secondary display) ─────────────────────── */
+    body.output-mode #app {
+      grid-template-rows: 1fr !important;
+      grid-template-columns: 1fr !important;
+      grid-template-areas: "stage" !important;
+    }
+    body.output-mode #topbar,
+    body.output-mode #bottom-bar,
+    body.output-mode #left-panel,
+    body.output-mode #right-panel { display: none !important; }
+
+    /* ── Performance mode (Shift+P: canvas fullscreen + HUD) ──────── */
+    #performance-hud {
+      display: none;
+      position: fixed; bottom: 14px; left: 14px; z-index: 100;
+      font-size: 11px; color: var(--accent);
+      background: rgba(0,0,0,.75); padding: 10px 14px;
+      border: 1px solid var(--border2); border-radius: 2px;
+      font-family: var(--font); letter-spacing: .05em;
+      line-height: 1.5;
+    }
+    body.performance #performance-hud { display: block; }
+    body.performance #app {
+      grid-template-rows: 1fr !important;
+      grid-template-columns: 1fr !important;
+      grid-template-areas: "stage" !important;
+    }
+    body.performance #topbar,
+    body.performance #bottom-bar,
+    body.performance #left-panel,
+    body.performance #right-panel { display: none; }
+    body.performance #stage { grid-area: stage; }
   </style>
 </head>
 <body>
@@ -308,7 +376,9 @@
   <div id="stage">
     <canvas id="gl"></canvas>
     <pre id="ascii" hidden></pre>
+    <pre id="ascii-glitch-permanent"></pre>
     <pre id="text" hidden></pre>
+    <div id="vignette-overlay"></div>
   </div>
 
   <!-- ── Right panel: effects + perturbateurs ───────────── -->
@@ -326,10 +396,14 @@
     <div class="sep"></div>
     <button id="text-toggle" title="Overlay RECTA  [T]">TXT</button>
     <input id="recta-speed" type="range" min="500" max="12000" step="250" value="4200" title="Durée RECTA" style="width:52px">
+    <input id="recta-font-size" type="range" min="8" max="24" step="1" value="14" title="RECTA Font Size" style="width:52px">
+    <button id="recta-mono" title="RECTA: Monochrome">◼ W</button>
+    <button id="recta-green" title="RECTA: Green terminal">◼ G</button>
+    <button id="recta-amber" title="RECTA: Amber terminal">◼ A</button>
     <div class="sep"></div>
     <button id="text-layer-toggle" title="Text Layer (giant pixelated)">📝 TEXT</button>
     <input id="text-pixelation" type="range" min="1" max="64" step="1" value="4" title="Pixelation" style="width:52px">
-    <input id="text-size" type="range" min="10" max="200" step="10" value="150" title="Size %" style="width:52px">
+    <input id="text-size" type="range" min="10" max="200" step="10" value="70" title="Size %" style="width:52px">
     <button id="text-config" title="Configure words">⚙️</button>
     <div class="spacer"></div>
     <span id="meter"></span>
@@ -406,6 +480,7 @@
 </div>
 
 <div id="focus-hint">Tab · Échap</div>
+<div id="performance-hud"></div>
 <script src="./renderer.js"></script>
 </body>
 </html>

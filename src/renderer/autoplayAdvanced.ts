@@ -7,7 +7,14 @@
  * - Probability maps & presets
  * - Visual feedback (metronome, pulse)
  * - Session save/load
+ * - Text layer randomization
+ * - RECTA color/size randomization
  */
+
+import { textLayer } from "./textLayer";
+
+// Global functions from renderer.ts
+declare function applyRenderFilter(mode: "none" | "monochrome" | "green" | "amber"): void;
 
 export interface AutoplayPreset {
   name: string;
@@ -138,7 +145,9 @@ class AutoplayAdvanced {
    * Start with preset
    */
   start(presetName: keyof typeof AUTOPLAY_PRESETS = "chaotic") {
-    if (this.running) return;
+    if (this.running) {
+      this.stop();
+    }
 
     this.preset = AUTOPLAY_PRESETS[presetName];
     this.enabled = true;
@@ -235,6 +244,16 @@ class AutoplayAdvanced {
       this.randomizeBlendMode();
     }
 
+    // Occasionally toggle text layer (moderate probability, shorter duration)
+    if (Math.random() < 0.15 + aggression * 0.1) {
+      this.randomizeTextLayer();
+    }
+
+    // Occasionally randomize render filter (global color modes)
+    if (Math.random() < 0.08 + aggression * 0.05) {
+      this.randomizeRenderFilter();
+    }
+
     // Smooth slider changes
     this.randomizeSliders(this.preset.crossfadeDuration);
 
@@ -263,6 +282,12 @@ class AutoplayAdvanced {
     }
     if (Math.random() < mutationStrength * 0.5) {
       this.randomizeSource();
+    }
+    if (Math.random() < mutationStrength * 0.25) {
+      this.randomizeTextLayer();
+    }
+    if (Math.random() < mutationStrength * 0.15) {
+      this.randomizeRenderFilter();
     }
 
     this.randomizeSliders(this.preset.crossfadeDuration, mutationStrength);
@@ -457,6 +482,22 @@ class AutoplayAdvanced {
 
       requestAnimationFrame(animate);
     });
+  }
+
+  /**
+   * Helper: randomize text layer (toggle on/off)
+   */
+  private randomizeTextLayer() {
+    textLayer.toggle();
+  }
+
+  /**
+   * Helper: randomize render filter (global color modes)
+   */
+  private randomizeRenderFilter() {
+    const modes: Array<"none" | "monochrome" | "green" | "amber"> = ["none", "monochrome", "green", "amber"];
+    const randomMode = modes[Math.floor(Math.random() * modes.length)]!;
+    applyRenderFilter(randomMode);
   }
 
   /**

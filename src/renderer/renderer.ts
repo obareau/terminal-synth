@@ -2,7 +2,7 @@
 
 import { Pipeline, type Stage } from "./gl";
 import { AudioInput, type Bands, type AudioSource } from "./audio";
-import { pixelsToAscii } from "./ascii";
+import { pixelsToAscii, pixelsToAsciiColorGlitch } from "./ascii";
 import { MidiInput, type MidiMode } from "./midi";
 import { TextOverlay } from "./text";
 import { TacticDisplay } from "./textsource";
@@ -16,6 +16,17 @@ import { autoplayAdvanced, AUTOPLAY_PRESETS } from "./autoplayAdvanced";
 import { textLayer } from "./textLayer";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+
+// Mode variables (output window / performance overlay)
+const isOutputMode = new URLSearchParams(window.location.search).get("mode") === "output";
+const isControlMode = !isOutputMode;
+let performanceMode = false;
+let hudVisible = true;
+let cpuUsage = 0;
+let gpuUsage = 0;
+
+// Initialize mode
+if (isOutputMode) document.body.classList.add("output-mode");
 
 const app = $("app");
 const canvas = $<HTMLCanvasElement>("gl");
@@ -286,6 +297,8 @@ declare global {
       saveVideo: (data: Uint8Array, defaultName: string) => Promise<boolean>;
       exportMP4: (config: any) => Promise<any>;
       spoutSendFrame: (w: number, h: number, pixels: Uint8Array) => Promise<void>;
+      openOutputWindow: () => Promise<boolean>;
+      getStats: () => Promise<{ cpu: number; gpu: number }>;
     };
   }
 }
@@ -366,11 +379,18 @@ function toggleFocus(): void {
   document.body.classList.toggle("focus", focusMode);
 }
 
+function togglePerformanceMode(): void {
+  performanceMode = !performanceMode;
+  document.body.classList.toggle("performance", performanceMode);
+  if (performanceMode) window.synth?.setFullscreen(true);
+}
+
 document.addEventListener("keydown", (e) => {
   const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
 
   // Toujours actifs
   if (e.key === "Escape") {
+    if (performanceMode) { togglePerformanceMode(); return; }
     if (focusMode) { toggleFocus(); return; }
     window.synth?.setFullscreen(false);
   }
@@ -381,6 +401,30 @@ document.addEventListener("keydown", (e) => {
 
   // Tab = focus mode (canvas plein écran interne)
   if (e.key === "Tab") { e.preventDefault(); toggleFocus(); return; }
+
+  // Shift+O = open output window (secondary display) or performance mode (single screen)
+  if (e.shiftKey && (e.key === "o" || e.key === "O") && isControlMode) {
+    e.preventDefault();
+    window.synth?.openOutputWindow().then((success) => {
+      if (!success) togglePerformanceMode(); // Single screen: use performance mode instead
+    });
+    return;
+  }
+
+  // Shift+P = performance mode (canvas fullscreen + HUD)
+  if (e.shiftKey && (e.key === "p" || e.key === "P")) {
+    e.preventDefault();
+    togglePerformanceMode();
+    return;
+  }
+
+  // H = toggle HUD visibility (in performance mode)
+  if ((e.key === "h" || e.key === "H") && performanceMode) {
+    e.preventDefault();
+    hudVisible = !hudVisible;
+    $("performance-hud").style.display = hudVisible ? "block" : "none";
+    return;
+  }
 
   // Ctrl+S / Ctrl+O / Ctrl+R
   if (e.ctrlKey) {
@@ -425,6 +469,61 @@ tactics.holdMs = 8000;
 const rectaSpeedRng = $<HTMLInputElement>("recta-speed");
 rectaSpeedRng.value = "8000";
 rectaSpeedRng.addEventListener("input", () => { tactics.holdMs = Number(rectaSpeedRng.value); });
+
+// --- RECTA font size ---
+const rectaFontSizeRng = $<HTMLInputElement>("recta-font-size");
+rectaFontSizeRng.value = "14";
+rectaFontSizeRng.addEventListener("input", () => { tactics.setFontSize(Number(rectaFontSizeRng.value)); });
+
+// --- Global render filters: Monochrome, Green, Amber ---
+let currentFilter: "none" | "monochrome" | "green" | "amber" = "none";
+
+const rectaMonoBtn = $<HTMLButtonElement>("recta-mono");
+const rectaGreenBtn = $<HTMLButtonElement>("recta-green");
+const rectaAmberBtn = $<HTMLButtonElement>("recta-amber");
+
+// Expose filter function globally for autoplay
+window.applyRenderFilter = (mode: "none" | "monochrome" | "green" | "amber") => {
+  applyFilter(mode);
+};
+
+const applyFilter = (mode: "none" | "monochrome" | "green" | "amber") => {
+  currentFilter = mode;
+  let filterStyle = "drop-shadow(0 0 0 transparent)"; // Base for composing filters
+
+  switch (mode) {
+    case "monochrome":
+      filterStyle = "grayscale(100%) contrast(1.2)";
+      break;
+    case "green":
+      filterStyle = "saturate(0.8) hue-rotate(-20deg) brightness(0.95)";
+      break;
+    case "amber":
+      filterStyle = "saturate(0.9) hue-rotate(30deg) sepia(0.3) brightness(0.98)";
+      break;
+    default:
+      filterStyle = "none";
+  }
+
+  // Apply filter style only (vignette is on #stage container now)
+  canvas.style.filter = filterStyle;
+
+  // Update button states
+  rectaMonoBtn.classList.toggle("on", mode === "monochrome");
+  rectaGreenBtn.classList.toggle("on", mode === "green");
+  rectaAmberBtn.classList.toggle("on", mode === "amber");
+};
+
+// Toggle filters on/off
+rectaMonoBtn.addEventListener("click", () => {
+  applyFilter(currentFilter === "monochrome" ? "none" : "monochrome");
+});
+rectaGreenBtn.addEventListener("click", () => {
+  applyFilter(currentFilter === "green" ? "none" : "green");
+});
+rectaAmberBtn.addEventListener("click", () => {
+  applyFilter(currentFilter === "amber" ? "none" : "amber");
+});
 
 // --- Presets ---
 interface Preset {
@@ -616,9 +715,20 @@ function frame(now: number): void {
   if (asciiMode) {
     const { cols, rows } = asciiGrid();
     const px = pipeline.render(stages, cols, rows, u, true);
-    if (px) pre.textContent = pixelsToAscii(px, cols, rows);
+    if (px) pre.innerHTML = pixelsToAsciiColorGlitch(px, cols, rows);
   } else {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
+  }
+
+  // Permanent ASCII glitch layer (centered, always visible with inlay background)
+  if (Math.random() < 0.3) { // Update ~30% of frames to reduce CPU
+    const { cols, rows } = asciiGrid();
+    const px = pipeline.render(stages, Math.floor(cols * 0.5), Math.floor(rows * 0.5), u, true);
+    if (px) {
+      const glitchContent = pixelsToAsciiColorGlitch(px, Math.floor(cols * 0.5), Math.floor(rows * 0.5));
+      const asciiGlitch = $("ascii-glitch-permanent");
+      asciiGlitch.innerHTML = glitchContent;
+    }
   }
 
   // Spout : readback toutes les 8 images (~7 fps) pour limiter la charge IPC
@@ -637,9 +747,38 @@ function frame(now: number): void {
   let line = `bass${pct(bands.bass)} mid${pct(bands.mid)} hi${pct(bands.treble)}`;
   if (midi.enabled) line += `  · midi ${midi.mode} e${pct(e)} poly${midi.polyphony}`;
   meter.textContent = line;
+
+  // Update performance HUD
+  if (performanceMode) {
+    const hud = $("performance-hud");
+    const layerA = SHADERS[currentShader]?.name || "—";
+    const layerB = layerBEnabled ? SHADERS[Number(layerBSel.value)]?.name || "—" : "";
+    hud.innerHTML = `
+      <div style="font-weight:700;margin-bottom:4px">TERMINAL·SYNTH v0.9.5</div>
+      <div style="font-size:10px;margin-bottom:6px;line-height:1.4">
+        <div>A: ${layerA}</div>
+        ${layerB ? `<div>B: ${layerB}</div>` : ""}
+      </div>
+      <div style="font-size:10px;margin-bottom:6px;color:#999">
+        bass${pct(bands.bass)} · cpu ${cpuUsage}% · gpu ${gpuUsage}%
+      </div>
+      <div style="font-size:9px;color:#666">
+        [Shift+P] exit · [H] hud
+      </div>
+    `;
+  }
+
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// Update CPU/GPU stats every 500ms
+setInterval(() => {
+  window.synth?.getStats().then((stats) => {
+    cpuUsage = stats.cpu;
+    gpuUsage = stats.gpu;
+  });
+}, 500);
 
 // --- Export MP4 with FFmpeg ---
 const exportBtn = $<HTMLButtonElement>("export-mp4");
@@ -687,23 +826,36 @@ setInterval(() => {
     : "—";
 }, 100);
 
-// Preset buttons
-($<HTMLButtonElement>("autoplay-gentle")).addEventListener("click", () => {
-  autoplayAdvanced.start("gentle");
-  ($("autoplay-gentle") as HTMLElement).classList.add("on");
-});
-($<HTMLButtonElement>("autoplay-chaotic")).addEventListener("click", () => {
-  autoplayAdvanced.start("chaotic");
-  ($("autoplay-chaotic") as HTMLElement).classList.add("on");
-});
-($<HTMLButtonElement>("autoplay-psycho")).addEventListener("click", () => {
-  autoplayAdvanced.start("psycho");
-  ($("autoplay-psycho") as HTMLElement).classList.add("on");
-});
-($<HTMLButtonElement>("autoplay-glitch")).addEventListener("click", () => {
-  autoplayAdvanced.start("glitch");
-  ($("autoplay-glitch") as HTMLElement).classList.add("on");
-});
+// Preset buttons (toggleable - click to start, re-click to stop)
+let autoplayRunning = false;
+let activeAutoplayBtn: HTMLElement | null = null;
+
+const setupAutoplayButton = (btnId: string, presetName: "gentle" | "chaotic" | "psycho" | "glitch") => {
+  ($<HTMLButtonElement>(btnId)).addEventListener("click", () => {
+    const btn = $<HTMLElement>(btnId);
+    if (autoplayRunning && activeAutoplayBtn === btn) {
+      // Stop autoplay
+      autoplayAdvanced.stop();
+      btn.classList.remove("on");
+      autoplayRunning = false;
+      activeAutoplayBtn = null;
+    } else {
+      // Start autoplay
+      if (autoplayRunning && activeAutoplayBtn) {
+        activeAutoplayBtn.classList.remove("on");
+      }
+      autoplayAdvanced.start(presetName);
+      btn.classList.add("on");
+      autoplayRunning = true;
+      activeAutoplayBtn = btn;
+    }
+  });
+};
+
+setupAutoplayButton("autoplay-gentle", "gentle");
+setupAutoplayButton("autoplay-chaotic", "chaotic");
+setupAutoplayButton("autoplay-psycho", "psycho");
+setupAutoplayButton("autoplay-glitch", "glitch");
 
 // Generative loop
 ($<HTMLButtonElement>("loop-record")).addEventListener("click", () => {
