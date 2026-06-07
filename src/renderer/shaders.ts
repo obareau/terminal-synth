@@ -17,6 +17,7 @@ export interface Shader {
   name: string;
   src: string;
   params?: ShaderParam[];
+  category?: "Text" | "Plasma" | "Geometry" | "Noise" | "Interactive" | "Real-world";
 }
 
 export const SHADERS: Shader[] = [

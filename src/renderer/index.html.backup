@@ -54,48 +54,37 @@
     input[type=range] { accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
     [hidden] { display: none !important; }
 
-    /* ── App shell — flex layout (topbar | main-grid | bottom-bar) ─────────── */
+    /* ── App shell — 3-column, 3-row grid ────────────────────────── */
     #app {
-      display: flex;
-      flex-direction: column;
+      display: grid;
       height: 100vh;
+      grid-template-rows: 32px 1fr 36px;
+      grid-template-columns: 210px 1fr 252px;
+      grid-template-areas:
+        "top   top   top"
+        "left  stage right"
+        "bot   bot   bot";
     }
     /* Focus mode: collapse panels & bars */
+    body.focus #app {
+      grid-template-rows: 0 1fr 0;
+      grid-template-columns: 0 1fr 0;
+    }
     body.focus #topbar,
     body.focus #bottom-bar,
     body.focus #left-panel,
     body.focus #right-panel { display: none; }
-    body.focus #main-grid { margin: 0; }
 
-    /* ── Top bar (separate section) ──────────────────────────────── */
+    /* ── Top bar ─────────────────────────────────────────────────── */
     #topbar {
+      grid-area: top;
       display: flex; align-items: center; gap: 5px;
       padding: 0 10px;
       background: var(--panel);
       border-bottom: 1px solid var(--border);
+      min-height: 32px;
       height: 32px;
       flex-shrink: 0;
-      z-index: 100;
-    }
-
-    /* ── Main grid (3-column flex layout) ────────────────────────── */
-    #main-grid {
-      display: flex;
-      flex: 1;
-      gap: 0;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    /* ── Bottom bar (separate section) ──────────────────────────── */
-    #bottom-bar {
-      display: flex; align-items: center; gap: 5px;
-      padding: 0 10px;
-      background: var(--panel);
-      border-top: 1px solid var(--border);
-      height: 36px;
-      flex-shrink: 0;
-      z-index: 100;
     }
     .brand {
       color: var(--accent); font-weight: 700; font-size: 12px;
@@ -104,16 +93,13 @@
     .sep { width: 1px; height: 16px; background: var(--border2); flex-shrink: 0; margin: 0 2px; }
     .spacer { flex: 1; }
 
-    /* ── Left panel: generators with tabs ────────────────────────── */
+    /* ── Left panel: sources + layers ────────────────────────────── */
     #left-panel {
-      width: 18%;
-      min-width: 200px;
-      max-width: 280px;
+      grid-area: left;
       display: flex; flex-direction: column;
       background: var(--panel);
       border-right: 1px solid var(--border);
       overflow: hidden;
-      flex-shrink: 0;
     }
     .ph {                                   /* panel header */
       padding: 4px 10px 3px;
@@ -124,41 +110,6 @@
       flex-shrink: 0;
     }
     .ph .hint { color: #252525; font-size: 9px; text-transform: none; letter-spacing: 0; margin-left: 4px; }
-
-    /* ── Tab system (onglets) ────────────────────────────────────── */
-    .tabs-header {
-      display: flex; gap: 0;
-      background: #0d0d0d;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .tab-btn {
-      flex: 1;
-      background: #0d0d0d;
-      border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--text-sec);
-      font-size: 10px;
-      padding: 6px 8px;
-      cursor: pointer;
-      transition: all .15s;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .tab-btn:hover { color: var(--text); background: #0f0f0f; }
-    .tab-btn.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-      background: #0a0a0a;
-    }
-    .tab-content {
-      flex: 1;
-      overflow-y: auto;
-      min-height: 0;
-      display: none;
-    }
-    .tab-content.active { display: flex; flex-direction: column; }
 
     /* Sources list */
     #sources-list {
@@ -255,26 +206,12 @@
       max-width: 70ch; mix-blend-mode: screen;
     }
 
-    /* ── Center stage: canvas + ascii ───────────────────────────── */
-    #stage {
-      flex: 1;
-      display: flex; flex-direction: column;
-      position: relative;
-      background: var(--bg);
-      overflow: hidden;
-      min-width: 0;
-    }
-
-    /* ── Right panel: controls with tabs ────────────────────────── */
+    /* ── Right panel: effects rack ───────────────────────────────── */
     #right-panel {
-      width: 18%;
-      min-width: 200px;
-      max-width: 280px;
+      grid-area: right;
       display: flex; flex-direction: column;
       background: var(--panel);
       border-left: 1px solid var(--border);
-      overflow: hidden;
-      flex-shrink: 0;
     }
     #chain {
       flex: 1; overflow-y: auto; min-height: 0;
@@ -299,6 +236,14 @@
     .fx.on .fx-name { color: var(--text-hi); }
     .fx input[type=range] { width: 100% !important; height: 14px; }
 
+    /* ── Bottom bar ──────────────────────────────────────────────── */
+    #bottom-bar {
+      grid-area: bot;
+      display: flex; align-items: center; gap: 5px;
+      padding: 0 10px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+    }
     #meter { font-size: 10px; color: var(--text-dim); margin-left: 4px; }
 
     /* ── Params panel ────────────────────────────────────────────── */
@@ -394,107 +339,54 @@
     <button id="full" title="Plein écran  [F]">⛶</button>
   </div>
 
-  <!-- ── Main grid: 3-column flex layout (left | center | right) ───── -->
-  <div id="main-grid">
+  <!-- ── Left panel: sources + layers ──────────────────── -->
+  <div id="left-panel">
+    <div class="ph">Sources<span class="hint">· 1-9 q-p a-k · Tab=focus</span></div>
+    <div id="sources-list"></div>
+    <!-- select conservé pour la compatibilité preset -->
+    <select id="shader" hidden></select>
 
-    <!-- ── Left panel: generators with tabs ──────────────────── -->
-    <div id="left-panel">
-      <div class="tabs-header">
-        <button class="tab-btn active" data-tab="gen-all">All</button>
-        <button class="tab-btn" data-tab="gen-text">Text</button>
-        <button class="tab-btn" data-tab="gen-plasma">Plasma</button>
-        <button class="tab-btn" data-tab="gen-geometry">Geometry</button>
-        <button class="tab-btn" data-tab="gen-noise">Noise</button>
-        <button class="tab-btn" data-tab="gen-interactive">Interactive</button>
+    <!-- Paramètres du générateur actif -->
+    <div id="params-panel" style="border-top:1px solid #1c1c1c;padding:6px 9px;display:none;flex-shrink:0;background:#0e0e0e"></div>
+
+    <div id="layer-section">
+      <div class="ph" style="margin:-7px -9px 4px;padding:4px 9px">Layers</div>
+
+      <div class="lrow">
+        <span class="lbl">A</span>
+        <span id="layer-a-name" style="font-size:11px;color:var(--text-hi);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
       </div>
 
-      <div id="gen-all" class="tab-content active">
-        <div class="ph" style="flex-shrink:0">All Generators<span class="hint">1-9 q-p a-k</span></div>
-        <div id="sources-list" style="flex:1;overflow-y:auto;min-height:0"></div>
+      <div class="lrow">
+        <span class="lbl">B</span>
+        <select id="layer-b-shader" style="flex:1;font-size:10px;height:20px"></select>
+        <button id="layer-b-on" style="padding:0 5px;height:20px;font-size:10px">B</button>
       </div>
 
-      <div id="gen-text" class="tab-content">
-        <div class="ph" style="flex-shrink:0">Text & ASCII</div>
-        <div id="sources-list-text" style="flex:1;overflow-y:auto;min-height:0"></div>
-      </div>
+      <select id="blend-mode" title="Blend mode"></select>
 
-      <div id="gen-plasma" class="tab-content">
-        <div class="ph" style="flex-shrink:0">Plasma & Waves</div>
-        <div id="sources-list-plasma" style="flex:1;overflow-y:auto;min-height:0"></div>
-      </div>
-
-      <div id="gen-geometry" class="tab-content">
-        <div class="ph" style="flex-shrink:0">Geometry & Shapes</div>
-        <div id="sources-list-geometry" style="flex:1;overflow-y:auto;min-height:0"></div>
-      </div>
-
-      <div id="gen-noise" class="tab-content">
-        <div class="ph" style="flex-shrink:0">Noise & Procedural</div>
-        <div id="sources-list-noise" style="flex:1;overflow-y:auto;min-height:0"></div>
-      </div>
-
-      <div id="gen-interactive" class="tab-content">
-        <div class="ph" style="flex-shrink:0">Interactive & Real-world</div>
-        <div id="sources-list-interactive" style="flex:1;overflow-y:auto;min-height:0"></div>
-      </div>
-
-      <!-- Hidden select for preset compatibility -->
-      <select id="shader" hidden></select>
-    </div>
-
-    <!-- ── Center stage: canvas + ascii ─────────────────────── -->
-    <div id="stage">
-      <canvas id="gl"></canvas>
-      <pre id="ascii" hidden></pre>
-      <pre id="ascii-glitch-permanent"></pre>
-      <pre id="text" hidden></pre>
-      <div id="vignette-overlay"></div>
-    </div>
-
-    <!-- ── Right panel: controls with tabs ───────────────────── -->
-    <div id="right-panel">
-      <div class="tabs-header">
-        <button class="tab-btn active" data-tab="ctrl-params">Params</button>
-        <button class="tab-btn" data-tab="ctrl-controls">Controls</button>
-        <button class="tab-btn" data-tab="ctrl-layers">Layers</button>
-      </div>
-
-      <div id="ctrl-params" class="tab-content active">
-        <div id="params-panel" style="padding:6px 9px;flex:1;overflow-y:auto;min-height:0"></div>
-      </div>
-
-      <div id="ctrl-controls" class="tab-content">
-        <div class="ph" style="flex-shrink:0">Effects Chain</div>
-        <div id="chain" style="flex:1;overflow-y:auto;min-height:0;padding:2px 0"></div>
-        <div class="ph" style="border-top:1px solid #1c1c1c;flex-shrink:0">Perturbateurs</div>
-        <div id="disruptors-list" style="flex:1;overflow-y:auto;min-height:0;padding:2px 0"></div>
-      </div>
-
-      <div id="ctrl-layers" class="tab-content">
-        <div id="layer-section" style="padding:6px 9px;flex:1;overflow-y:auto;min-height:0">
-          <div class="ph" style="margin:-6px -9px 4px;padding:4px 9px">Layer A</div>
-          <div class="lrow">
-            <span class="lbl">Name</span>
-            <span id="layer-a-name" style="font-size:11px;color:var(--text-hi);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
-          </div>
-
-          <div class="ph" style="margin:8px -9px 4px;padding:4px 9px">Layer B</div>
-          <div class="lrow">
-            <select id="layer-b-shader" style="flex:1;font-size:10px;height:20px"></select>
-            <button id="layer-b-on" style="padding:0 5px;height:20px;font-size:10px;margin-left:4px">B</button>
-          </div>
-
-          <div class="ph" style="margin:8px -9px 4px;padding:4px 9px">Blend</div>
-          <select id="blend-mode" title="Blend mode" style="width:100%;margin-bottom:6px"></select>
-
-          <div class="lrow">
-            <span class="lbl">α</span>
-            <input id="layer-b-opacity" type="range" min="0" max="1" step="0.01" value="1" style="flex:1">
-          </div>
-        </div>
+      <div class="lrow">
+        <span class="lbl">α</span>
+        <input id="layer-b-opacity" type="range" min="0" max="1" step="0.01" value="1" style="flex:1">
       </div>
     </div>
+  </div>
 
+  <!-- ── Stage ─────────────────────────────────────────── -->
+  <div id="stage">
+    <canvas id="gl"></canvas>
+    <pre id="ascii" hidden></pre>
+    <pre id="ascii-glitch-permanent"></pre>
+    <pre id="text" hidden></pre>
+    <div id="vignette-overlay"></div>
+  </div>
+
+  <!-- ── Right panel: effects + perturbateurs ───────────── -->
+  <div id="right-panel">
+    <div class="ph">Effects</div>
+    <div id="chain" style="flex:0 1 auto;overflow-y:auto;max-height:52%"></div>
+    <div class="ph" style="border-top:1px solid #1c1c1c;flex-shrink:0">Perturbateurs</div>
+    <div id="disruptors-list" style="flex:1;overflow-y:auto;min-height:0"></div>
   </div>
 
   <!-- ── Bottom bar ────────────────────────────────────── -->
