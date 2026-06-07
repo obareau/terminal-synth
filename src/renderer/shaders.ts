@@ -1273,87 +1273,117 @@ float sdBox(vec3 p, vec3 b) {
 }
 
 vec3 render(vec2 uv, vec2 res) {
-  vec3 ro = vec3(2.0*sin(u_time*0.5), 1.5, 2.0*cos(u_time*0.3));
-  vec3 rd = normalize(vec3(uv - 0.5, 1.0));
+  vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0) * 2.5;
+  vec3 ro = vec3(sin(u_time*0.5)*1.5, 0.0, 3.0);
+  vec3 rd = normalize(vec3(p, -1.0));
 
-  float t = 0.0;
-  for(int i = 0; i < 64; i++) {
-    vec3 p = ro + rd * t;
-    float d = sdBox(p, vec3(0.8));
-    if(d < 0.01) break;
-    t += d * 0.8;
+  float t = 0.1;
+  for(int i = 0; i < 80; i++) {
+    vec3 pos = ro + rd * t;
+    float d = sdBox(pos, vec3(0.6));
+    if(d < 0.001) break;
+    if(t > 50.0) break;
+    t += d * 0.7;
   }
 
-  vec3 p = ro + rd * t;
-  vec3 n = normalize(vec3(sdBox(p+vec3(0.01,0,0), vec3(0.8))-sdBox(p-vec3(0.01,0,0), vec3(0.8)),
-                          sdBox(p+vec3(0,0.01,0), vec3(0.8))-sdBox(p-vec3(0,0.01,0), vec3(0.8)),
-                          sdBox(p+vec3(0,0,0.01), vec3(0.8))-sdBox(p-vec3(0,0,0.01), vec3(0.8))));
+  vec3 pos = ro + rd * t;
+  vec3 n = normalize(vec3(
+    sdBox(pos+vec3(0.001,0,0), vec3(0.6))-sdBox(pos-vec3(0.001,0,0), vec3(0.6)),
+    sdBox(pos+vec3(0,0.001,0), vec3(0.6))-sdBox(pos-vec3(0,0.001,0), vec3(0.6)),
+    sdBox(pos+vec3(0,0,0.001), vec3(0.6))-sdBox(pos-vec3(0,0,0.001), vec3(0.6))
+  ));
 
-  vec3 col = vec3(0.1, 0.5, 0.9) * (0.5 + 0.5*dot(n, normalize(vec3(1)))) + u_bass*0.3;
-  return col / (1.0 + t * 0.1);
+  vec3 light = normalize(vec3(1.0, 1.0, -1.0));
+  float spec = pow(max(0.0, dot(reflect(-light, n), -rd)), 16.0);
+  vec3 col = vec3(0.2, 0.5, 0.9) * (0.3 + 0.7*max(0.0, dot(n, light))) + spec * 0.8;
+  col += u_bass * 0.3;
+  return col * exp(-t * 0.08);
 }`,
   },
   {
     name: "Neuron Network",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
+  vec2 center = vec2(0.5);
+  vec2 p = uv - center;
   vec3 col = vec3(0.0);
-  float t = u_time * 0.5;
+  float t = u_time * 0.4;
 
-  // Créer un réseau de neurones (sphères)
-  for(float i = 0.0; i < 8.0; i++) {
-    for(float j = 0.0; j < 8.0; j++) {
-      // Position du neurone
-      float angle = (i + j) * 0.5 + t;
-      float radius = 0.3 + 0.2 * sin(t + i + j);
-      vec2 pos = vec2(cos(angle), sin(angle)) * radius + 0.5;
+  // Réseau de neurones en grille 3D projeté
+  for(float i = 0.0; i < 7.0; i++) {
+    for(float j = 0.0; j < 7.0; j++) {
+      // Position du neurone dans un cube
+      float layer = mod(i, 3.0);
+      float angle = (i + j * 0.5) * 0.8 + t * 0.3;
+      float radius = 0.12 + 0.06 * sin(t + layer);
+
+      vec2 pos = vec2(cos(angle), sin(angle)) * radius;
+      pos += vec2(cos(t + i*0.3), sin(t + j*0.3)) * 0.08;
 
       // Distance au neurone
-      float d = distance(uv, pos);
+      float d = distance(p, pos);
 
-      // Glow sphere
-      col += vec3(0.1 + 0.5*sin(t + i), 0.3 + 0.5*sin(t + j), 0.7) * (0.1 / (d + 0.05));
+      // Neurone avec brillance
+      vec3 neuron_col = vec3(
+        0.2 + 0.6*sin(t + i*0.5),
+        0.1 + 0.7*sin(t + j*0.5),
+        0.4 + 0.5*sin(t + i + j)
+      );
+      col += neuron_col * (0.08 / (d * 80.0 + 0.05));
+      col += vec3(0.9, 0.8, 1.0) * pow(max(0.0, 0.02 - d), 2.0) * 0.5;
 
-      // Connexions
-      float next_i = mod(i + 1.0, 8.0);
-      float next_angle = (next_i + j) * 0.5 + t;
-      vec2 next_pos = vec2(cos(next_angle), sin(next_angle)) * radius + 0.5;
-      vec2 line = mix(pos, next_pos, fract(t * 0.3));
-      float line_d = distance(uv, line);
-      col += vec3(0.3, 0.6, 0.9) * 0.01 / (line_d + 0.02);
+      // Connexions entre neurones proches
+      for(float k = i + 1.0; k < min(i + 3.0, 7.0); k++) {
+        for(float l = j; l < min(j + 2.0, 7.0); l++) {
+          float angle2 = (k + l * 0.5) * 0.8 + t * 0.3;
+          float radius2 = 0.12 + 0.06 * sin(t + mod(k, 3.0));
+          vec2 pos2 = vec2(cos(angle2), sin(angle2)) * radius2;
+          pos2 += vec2(cos(t + k*0.3), sin(t + l*0.3)) * 0.08;
+
+          float conn_d = distance(p, mix(pos, pos2, 0.5));
+          col += vec3(0.3, 0.6, 0.9) * 0.02 / (conn_d * 100.0 + 0.05);
+        }
+      }
     }
   }
 
-  return col * (0.5 + u_level * 0.5);
+  return clamp(col * (0.6 + u_bass * 0.4), vec3(0.0), vec3(1.0));
 }`,
   },
   {
     name: "Liquid Sphere",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * 2.0;
+  vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0) * 2.0;
   float r = length(p);
   float t = u_time;
 
   // Sphère liquide avec perturbations
-  float wave = sin(r * 10.0 - t * 3.0) * 0.1 + sin(r * 5.0 + t * 2.0) * 0.05;
-  float sphere = step(0.5 + wave, r);
+  float wave = sin(r * 8.0 - t * 2.5) * 0.08 + sin(r * 4.0 + t * 1.5) * 0.04;
+  float rad = 0.4 + wave;
 
-  if(sphere < 0.5) {
-    // Intérieur lumineux
-    float inside = sin(length(p - vec2(sin(t*0.5), cos(t*0.3))*0.3) * 15.0 - t*2.0) * 0.5 + 0.5;
-    vec3 col = mix(vec3(0.1, 0.3, 0.8), vec3(0.9, 0.4, 0.2), inside);
+  if(r < rad) {
+    // Intérieur lumineux avec gradient
+    float center_dist = length(p - vec2(sin(t*0.4), cos(t*0.3))*0.15);
+    float inside = sin(center_dist * 12.0 - t*2.0) * 0.5 + 0.5;
+    vec3 col = mix(vec3(0.05, 0.2, 0.7), vec3(0.9, 0.3, 0.1), inside);
+    col += vec3(0.2, 0.3, 0.4) * sin(r * 6.0 + t) * 0.3;
 
-    // Réflexion
-    vec2 n = normalize(p) * (0.5 - r);
-    col += vec3(0.8, 0.8, 0.9) * pow(max(0.0, dot(n, normalize(vec2(1)))), 3.0) * 0.5;
+    // Specular highlight (brillance)
+    vec2 n = normalize(p);
+    float spec = pow(max(0.0, dot(n, normalize(vec2(sin(t*0.5), cos(t*0.3))))), 4.0);
+    col += vec3(0.9, 0.95, 1.0) * spec * 0.6;
 
-    return col * (0.6 + u_bass * 0.4);
+    // Fresnel effect (bordure brillante)
+    float fresnel = pow(1.0 - (rad - r) / wave, 2.0);
+    col += vec3(0.7, 0.8, 1.0) * fresnel * 0.4;
+
+    return col * (0.7 + u_bass * 0.3);
   }
 
-  // Fond avec ondes
-  float bg = sin(uv.x * 10.0 + t) * sin(uv.y * 10.0 - t) * 0.5 + 0.5;
-  return vec3(0.02, 0.05, 0.1) * bg;
+  // Fond dégradé
+  float bg = 0.02 + 0.03 * sin(uv.x * 5.0 + t) * sin(uv.y * 5.0 - t);
+  return vec3(bg * 0.3, bg * 0.4, bg * 0.6);
 }`,
   },
   {
