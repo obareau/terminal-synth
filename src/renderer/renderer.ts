@@ -63,6 +63,29 @@ let asciiMode = false;
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
 
+// --- Tab system for generators and controls ---
+function setupTabs(panelId: string) {
+  const tabs = document.querySelectorAll(`#${panelId} .tab-btn`);
+  tabs.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tabId = btn.getAttribute("data-tab");
+      if (!tabId) return;
+
+      // Deactivate all tabs in this panel
+      document.querySelectorAll(`#${panelId} .tab-btn`).forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(`#${panelId} .tab-content`).forEach(c => c.classList.remove("active"));
+
+      // Activate selected tab
+      btn.classList.add("active");
+      const content = document.getElementById(tabId);
+      if (content) content.classList.add("active");
+    });
+  });
+}
+
+setupTabs("left-panel");
+setupTabs("right-panel");
+
 // --- Générateurs : select caché + liste visuelle ---
 const SRC_KEYS = "1234567890qwertyuiopasdfghjklzxcvbnm";
 
