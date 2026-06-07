@@ -13,7 +13,8 @@
     "test:watch": "jest --watch",
     "package": "tsx build.ts --production && electron-builder --win portable",
     "package:mac": "tsx build.ts --production && electron-builder --mac",
-    "package:linux": "tsx build.ts --production && electron-builder --linux"
+    "package:linux": "tsx build.ts --production && electron-builder --linux",
+    "package:deb": "tsx build.ts --production && electron-builder --linux deb"
   },
   "build": {
     "appId": "com.robotariis.terminal-synth",
@@ -34,6 +35,23 @@
           ]
         }
       ]
+    },
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "category": "Graphics"
+    },
+    "deb": {
+      "depends": [
+        "libx11-6",
+        "libxss1",
+        "libgconf-2-4",
+        "libnss3",
+        "libxkbfile1"
+      ],
+      "maintainer": "Olivier Bareau <olivier.bareau@gmail.com>",
+      "priority": "optional"
     }
   },
   "devDependencies": {
