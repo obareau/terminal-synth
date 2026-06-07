@@ -1265,30 +1265,161 @@ vec3 render(vec2 uv, vec2 res) {
 }`,
   },
   {
-    name: "Mandelbrot (complete)",
+    name: "Cube Raymarching",
     src: /* glsl */ `
-#version 300 es
-precision highp float;
-out vec4 fragColor;
-uniform vec2 u_resolution;
-uniform float u_time;
+float sdBox(vec3 p, vec3 b) {
+  vec3 q = abs(p) - b;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
 
-void main() {
-  vec2 uv = (gl_FragCoord.xy - u_resolution.xy * 0.5) / u_resolution.y * 3.0;
-  uv += vec2(sin(u_time * 0.3) * 0.5, cos(u_time * 0.2) * 0.3);
+vec3 render(vec2 uv, vec2 res) {
+  vec3 ro = vec3(2.0*sin(u_time*0.5), 1.5, 2.0*cos(u_time*0.3));
+  vec3 rd = normalize(vec3(uv - 0.5, 1.0));
 
-  vec2 c = uv;
-  vec2 z = vec2(0.0);
-  float iter = 0.0;
-
-  for (int i = 0; i < 64; i++) {
-    z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
-    if (length(z) > 4.0) break;
-    iter += 1.0;
+  float t = 0.0;
+  for(int i = 0; i < 64; i++) {
+    vec3 p = ro + rd * t;
+    float d = sdBox(p, vec3(0.8));
+    if(d < 0.01) break;
+    t += d * 0.8;
   }
 
-  vec3 col = mix(vec3(0.0, 0.0, 0.1), vec3(0.9, 0.4, 0.1), iter / 64.0);
-  fragColor = vec4(col, 1.0);
+  vec3 p = ro + rd * t;
+  vec3 n = normalize(vec3(sdBox(p+vec3(0.01,0,0), vec3(0.8))-sdBox(p-vec3(0.01,0,0), vec3(0.8)),
+                          sdBox(p+vec3(0,0.01,0), vec3(0.8))-sdBox(p-vec3(0,0.01,0), vec3(0.8)),
+                          sdBox(p+vec3(0,0,0.01), vec3(0.8))-sdBox(p-vec3(0,0,0.01), vec3(0.8))));
+
+  vec3 col = vec3(0.1, 0.5, 0.9) * (0.5 + 0.5*dot(n, normalize(vec3(1)))) + u_bass*0.3;
+  return col / (1.0 + t * 0.1);
+}`,
+  },
+  {
+    name: "Neuron Network",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec3 col = vec3(0.0);
+  float t = u_time * 0.5;
+
+  // Créer un réseau de neurones (sphères)
+  for(float i = 0.0; i < 8.0; i++) {
+    for(float j = 0.0; j < 8.0; j++) {
+      // Position du neurone
+      float angle = (i + j) * 0.5 + t;
+      float radius = 0.3 + 0.2 * sin(t + i + j);
+      vec2 pos = vec2(cos(angle), sin(angle)) * radius + 0.5;
+
+      // Distance au neurone
+      float d = distance(uv, pos);
+
+      // Glow sphere
+      col += vec3(0.1 + 0.5*sin(t + i), 0.3 + 0.5*sin(t + j), 0.7) * (0.1 / (d + 0.05));
+
+      // Connexions
+      float next_i = mod(i + 1.0, 8.0);
+      float next_angle = (next_i + j) * 0.5 + t;
+      vec2 next_pos = vec2(cos(next_angle), sin(next_angle)) * radius + 0.5;
+      vec2 line = mix(pos, next_pos, fract(t * 0.3));
+      float line_d = distance(uv, line);
+      col += vec3(0.3, 0.6, 0.9) * 0.01 / (line_d + 0.02);
+    }
+  }
+
+  return col * (0.5 + u_level * 0.5);
+}`,
+  },
+  {
+    name: "Liquid Sphere",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * 2.0;
+  float r = length(p);
+  float t = u_time;
+
+  // Sphère liquide avec perturbations
+  float wave = sin(r * 10.0 - t * 3.0) * 0.1 + sin(r * 5.0 + t * 2.0) * 0.05;
+  float sphere = step(0.5 + wave, r);
+
+  if(sphere < 0.5) {
+    // Intérieur lumineux
+    float inside = sin(length(p - vec2(sin(t*0.5), cos(t*0.3))*0.3) * 15.0 - t*2.0) * 0.5 + 0.5;
+    vec3 col = mix(vec3(0.1, 0.3, 0.8), vec3(0.9, 0.4, 0.2), inside);
+
+    // Réflexion
+    vec2 n = normalize(p) * (0.5 - r);
+    col += vec3(0.8, 0.8, 0.9) * pow(max(0.0, dot(n, normalize(vec2(1)))), 3.0) * 0.5;
+
+    return col * (0.6 + u_bass * 0.4);
+  }
+
+  // Fond avec ondes
+  float bg = sin(uv.x * 10.0 + t) * sin(uv.y * 10.0 - t) * 0.5 + 0.5;
+  return vec3(0.02, 0.05, 0.1) * bg;
+}`,
+  },
+  {
+    name: "Kaleidoscope 3D",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * 2.0;
+  float t = u_time * 0.5;
+
+  // Répétition kaléidoscopique
+  p = abs(p);
+  p = abs(p - 1.0);
+  if(p.x < p.y) p = p.yx;
+
+  float d = length(p - vec2(0.5));
+
+  // Motif rotatif
+  float angle = atan(p.y, p.x) + t;
+  float r = length(p) * 5.0;
+
+  // Couleurs basées sur le pattern
+  vec3 col = vec3(
+    0.5 + 0.5 * sin(angle + r + t),
+    0.5 + 0.5 * sin(angle - r + t + 2.0),
+    0.5 + 0.5 * sin(r + t + 4.0)
+  );
+
+  // Audio reactivity
+  col += vec3(u_bass, u_mid, u_treble) * 0.3;
+
+  return col * smoothstep(0.5, 0.0, d);
+}`,
+  },
+  {
+    name: "Cosmic Void",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = uv * 3.0;
+  float t = u_time * 0.3;
+
+  // Amas de "stars" animées
+  vec3 col = vec3(0.0);
+
+  for(float i = 0.0; i < 5.0; i++) {
+    vec2 offset = vec2(sin(i + t), cos(i * 0.7 + t)) * (0.5 + 0.3*sin(i));
+    vec2 pos = p + offset;
+
+    // Motif fractale
+    float d = 1.0;
+    for(float j = 0.0; j < 3.0; j++) {
+      pos = abs(pos) - 0.5 - 0.2*sin(t + i + j);
+      if(dot(pos, pos) > 4.0) break;
+      d *= length(pos);
+    }
+
+    vec3 star_col = vec3(
+      0.2 + 0.8*sin(i + t),
+      0.3 + 0.7*sin(i*0.5 + t),
+      0.9 - 0.5*sin(i*0.3 + t)
+    );
+
+    col += star_col * 0.05 / (d + 0.1);
+  }
+
+  col += vec3(0.01, 0.02, 0.05) * (1.0 - length(uv - 0.5) * 2.0);
+  return col * (0.5 + u_level * 0.8);
 }`,
   },
 ];
