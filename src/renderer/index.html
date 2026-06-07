@@ -221,6 +221,38 @@
       pointer-events: none;
     }
     body.focus #focus-hint { display: block; }
+
+    /* ── Output-only mode (secondary display) ─────────────────────── */
+    body.output-mode #app {
+      grid-template-rows: 1fr !important;
+      grid-template-columns: 1fr !important;
+      grid-template-areas: "stage" !important;
+    }
+    body.output-mode #topbar,
+    body.output-mode #bottom-bar,
+    body.output-mode #left-panel,
+    body.output-mode #right-panel { display: none !important; }
+
+    /* ── Performance mode (Shift+P: canvas fullscreen + HUD) ──────── */
+    #performance-hud {
+      display: none;
+      position: fixed; bottom: 14px; left: 14px; z-index: 100;
+      font-size: 12px; color: var(--accent);
+      background: rgba(0,0,0,.7); padding: 8px 12px;
+      border: 1px solid var(--border2); border-radius: 2px;
+      font-family: var(--font); letter-spacing: .05em;
+    }
+    body.performance #performance-hud { display: block; }
+    body.performance #app {
+      grid-template-rows: 1fr !important;
+      grid-template-columns: 1fr !important;
+      grid-template-areas: "stage" !important;
+    }
+    body.performance #topbar,
+    body.performance #bottom-bar,
+    body.performance #left-panel,
+    body.performance #right-panel { display: none; }
+    body.performance #stage { grid-area: stage; }
   </style>
 </head>
 <body>
@@ -403,6 +435,7 @@
 </div>
 
 <div id="focus-hint">Tab · Échap</div>
+<div id="performance-hud"></div>
 <script src="./renderer.js"></script>
 </body>
 </html>

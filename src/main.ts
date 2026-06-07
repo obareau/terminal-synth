@@ -1,13 +1,45 @@
-import { app, BrowserWindow, session, desktopCapturer, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, screen } from "electron";
 import * as path from "node:path";
 import * as fs from "node:fs";
+
+let controlWindow: BrowserWindow | null = null;
+let outputWindow: BrowserWindow | null = null;
+
+function createOutputWindow(): void {
+  if (outputWindow) {
+    outputWindow.focus();
+    return;
+  }
+  const displays = screen.getAllDisplays();
+  const outputDisplay = displays[1] || displays[0]; // 2nd monitor if available
+  const win = new BrowserWindow({
+    x: outputDisplay.bounds.x,
+    y: outputDisplay.bounds.y,
+    width: outputDisplay.bounds.width,
+    height: outputDisplay.bounds.height,
+    backgroundColor: "#000000",
+    title: "terminal-synth · Output",
+    autoHideMenuBar: true,
+    fullscreen: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+  outputWindow = win;
+  win.loadFile(path.join(__dirname, "index.html") + "?mode=output");
+  win.on("closed", () => {
+    outputWindow = null;
+  });
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
     height: 720,
     backgroundColor: "#0a0a0a",
-    title: "terminal-synth",
+    title: "terminal-synth · Control",
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -15,6 +47,8 @@ function createWindow(): void {
       preload: path.join(__dirname, "preload.js"),
     },
   });
+
+  controlWindow = win;
 
   // Autorise micro/ligne (FFT audio) et MIDI sans pop-up.
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
@@ -38,9 +72,19 @@ function createWindow(): void {
   win.webContents.on("before-input-event", (_e, input) => {
     if (input.key === "F12" && input.type === "keyDown") win.webContents.toggleDevTools();
   });
+
+  win.on("closed", () => {
+    controlWindow = null;
+  });
 }
 
 app.whenReady().then(() => {
+  // Open output window on secondary display
+  ipcMain.handle("window:open-output", () => {
+    createOutputWindow();
+    return true;
+  });
+
   // Ouvre un fichier et renvoie son contenu texte.
   ipcMain.handle("dialog:open-file", async (e, filters: Electron.FileFilter[]) => {
     const w = BrowserWindow.fromWebContents(e.sender);

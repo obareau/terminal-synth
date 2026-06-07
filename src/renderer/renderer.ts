@@ -17,6 +17,14 @@ import { textLayer } from "./textLayer";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
+// Mode variables (output window / performance overlay)
+const isOutputMode = new URLSearchParams(window.location.search).get("mode") === "output";
+const isControlMode = !isOutputMode;
+let performanceMode = false;
+
+// Initialize mode
+if (isOutputMode) document.body.classList.add("output-mode");
+
 const app = $("app");
 const canvas = $<HTMLCanvasElement>("gl");
 const pre = $<HTMLPreElement>("ascii");
@@ -286,6 +294,7 @@ declare global {
       saveVideo: (data: Uint8Array, defaultName: string) => Promise<boolean>;
       exportMP4: (config: any) => Promise<any>;
       spoutSendFrame: (w: number, h: number, pixels: Uint8Array) => Promise<void>;
+      openOutputWindow: () => Promise<boolean>;
     };
   }
 }
@@ -366,11 +375,18 @@ function toggleFocus(): void {
   document.body.classList.toggle("focus", focusMode);
 }
 
+function togglePerformanceMode(): void {
+  performanceMode = !performanceMode;
+  document.body.classList.toggle("performance", performanceMode);
+  if (performanceMode) window.synth?.setFullscreen(true);
+}
+
 document.addEventListener("keydown", (e) => {
   const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
 
   // Toujours actifs
   if (e.key === "Escape") {
+    if (performanceMode) { togglePerformanceMode(); return; }
     if (focusMode) { toggleFocus(); return; }
     window.synth?.setFullscreen(false);
   }
@@ -381,6 +397,20 @@ document.addEventListener("keydown", (e) => {
 
   // Tab = focus mode (canvas plein écran interne)
   if (e.key === "Tab") { e.preventDefault(); toggleFocus(); return; }
+
+  // Shift+O = open output window (secondary display)
+  if (e.shiftKey && (e.key === "o" || e.key === "O") && isControlMode) {
+    e.preventDefault();
+    window.synth?.openOutputWindow();
+    return;
+  }
+
+  // Shift+P = performance mode (canvas fullscreen + HUD)
+  if (e.shiftKey && (e.key === "p" || e.key === "P")) {
+    e.preventDefault();
+    togglePerformanceMode();
+    return;
+  }
 
   // Ctrl+S / Ctrl+O / Ctrl+R
   if (e.ctrlKey) {
@@ -637,6 +667,13 @@ function frame(now: number): void {
   let line = `bass${pct(bands.bass)} mid${pct(bands.mid)} hi${pct(bands.treble)}`;
   if (midi.enabled) line += `  · midi ${midi.mode} e${pct(e)} poly${midi.polyphony}`;
   meter.textContent = line;
+
+  // Update performance HUD
+  if (performanceMode) {
+    const hud = $("performance-hud");
+    hud.textContent = `${SHADERS[currentShader]?.name || "—"} · bass${pct(bands.bass)} · [Shift+P] exit`;
+  }
+
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
