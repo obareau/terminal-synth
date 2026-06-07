@@ -21,6 +21,7 @@ const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) 
 const isOutputMode = new URLSearchParams(window.location.search).get("mode") === "output";
 const isControlMode = !isOutputMode;
 let performanceMode = false;
+let hudVisible = true;
 
 // Initialize mode
 if (isOutputMode) document.body.classList.add("output-mode");
@@ -414,6 +415,14 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
+  // H = toggle HUD visibility (in performance mode)
+  if ((e.key === "h" || e.key === "H") && performanceMode) {
+    e.preventDefault();
+    hudVisible = !hudVisible;
+    $("performance-hud").style.display = hudVisible ? "block" : "none";
+    return;
+  }
+
   // Ctrl+S / Ctrl+O / Ctrl+R
   if (e.ctrlKey) {
     if (e.key === "s") { e.preventDefault(); presetSaveBtn.click(); return; }
@@ -673,7 +682,16 @@ function frame(now: number): void {
   // Update performance HUD
   if (performanceMode) {
     const hud = $("performance-hud");
-    hud.textContent = `${SHADERS[currentShader]?.name || "—"} · bass${pct(bands.bass)} · [Shift+P] exit`;
+    const layerB = layerBEnabled ? ` + ${SHADERS[Number(layerBSel.value)]?.name || "—"}` : "";
+    hud.innerHTML = `
+      <div style="font-weight:700;margin-bottom:4px">TERMINAL·SYNTH v0.9.5</div>
+      <div style="font-size:11px;margin-bottom:6px">
+        ${SHADERS[currentShader]?.name || "—"}${layerB}
+      </div>
+      <div style="font-size:10px;color:#999">
+        bass${pct(bands.bass)} · [Shift+P] exit · [H] hud
+      </div>
+    `;
   }
 
   requestAnimationFrame(frame);
