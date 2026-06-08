@@ -1164,6 +1164,10 @@ vec3 render(vec2 uv, vec2 res) {
   // ── Shaders GLSL réels d'Internet (Shadertoy-style) ──────────────────────────
   {
     name: "Voronoi cells",
+    params: [
+      { label: "Cells", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   uv *= 8.0;
@@ -1194,6 +1198,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Perlin-like noise",
+    params: [
+      { label: "Scale", key: "u_p0", min: 1, max: 10, default: 3.0, step: 0.5 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 float perlin_like(vec2 p) {
   vec2 i = floor(p), f = fract(p);
@@ -1765,6 +1773,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Wave Nodes",
+    params: [
+      { label: "Nodes", key: "u_p0", min: 3, max: 15, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.7, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.6;
@@ -1816,6 +1828,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Cluster Network",
+    params: [
+      { label: "Clusters", key: "u_p0", min: 2, max: 10, default: 5.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -1886,6 +1902,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Grid Lines",
+    params: [
+      { label: "Grid Size", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.3;
@@ -1911,6 +1931,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Squares Pattern",
+    params: [
+      { label: "Scale", key: "u_p0", min: 1, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -1936,6 +1960,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Cross Pattern",
+    params: [
+      { label: "Density", key: "u_p0", min: 2, max: 16, default: 6.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.4;
@@ -1966,6 +1994,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Hexagon Maze",
+    params: [
+      { label: "Scale", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.3;
@@ -2005,6 +2037,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Lines Pulse",
+    params: [
+      { label: "Lines", key: "u_p0", min: 3, max: 20, default: 12.0, step: 1.0 },
+      { label: "Pulse Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.8;
@@ -2031,6 +2067,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Dots Matrix",
+    params: [
+      { label: "Density", key: "u_p0", min: 2, max: 20, default: 10.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -2057,6 +2097,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Concentric Circles",
+    params: [
+      { label: "Count", key: "u_p0", min: 3, max: 20, default: 10.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -2081,6 +2125,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Radial Lines",
+    params: [
+      { label: "Lines", key: "u_p0", min: 4, max: 32, default: 16.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.4;
@@ -2590,6 +2638,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Orbital Chaos",
+    params: [
+      { label: "Chaos", key: "u_p0", min: 0, max: 1, default: 0.6, step: 0.05 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.6;

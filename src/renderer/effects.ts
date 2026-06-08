@@ -961,4 +961,29 @@ vec3 process(vec2 uv) {
   return mix(prev(uv), col, a * 0.45);
 }`,
   },
+
+  {
+    name: "Master Brightness",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  vec3 col = prev(uv);
+  float a = u_amount;
+
+  // Audio-driven exposure control (u_level: 0..1)
+  // Range: 0.3x (darkness) to 2.0x (brightness)
+  float intensity = mix(0.3, 2.0, u_level);
+
+  // Smooth exponential tone mapping to prevent clipping
+  // Formula: col = 1 - exp(-col * intensity)
+  // This compresses bright highlights naturally
+  col = 1.0 - exp(-col * intensity);
+
+  // Blend based on effect amount (0..1)
+  // When a=0: use original, when a=1: full brightness control
+  vec3 original = prev(uv);
+  col = mix(original, col, a);
+
+  return col;
+}`,
+  },
 ];
