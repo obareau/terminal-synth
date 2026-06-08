@@ -2,12 +2,12 @@
 
 > **Synthétiseur visuel dark/industriel** avec génération automatique de compositions, audio-réactivité temps réel, et rendu WebGL2 haute-performance.
 
-![Status](https://img.shields.io/badge/status-Alpha-yellow)
-![Version](https://img.shields.io/badge/version-0.9.9--alpha-blue)
+![Status](https://img.shields.io/badge/status-Release-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.1--delta-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
-Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **~90 générateurs minimalistes**, **23 perturbateurs audio-réactifs**, automation générative avec 4 presets, couche texte pixellisée, et système d'enregistrement vidéo.
+Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **~90 générateurs minimalistes**, **23 perturbateurs audio-réactifs**, **séquenceur Ableton Live-style** avec keyframe automation, **MIDI Learn** pour mappages CC, automation générative avec 4 presets, couche texte pixellisée, et système d'enregistrement vidéo.
 
 Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
@@ -74,6 +74,20 @@ npm run package    # Build production
 | **MIDI Input** | Clavier MIDI + contrôleurs |
 | **System Audio** | Loopback + microphone |
 
+### 🎛️ Sequencer & MIDI Learn (v1.0.1)
+| Feature | Details |
+|---------|---------|
+| **Sequencer** | 16-step BPM-synced automation grid (Ableton Live-style) |
+| **Keyframes** | Add/edit with full easing (linear, ease-in, ease-out, ease-in-out) |
+| **Operations** | Copy, Paste, Randomize, Record (MIDI CC capture) |
+| **Waveform** | Real-time curve visualization with keyframe dots |
+| **MIDI Learn** | Ableton-style learn mode: click parameter → move MIDI controller |
+| **CC Mapping** | Unlimited CC-to-parameter mappings with curve types (linear, log, exp) |
+| **Automation Targets** | 10 parameters: Shader (4), Effects (3), Disruptors (2), Layer B opacity |
+| **Shortcuts** | Shift+Q (toggle), Shift+Space (play/stop), C (copy), V (paste), Shift+R (random), Shift+L (learn) |
+| **Animations** | Pulsing feedback for MIDI learn & record modes, current step highlighting |
+| **Presets** | Sequencer state + MIDI mappings saved/loaded with presets |
+
 ### 🌀 Automation Générative (v0.9.5)
 | Preset | Behavior |
 |--------|----------|
@@ -106,6 +120,12 @@ npm run package    # Build production
 | **Autoplay** | `Ctrl+A` | 4 presets (toggleable) |
 | **Record** | `Ctrl+R` | WebM video |
 | **Undo/Redo** | `Ctrl+Z/Y` | Snapshots |
+| **Sequencer Toggle** | `Shift+Q` | Enable/disable sequencer |
+| **Sequencer Play/Stop** | `Shift+Space` | Play or stop automation |
+| **Copy Keyframes** | `C` | Copy selected keyframes |
+| **Paste Keyframes** | `V` | Paste keyframes |
+| **Randomize** | `Shift+R` | Randomize keyframe values |
+| **MIDI Learn** | `Shift+L` | Enter MIDI learn mode |
 
 **Sélection Générateur**: `1-9`, `q-p`, `a-k` (39 total)
 
@@ -133,10 +153,34 @@ npm run package:linux  # Linux
 3. Re-click ou `Ctrl+R` pour arrêter
 4. Sauvegarde `.webm` dans répertoire dialog
 
-### Export Sessions
+### Sequencer (Automation)
+1. **Activer**: `Shift+Q` pour toggler le séquenceur
+2. **Ajouter des keyframes**: 
+   - Clic droit sur une étape (grid 16 steps) → ajoute un keyframe
+   - Clic gauche sur une étape existante → ouvre l'éditeur
+3. **Éditer des valeurs**:
+   - Slider 0-1 pour la valeur
+   - Select pour l'easing (linear, ease-in, ease-out, ease-in-out)
+4. **Opérations**:
+   - `C` = Copy keyframes
+   - `V` = Paste keyframes
+   - `Shift+R` = Randomize values
+5. **Jouer**: `Shift+Space` pour play/stop
+6. **MIDI Learn** (optionnel):
+   - `Shift+L` = Enter learn mode
+   - Bouge un contrôleur MIDI → mapped à un parameter
+
+### MIDI Learn
+1. Click `Shift+L` ou le bouton "🎹 Learn"
+2. Le bouton pulse (feedback visuel)
+3. Bouge un contrôleur MIDI (CC)
+4. Mapping créé automatiquement
+5. Contrôle le parameter associé en temps réel
+
+### Export Sessions & Presets
 ```
 Ctrl+A     → Start autoplay (presets, toggleable)
-Ctrl+S     → Save preset JSON
+Ctrl+S     → Save preset JSON (inclut sequencer + MIDI mappings)
 Ctrl+O     → Load preset JSON
 Ctrl+Z/Y   → Undo/Redo snapshots
 ```
@@ -158,23 +202,31 @@ Electron 34
 ```
 src/renderer/
 ├── gl.ts              ✓ Pipeline WebGL (multi-pass, effects chain)
-├── shaders.ts         ✓ 37 générateurs GLSL ES 3.00
+├── shaders.ts         ✓ 91 générateurs GLSL ES 3.00 + audio reactivity
 ├── effects.ts         ✓ 31 effets post-process
 ├── disruptors.ts      ✓ 17 perturbateurs audio-réactifs
+├── sequencer.ts       ✓ Ableton Live-style automation (16-step grid, easing, record)
+├── midiLearn.ts       ✓ MIDI Learn system (CC mapping, normalization, curves)
 ├── autoplayAdvanced.ts ✓ Génération automatique + 4 presets
 ├── textLayer.ts       ✓ Couche texte pixellisée
 ├── audio.ts           ✓ FFT + audio input
 ├── ascii.ts           ✓ ASCII glitch multicolore
 ├── midi.ts            ✓ MIDI input handler
-└── renderer.ts        ✓ Event loop + UI glue
+└── renderer.ts        ✓ Event loop + UI glue + frame loop automation
 ```
 
-### Générateurs (37)
+### Générateurs (91)
+**Wireframe & Orbital**: Dark Matter Flow, Orbital Trail, Spiral Orbits, Ring Lattice, Node Tentacles, ...  
 **Géométrie**: Cercle, Carré, Triangle, Hexagone, Penrose, Lissajous, Rose, Dragon  
 **Fractals**: Mandelbrot, Julia, Sierpinski, Hilbert  
 **Noise**: Perlin, Simplex, Worley, Voronoi  
+**Patterns**: Grid Lines, Squares, Cross, Hexagon Maze, Wave Nodes, Cluster Network  
 **Organics**: Butterfly, Attractor, Pendule, Vortex, Tourbillon  
 **Autres**: Kaleidoscope, Halftone, Grid, Wave, Spiral
+
+Tous les générateurs incluent:
+- 2 paramètres interactifs (u_p0, u_p1)
+- Audio réactivité (bass, mid, treble, level modulation)
 
 ### Effets (31)
 **Feedback**: Entropie, Feedback, Slit Scan, Glitch  
@@ -262,5 +314,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v0.9.5** · WebGL2 · 37 Generators · 31 Effects · Generative Automation  
-*The ultimate dark industrial visual synthesizer*
+**v1.0.1-delta** · WebGL2 · 91 Generators · 31 Effects · Sequencer · MIDI Learn · Generative Automation  
+*The ultimate dark industrial visual synthesizer with Ableton Live-style automation*
