@@ -14,6 +14,8 @@ import { BLEND_MODES } from "./gl";
 import { DISRUPTORS } from "./disruptors";
 import { autoplayAdvanced, AUTOPLAY_PRESETS } from "./autoplayAdvanced";
 import { textLayer } from "./textLayer";
+import { Sequencer, type SequencerState, type SequencerKeyframe } from "./sequencer";
+import { MidiLearner, type MidiCCMapping } from "./midiLearn";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -54,6 +56,8 @@ const chain = $("chain");
 const pipeline = new Pipeline(canvas);
 const audio = new AudioInput();
 const midi = new MidiInput();
+const sequencer = new Sequencer(120);
+const midiLearn = new MidiLearner();
 const text = new TextOverlay($("text"), TEXTS);
 const tactics = new TacticDisplay(TEXTS);
 const RECTA_INDEX = 0; // le générateur "RECTA (texte)" est en tête de SHADERS
@@ -465,6 +469,28 @@ spoutBtn.addEventListener("click", () => {
   spoutBtn.textContent = spoutEnabled ? "SPOUT on" : "SPOUT";
 });
 
+// --- Sequencer UI update ---
+function updateSequencerUI(): void {
+  const state = sequencer.getState();
+  const seqPlayBtn = $<HTMLButtonElement>("seq-play");
+  const seqStopBtn = $<HTMLButtonElement>("seq-stop");
+  const seqGrid = $("seq-grid");
+
+  if (seqPlayBtn && seqStopBtn) {
+    seqPlayBtn.textContent = state.isPlaying ? "⏸ Pause" : "▶ Play";
+    seqPlayBtn.classList.toggle("on", state.isPlaying);
+    seqStopBtn.classList.toggle("on", !state.isPlaying);
+  }
+
+  // Update current step highlight in grid
+  const steps = seqGrid?.querySelectorAll(".sequencer-step");
+  if (steps) {
+    steps.forEach((step, idx) => {
+      step.classList.toggle("current", idx === state.currentStep);
+    });
+  }
+}
+
 // --- Raccourcis clavier ---
 let focusMode = false;
 function toggleFocus(): void {
@@ -508,6 +534,28 @@ document.addEventListener("keydown", (e) => {
   if (e.shiftKey && (e.key === "p" || e.key === "P")) {
     e.preventDefault();
     togglePerformanceMode();
+    return;
+  }
+
+  // Shift+Q = toggle sequencer enabled
+  if (e.shiftKey && (e.key === "q" || e.key === "Q")) {
+    e.preventDefault();
+    const state = sequencer.getState();
+    state.enabled = !state.enabled;
+    updateSequencerUI();
+    return;
+  }
+
+  // Shift+Space = play/stop sequencer
+  if (e.shiftKey && e.code === "Space") {
+    e.preventDefault();
+    const state = sequencer.getState();
+    if (state.isPlaying) {
+      sequencer.stop();
+    } else {
+      sequencer.play();
+    }
+    updateSequencerUI();
     return;
   }
 
@@ -628,18 +676,20 @@ rectaAmberBtn.addEventListener("click", () => {
 
 // --- Presets ---
 interface Preset {
-  version: 2;
+  version: 3;
   shaderIndex: number;
   layerB: { enabled: boolean; shaderIndex: number; blendMode: number; opacity: number };
   effects: { enabled: boolean; amount: number }[];
   rectaHoldMs: number;
+  sequencer?: SequencerState;
+  midiLearn?: MidiCCMapping[];
 }
 const presetSaveBtn = $<HTMLButtonElement>("preset-save");
 const presetLoadBtn = $<HTMLButtonElement>("preset-load");
 
 presetSaveBtn.addEventListener("click", async () => {
   const preset: Preset = {
-    version: 2,
+    version: 3,
     shaderIndex: currentShader,
     layerB: {
       enabled: layerBEnabled,
@@ -649,6 +699,8 @@ presetSaveBtn.addEventListener("click", async () => {
     },
     effects: fxState.map((s) => ({ enabled: s.enabled, amount: s.amount })),
     rectaHoldMs: tactics.holdMs,
+    sequencer: sequencer.toJSON(),
+    midiLearn: midiLearn.toJSON(),
   };
   await window.synth?.saveFile(
     JSON.stringify(preset, null, 2),
@@ -694,6 +746,12 @@ presetLoadBtn.addEventListener("click", async () => {
     });
     // recta
     if (p.rectaHoldMs) { tactics.holdMs = p.rectaHoldMs; rectaSpeedRng.value = String(p.rectaHoldMs); }
+    // sequencer
+    if (p.sequencer) { sequencer.fromJSON(p.sequencer); }
+    // midi learn
+    if (p.midiLearn) { midiLearn.fromJSON(p.midiLearn); }
+    // update UI
+    updateSequencerUI();
   } catch (err) { console.error("[Preset]", err); }
 });
 
@@ -745,6 +803,34 @@ function asciiGrid(): { cols: number; rows: number } {
   return { cols, rows };
 }
 
+// Apply parameter value from sequencer or MIDI learn
+function applyParameterValue(paramId: string, value: number): void {
+  const parts = paramId.split(".");
+
+  if (parts[0] === "shader" && parts.length >= 2) {
+    const paramIndex = parseInt(parts[1].replace("u_p", ""));
+    if (paramIndex >= 0 && paramIndex < 4) {
+      currentParamValues[paramIndex] = value;
+      pipeline.setGenParams(currentParamValues);
+    }
+  } else if (parts[0] === "effect" && parts.length >= 3) {
+    const fxIndex = parseInt(parts[1]);
+    if (fxIndex >= 0 && fxIndex < fxState.length) {
+      fxState[fxIndex].amount = value;
+    }
+  } else if (parts[0] === "disruptor" && parts.length >= 3) {
+    const disIndex = parseInt(parts[1]);
+    if (disIndex >= 0 && disIndex < disruptorState.length) {
+      disruptorState[disIndex].sensitivity = value;
+    }
+  } else if (parts[0] === "layer" && parts.length >= 3 && parts[1] === "b") {
+    if (parts[2] === "opacity") {
+      layerBOpa.value = String(value);
+      syncBlend();
+    }
+  }
+}
+
 // --- Boucle ---
 function frame(now: number): void {
   const time = now / 1000;
@@ -766,6 +852,9 @@ function frame(now: number): void {
   const mod = midi.mod;
   const noise = midi.mode === "noise";
 
+  // Sequencer update (BPM-synced automation)
+  sequencer.update(now);
+
   // Énergie globale + détection de hit (front montant) → pioche d'une nouvelle tactique.
   const energy = Math.max(bands.bass, e);
   const hit = energy > 0.55 && prevEnergy <= 0.55;
@@ -775,6 +864,22 @@ function frame(now: number): void {
   tactics.update(now);
   tactics.draw(now, energy);
   pipeline.updateText(tactics.canvas);
+
+  // Apply sequencer automation (if enabled)
+  if (sequencer.getState().enabled && sequencer.getState().isPlaying) {
+    for (let i = 0; i < 4; i++) {
+      const val = sequencer.getParameterValue(`shader.u_p${i}`);
+      if (val !== null) applyParameterValue(`shader.u_p${i}`, val);
+    }
+    for (let i = 0; i < fxState.length; i++) {
+      const val = sequencer.getParameterValue(`effect.${i}.amount`);
+      if (val !== null) applyParameterValue(`effect.${i}.amount`, val);
+    }
+    for (let i = 0; i < disruptorState.length; i++) {
+      const val = sequencer.getParameterValue(`disruptor.${i}.sensitivity`);
+      if (val !== null) applyParameterValue(`disruptor.${i}.sensitivity`, val);
+    }
+  }
 
   const u = {
     time,
@@ -1086,4 +1191,110 @@ setInterval(() => {
     .filter((fx) => fx.enabled);
 
   textLayer.applyActiveEffects(activeEffects);
+}, 50);
+
+// --- Sequencer UI Setup ---
+const seqPlayBtn = $<HTMLButtonElement>("seq-play");
+const seqStopBtn = $<HTMLButtonElement>("seq-stop");
+const seqBpmInput = $<HTMLInputElement>("seq-bpm");
+const seqStepCountSelect = $<HTMLSelectElement>("seq-step-count");
+const seqGrid = $("seq-grid");
+const midiLearnBtn = $<HTMLButtonElement>("midi-learn-btn");
+const midiLearnStatus = $("midi-learn-status");
+const midiMappingsList = $("midi-mappings-list");
+
+// Initialize step grid
+function initSequencerGrid(): void {
+  seqGrid.innerHTML = "";
+  const stepCount = sequencer.getState().stepCount;
+  for (let i = 0; i < stepCount; i++) {
+    const step = document.createElement("div");
+    step.className = "sequencer-step";
+    step.dataset["step"] = String(i);
+    step.title = `Step ${i}`;
+    seqGrid.appendChild(step);
+  }
+}
+initSequencerGrid();
+
+// Play button
+seqPlayBtn.addEventListener("click", () => {
+  const state = sequencer.getState();
+  if (state.isPlaying) {
+    sequencer.stop();
+  } else {
+    sequencer.play();
+  }
+  updateSequencerUI();
+});
+
+// Stop button
+seqStopBtn.addEventListener("click", () => {
+  sequencer.stop();
+  updateSequencerUI();
+});
+
+// BPM input
+seqBpmInput.addEventListener("input", () => {
+  sequencer.setBpm(Number(seqBpmInput.value));
+});
+
+// Step count select
+seqStepCountSelect.addEventListener("change", () => {
+  sequencer.setStepCount(Number(seqStepCountSelect.value));
+  initSequencerGrid();
+});
+
+// MIDI Learn button
+midiLearnBtn.addEventListener("click", () => {
+  const isLearning = midiLearn.isLearning();
+  if (isLearning) {
+    midiLearn.exitLearnMode();
+    midiLearnStatus.textContent = "Idle";
+    midiLearnStatus.classList.remove("learning");
+    midiLearnBtn.textContent = "🎹 Learn";
+  } else {
+    midiLearn.enterLearnMode("shader.u_p0", (cc, paramId) => {
+      midiLearnStatus.textContent = `CC${cc} → ${paramId}`;
+      updateMidiMappingsList();
+    });
+    midiLearnStatus.textContent = "Listening...";
+    midiLearnStatus.classList.add("learning");
+    midiLearnBtn.textContent = "◼ Waiting...";
+  }
+});
+
+// Update MIDI mappings list
+function updateMidiMappingsList(): void {
+  midiMappingsList.innerHTML = "";
+  const mappings = midiLearn.getMappings();
+  if (mappings.length === 0) {
+    midiMappingsList.innerHTML = '<div style="padding:4px;color:#555">No mappings</div>';
+  } else {
+    mappings.forEach(m => {
+      const div = document.createElement("div");
+      div.style.cssText = "padding:2px 4px;border-bottom:1px solid #222;display:flex;justify-content:space-between";
+      div.innerHTML = `
+        <span>CC${m.cc} → ${m.paramId}</span>
+        <span style="cursor:pointer;color:#f00;margin-left:8px" onclick="midiLearn.unmap(${m.cc});updateMidiMappingsList()">✕</span>
+      `;
+      midiMappingsList.appendChild(div);
+    });
+  }
+}
+updateMidiMappingsList();
+
+// Update sequencer UI on every frame
+setInterval(() => {
+  if (sequencer.getState().isPlaying) {
+    const state = sequencer.getState();
+    const measures = state.loopMeasures;
+    const beatsPerMeasure = state.beatsPerMeasure;
+    const step = state.currentStep;
+    const measure = state.currentMeasure;
+    const beat = Math.floor((step / state.stepCount) * beatsPerMeasure);
+
+    const timeDisplay = $("seq-time");
+    timeDisplay.textContent = `${measure}:${beat}:${step}`;
+  }
 }, 50);
