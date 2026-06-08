@@ -59,6 +59,8 @@ const midiBtn = $<HTMLButtonElement>("midi");
 const midiModeSel = $<HTMLSelectElement>("midi-mode");
 const meter = $("meter");
 const chain = $("chain");
+const masterBrightnessToggle = $<HTMLButtonElement>("master-brightness-toggle");
+const masterBrightnessSlider = $<HTMLInputElement>("master-brightness-slider");
 
 const pipeline = new Pipeline(canvas);
 const audio = new AudioInput();
@@ -72,6 +74,8 @@ let currentShader = 0;
 let prevEnergy = 0;
 let asciiMode = false;
 let asciiGlitchPermanentEnabled = false;
+let masterBrightnessEnabled = false;
+let masterBrightnessAmount = 0.5;
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
 
@@ -474,6 +478,27 @@ spoutBtn.addEventListener("click", () => {
   spoutEnabled = !spoutEnabled;
   spoutBtn.classList.toggle("on", spoutEnabled);
   spoutBtn.textContent = spoutEnabled ? "SPOUT on" : "SPOUT";
+});
+
+// --- Master Brightness (independent of effects) ---
+masterBrightnessToggle.addEventListener("click", () => {
+  masterBrightnessEnabled = !masterBrightnessEnabled;
+  masterBrightnessToggle.classList.toggle("on", masterBrightnessEnabled);
+});
+
+masterBrightnessSlider.addEventListener("input", () => {
+  masterBrightnessAmount = Number(masterBrightnessSlider.value);
+});
+
+// Keyboard shortcut: B = toggle Master Brightness
+document.addEventListener("keydown", (e) => {
+  if (!e.ctrlKey && !e.shiftKey && (e.key === "b" || e.key === "B")) {
+    const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
+    if (!inInput) {
+      e.preventDefault();
+      masterBrightnessToggle.click();
+    }
+  }
 });
 
 // --- Sequencer UI update ---
@@ -966,12 +991,70 @@ function frame(now: number): void {
     }
   }
 
+  // Master Brightness: add as final stage if enabled (independent of effects)
+  if (masterBrightnessEnabled) {
+    const masterBrightnessShader = `
+vec3 process(vec2 uv) {
+  vec3 col = prev(uv);
+  float intensity = mix(0.3, 2.0, u_level);
+  col = 1.0 - exp(-col * intensity);
+  return col;
+}`;
+    // Note: Master Brightness is applied inline below in rendering
+  }
+
   if (asciiMode) {
     const { cols, rows } = asciiGrid();
     const px = pipeline.render(stages, cols, rows, u, true);
     if (px) pre.innerHTML = pixelsToAsciiColorGlitch(px, cols, rows);
   } else {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
+
+    // Apply Master Brightness post-process via canvas manipulation
+    if (masterBrightnessEnabled) {
+      const gl = (canvas as any)._gl;
+      if (gl) {
+        // Read framebuffer for luminance detection
+        const w = canvas.width, h = canvas.height;
+        const pixels = new Uint8Array(w * h * 4);
+        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+        // Calculate average luminance
+        let totalLum = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const lum = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
+          totalLum += lum;
+        }
+        const avgLum = totalLum / (pixels.length / 4) / 255;
+
+        // Auto-switch if image is too dark/bright (safety)
+        if (avgLum < 0.06 || avgLum > 0.94) {
+          if (Math.random() < 0.1) {
+            selectSource((currentShader + 1) % SHADERS.length);
+          }
+        }
+
+        // Apply brightness boost via canvas composite
+        const tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width = w;
+        tmpCanvas.height = h;
+        const tmpCtx = tmpCanvas.getContext("2d")!;
+        const imgData = tmpCtx.createImageData(w, h);
+        const intensity = 0.3 + u.level * 1.7;
+        const boost = masterBrightnessAmount * Math.max(0, intensity - 1.0) * 0.3;
+
+        for (let i = 0; i < pixels.length; i += 4) {
+          pixels[i] = Math.min(255, pixels[i] + boost * 255);
+          pixels[i + 1] = Math.min(255, pixels[i + 1] + boost * 255);
+          pixels[i + 2] = Math.min(255, pixels[i + 2] + boost * 255);
+        }
+        imgData.data.set(pixels);
+        tmpCtx.putImageData(imgData, 0, 0);
+
+        const canvasCtx = canvas.getContext("2d")!;
+        canvasCtx.drawImage(tmpCanvas, 0, 0);
+      }
+    }
   }
 
   // Permanent ASCII glitch layer (disabled by default, enable with Ctrl+Alt+A)
