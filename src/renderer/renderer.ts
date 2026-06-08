@@ -1019,15 +1019,15 @@ vec3 process(vec2 uv) {
 
       // Fade to black with smoothed audio level
       // Use exponential curve to be more dramatic at low levels
-      const normalizedLevel = Math.pow(smoothedAudioLevel, 0.6); // Power curve for more dramatic fade
-      const minBrightness = 8; // Stay at least 8% to avoid complete black
+      const normalizedLevel = Math.pow(smoothedAudioLevel, 0.55); // Power curve for dramatic fade from silence
+      const minBrightness = 1; // Nearly black when silent (1% brightness)
       const baseBrightness = minBrightness + (normalizedLevel * (100 - minBrightness));
 
-      // Slider amplifies the peak brightness: 0 = 100% at peak, 1 = 140% at peak
-      const amplification = 1 + (masterBrightnessAmount * 0.4);
+      // Slider dramatically amplifies the effect: 0 = 100% at peak, 1 = 200% at peak
+      const amplification = 1 + (masterBrightnessAmount * 1.0);
       const brightnessPercent = baseBrightness * amplification;
 
-      canvas.style.filter = `brightness(${Math.max(8, Math.min(180, brightnessPercent))}%)`;
+      canvas.style.filter = `brightness(${Math.max(1, Math.min(200, brightnessPercent))}%)`;
 
       // Auto-switch safety: read average luminance via WebGL
       try {
