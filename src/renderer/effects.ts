@@ -790,4 +790,160 @@ vec3 process(vec2 uv) {
   return c + vec3(rf_noise * 0.1) - vec3(rf_noise * 0.05, rf_noise * 0.02, 0.0);
 }`,
   },
+
+  // ── Minimalistic Geometric Effects ───────────────────────────────────────
+
+  {
+    name: "Minimal Lines",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+
+  // Vertical and horizontal minimal lines
+  float line_h = smoothstep(0.01, 0.0, abs(mod(uv.y, 0.1) - 0.05)) * (0.5 + u_treble * 0.5);
+  float line_v = smoothstep(0.01, 0.0, abs(mod(uv.x, 0.1) - 0.05)) * (0.5 + u_mid * 0.5);
+
+  float grid = max(line_h, line_v) * a;
+
+  vec3 c = prev(uv);
+  return mix(c, c + vec3(0.2, 0.5, 0.8) * grid, a * 0.3);
+}`,
+  },
+
+  {
+    name: "Segment Mesh",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time * 0.5;
+
+  // Radiating segments from center
+  vec2 p = uv - 0.5;
+  float angle = atan(p.y, p.x) + t;
+  float r = length(p);
+
+  float seg_pattern = sin(angle * 6.0) * 0.5 + 0.5;
+  float segment = smoothstep(0.02 + a * 0.02, 0.0, mod(r * 10.0, 0.2) - 0.1);
+
+  float pattern = seg_pattern * segment;
+
+  vec3 c = prev(uv);
+  return mix(c, c * (1.0 - pattern * 0.3), a);
+}`,
+  },
+
+  {
+    name: "Dot Network",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+
+  // Regular dot pattern (nodes)
+  float dot_size = 0.02;
+  vec2 gp = fract(uv * 8.0 + u_time * 0.1);
+  float d = length(gp - 0.5);
+  float dot = smoothstep(dot_size, 0.0, d);
+
+  // Minimal connecting lines
+  vec2 cell = floor(uv * 8.0);
+  float line_h = smoothstep(0.008, 0.0, abs(fract(uv.y * 8.0) - 0.5));
+  float line_v = smoothstep(0.008, 0.0, abs(fract(uv.x * 8.0) - 0.5));
+
+  float network = dot * 0.5 + (line_h + line_v) * 0.1;
+
+  vec3 c = prev(uv);
+  return mix(c, c + vec3(0.3, 0.6, 1.0) * network, a * 0.4);
+}`,
+  },
+
+  {
+    name: "Pulse Grid",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Pulsing grid pattern
+  vec2 grid_pos = fract(uv * 6.0);
+  float dist_to_node = length(grid_pos - 0.5);
+
+  // Radial pulse from center
+  float center_dist = length(uv - 0.5);
+  float pulse = sin(center_dist * 10.0 - t * 3.0) * 0.5 + 0.5;
+
+  float node = exp(-dist_to_node * dist_to_node * 30.0) * pulse;
+
+  vec3 c = prev(uv);
+  return mix(c, c + vec3(0.4, 0.7, 1.0) * node, a * 0.3);
+}`,
+  },
+
+  {
+    name: "Minimal Rings",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Concentric rings from center
+  vec2 p = uv - 0.5;
+  float r = length(p);
+
+  // Smooth rings
+  float ring = sin(r * 20.0 - t * 2.0) * 0.5 + 0.5;
+  float line = smoothstep(0.01, 0.0, abs(mod(r, 0.1) - 0.05));
+
+  float pattern = ring * line;
+
+  vec3 c = prev(uv);
+  return mix(c, c * (1.0 - pattern * 0.2), a);
+}`,
+  },
+
+  {
+    name: "Minimal Nodes",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Sparse random nodes pulsing
+  vec2 cell = floor(uv * 3.0);
+  float seed = hash(cell);
+
+  // Pulse animation
+  float pulse = 0.5 + 0.5 * sin(t * 2.0 + seed * 6.28);
+
+  vec2 cell_uv = fract(uv * 3.0);
+  float d = length(cell_uv - 0.5);
+
+  float node = smoothstep(0.15, 0.05, d) * pulse;
+
+  vec3 c = prev(uv);
+  vec3 node_col = mix(vec3(0.3, 0.6, 1.0), vec3(1.0, 0.4, 0.2), seed);
+  return mix(c, c + node_col * node, a * 0.3);
+}`,
+  },
+
+  {
+    name: "Minimal Waves",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+
+  // Minimal wave pattern
+  float wave_h = sin(uv.y * 20.0 + t * 2.0) * 0.5 + 0.5;
+  float wave_v = sin(uv.x * 20.0 + t * 1.5) * 0.5 + 0.5;
+
+  // Only show as thin lines
+  float line_h = smoothstep(0.02, 0.0, abs(fract(uv.y * 20.0) - 0.5));
+  float line_v = smoothstep(0.02, 0.0, abs(fract(uv.x * 20.0) - 0.5));
+
+  float pattern = (line_h + line_v) * 0.5;
+
+  vec3 c = prev(uv);
+  return mix(c, c * (1.0 - pattern * 0.15), a);
+}`,
+  },
 ];

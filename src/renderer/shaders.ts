@@ -3015,4 +3015,171 @@ vec3 render(vec2 uv, vec2 res) {
   return clamp(col, vec3(0.0), vec3(1.0));
 }`,
   },
+
+  {
+    name: "Orbital Mesh",
+    params: [
+      { label: "Orbits", key: "u_p0", min: 3, max: 12, default: 6.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+    ],
+    category: "Interactive",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * u_p1;
+  vec3 col = vec3(0.02);
+  for(float i = 0.0; i < u_p0; i++) {
+    float fi = i / u_p0;
+    float orbit_r = 0.1 + fi * 0.4;
+    for(float j = 0.0; j < 8.0; j++) {
+      float fj = j / 8.0;
+      float angle = t * (1.0 - fi * 0.3) + fj * 6.28;
+      vec2 node = vec2(cos(angle), sin(angle)) * orbit_r;
+      float d = length(p - node);
+      col += vec3(0.3, 0.7, 1.0) * exp(-d * d * 30.0) * (0.5 + fi * 0.5);
+    }
+    float orbit_line = smoothstep(0.006, 0.0, abs(length(p) - orbit_r));
+    col += vec3(0.1, 0.3, 0.5) * orbit_line * 0.3;
+  }
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+
+  {
+    name: "Tentacle Network",
+    params: [
+      { label: "Tentacles", key: "u_p0", min: 3, max: 12, default: 6.0, step: 1.0 },
+      { label: "Wave Speed", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+    ],
+    category: "Interactive",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * u_p1;
+  vec3 col = vec3(0.01, 0.02, 0.03);
+  col += vec3(1.0, 0.5, 0.2) * smoothstep(0.07, 0.03, length(p)) * 0.6;
+  for(float i = 0.0; i < u_p0; i++) {
+    float fi = i / u_p0;
+    float base_angle = fi * 6.28;
+    for(float seg = 0.0; seg < 1.0; seg += 0.1) {
+      float wave = sin(seg * 10.0 + t) * 0.15;
+      vec2 seg_pos = vec2(cos(base_angle + wave), sin(base_angle + wave)) * (seg * 0.5);
+      float d = length(p - seg_pos);
+      float pulse = 0.5 + 0.5 * sin(t + seg * 3.0);
+      col += mix(vec3(0.8, 0.2, 0.6), vec3(0.2, 0.5, 1.0), seg) * exp(-d * d * 15.0) * pulse * 0.3;
+    }
+  }
+  col *= 0.5 + 0.5 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+
+  {
+    name: "Particle Swarm",
+    params: [
+      { label: "Particles", key: "u_p0", min: 5, max: 20, default: 12.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.7, step: 0.1 },
+    ],
+    category: "Interactive",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * u_p1;
+  vec3 col = vec3(0.01);
+  for(float i = 0.0; i < u_p0; i++) {
+    float fi = i / u_p0;
+    float seed = hash(vec2(fi, 0.0));
+    float seed2 = hash(vec2(fi, 1.0));
+    float orbit_r = 0.15 + seed * 0.2;
+    float angle = t * (0.5 + seed2) + fi * 6.28;
+    float perturb = sin(t * 2.0 + fi) * 0.05;
+    vec2 particle_pos = vec2(cos(angle), sin(angle)) * (orbit_r + perturb);
+    float d = length(p - particle_pos);
+    col += vec3(0.2, 0.6, 0.9) * exp(-d * d * 20.0) * (0.4 + seed * 0.6);
+  }
+  col *= 0.5 + 0.5 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+
+  {
+    name: "Minimal Node Grid",
+    params: [
+      { label: "Grid", key: "u_p0", min: 3, max: 12, default: 6.0, step: 1.0 },
+      { label: "Pulse", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0) * 2.0;
+  float t = u_time * u_p1;
+  vec3 col = vec3(0.0);
+  float step_size = 2.0 / 6.0;
+  for(float x = -3.0; x < 3.0; x++) {
+    for(float y = -3.0; y < 3.0; y++) {
+      vec2 node_pos = vec2(x, y) * step_size;
+      float d = length(p - node_pos);
+      float pulse = 0.5 + 0.5 * sin(t * 3.0 + (x + y) * 0.3);
+      col += vec3(0.3, 0.7, 0.9) * exp(-d * d * 80.0) * pulse;
+    }
+  }
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+
+  {
+    name: "Pulsing Network",
+    params: [
+      { label: "Nodes", key: "u_p0", min: 4, max: 20, default: 10.0, step: 1.0 },
+      { label: "Intensity", key: "u_p1", min: 0, max: 1, default: 0.7, step: 0.1 },
+    ],
+    category: "Interactive",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time;
+  vec3 col = vec3(0.01);
+  for(float i = 0.0; i < 15.0; i++) {
+    if(i >= u_p0) break;
+    float seed_x = hash(vec2(i, 0.0));
+    float seed_y = hash(vec2(i, 1.0));
+    vec2 node_pos = (vec2(seed_x, seed_y) - 0.5) * 1.8;
+    float d = length(p - node_pos);
+    float pulse = 0.5 + 0.5 * sin(t * 2.0 + i * 0.5);
+    float intensity = 1.0 - pulse * u_p1;
+    col += vec3(0.3, 0.6, 1.0) * exp(-d * d * (20.0 + pulse * 20.0)) * intensity;
+  }
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+
+  {
+    name: "Minimal Segments",
+    params: [
+      { label: "Count", key: "u_p0", min: 5, max: 20, default: 12.0, step: 1.0 },
+      { label: "Width", key: "u_p1", min: 0.001, max: 0.01, default: 0.004, step: 0.001 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * 0.2;
+  vec3 col = vec3(0.0);
+  for(float i = 0.0; i < u_p0; i++) {
+    float fi = i / u_p0;
+    float angle = t + fi * 6.28;
+    vec2 dir = vec2(cos(angle), sin(angle));
+    float wave = sin(fi * 8.0 + t) * 0.2;
+    float len_val = 0.3 + wave;
+    vec2 tip = dir * len_val;
+    float d_tip = length(p - tip);
+    col += vec3(0.9, 0.4, 0.2) * exp(-d_tip * d_tip * 100.0) * 0.4;
+  }
+  col *= 0.5 + 0.5 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
 ];
