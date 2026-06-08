@@ -881,6 +881,24 @@ function frame(now: number): void {
     }
   }
 
+  // Apply MIDI CC mappings (if any)
+  const lastCC = midi.getAndClearLastCC();
+  if (lastCC && midi.enabled) {
+    // Handle MIDI Learn
+    if (midiLearn.isLearning()) {
+      midiLearn.onMidiCC(lastCC.cc, lastCC.value);
+    } else {
+      // Apply mapped parameter values
+      const paramVal = midiLearn.getValue(lastCC.cc, lastCC.value);
+      if (paramVal !== null) {
+        const mapping = midiLearn.getMappingByCC(lastCC.cc);
+        if (mapping) {
+          applyParameterValue(mapping.paramId, paramVal);
+        }
+      }
+    }
+  }
+
   const u = {
     time,
     bass: Math.max(bands.bass, noise ? e : e * 0.4),
@@ -1199,9 +1217,13 @@ const seqStopBtn = $<HTMLButtonElement>("seq-stop");
 const seqBpmInput = $<HTMLInputElement>("seq-bpm");
 const seqStepCountSelect = $<HTMLSelectElement>("seq-step-count");
 const seqGrid = $("seq-grid");
+const seqParamSelect = $<HTMLSelectElement>("seq-param-select");
+const seqKeyframeCount = $("seq-keyframe-count");
 const midiLearnBtn = $<HTMLButtonElement>("midi-learn-btn");
 const midiLearnStatus = $("midi-learn-status");
 const midiMappingsList = $("midi-mappings-list");
+
+let selectedParam = "shader.u_p0";
 
 // Initialize step grid
 function initSequencerGrid(): void {
@@ -1212,10 +1234,59 @@ function initSequencerGrid(): void {
     step.className = "sequencer-step";
     step.dataset["step"] = String(i);
     step.title = `Step ${i}`;
+
+    step.addEventListener("click", () => {
+      toggleKeyframe(i, selectedParam);
+      updateGridDisplay();
+    });
+
     seqGrid.appendChild(step);
   }
+  updateGridDisplay();
 }
+
+function toggleKeyframe(stepIndex: number, paramId: string): void {
+  const track = sequencer.getState().tracks[0]; // Use first track
+  if (!track) return;
+
+  const existing = track.keyframes.find(kf => kf.stepIndex === stepIndex && kf.parameter === paramId);
+
+  if (existing) {
+    // Remove keyframe
+    sequencer.removeKeyframe(0, stepIndex, paramId);
+  } else {
+    // Add keyframe with default value 0.5
+    sequencer.addKeyframe(0, {
+      stepIndex,
+      parameter: paramId,
+      value: 0.5,
+      easing: "linear",
+    });
+  }
+}
+
+function updateGridDisplay(): void {
+  const track = sequencer.getState().tracks[0];
+  const steps = seqGrid.querySelectorAll(".sequencer-step");
+  const keyframesForParam = track?.keyframes.filter(kf => kf.parameter === selectedParam) ?? [];
+
+  steps.forEach((step) => {
+    const stepEl = step as HTMLElement;
+    const stepIndex = parseInt(stepEl.dataset["step"] ?? "0");
+    const hasKeyframe = keyframesForParam.some(kf => kf.stepIndex === stepIndex);
+    stepEl.classList.toggle("active", hasKeyframe);
+  });
+
+  seqKeyframeCount.textContent = `${keyframesForParam.length} keyframes`;
+}
+
 initSequencerGrid();
+
+// Parameter select change
+seqParamSelect.addEventListener("change", () => {
+  selectedParam = seqParamSelect.value;
+  updateGridDisplay();
+});
 
 // Play button
 seqPlayBtn.addEventListener("click", () => {

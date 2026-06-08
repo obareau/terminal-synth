@@ -535,8 +535,26 @@
             </select>
           </div>
 
+          <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Automation Target</div>
+          <select id="seq-param-select" style="width:100%;height:22px;font-size:10px">
+            <option value="shader.u_p0">Shader Param 0</option>
+            <option value="shader.u_p1">Shader Param 1</option>
+            <option value="shader.u_p2">Shader Param 2</option>
+            <option value="shader.u_p3">Shader Param 3</option>
+            <option value="effect.0.amount">Effect 0 (Entropie)</option>
+            <option value="effect.1.amount">Effect 1 (Feedback)</option>
+            <option value="effect.2.amount">Effect 2 (Glitch)</option>
+            <option value="disruptor.0.sensitivity">Disruptor 0</option>
+            <option value="disruptor.1.sensitivity">Disruptor 1</option>
+            <option value="layer.b.opacity">Layer B Opacity</option>
+          </select>
+          <div style="font-size:9px;color:#888;margin-top:2px">Click steps to add/remove keyframes</div>
+
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Step Grid</div>
           <div id="seq-grid" style="display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin:4px 0"></div>
+          <div style="font-size:9px;color:#666;text-align:center">
+            <span id="seq-keyframe-count">0 keyframes</span>
+          </div>
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">MIDI Learn</div>
           <div style="display:flex;gap:6px">

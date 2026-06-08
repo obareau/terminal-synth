@@ -21,6 +21,7 @@ export class MidiInput {
   bend = 0;
   readonly held = new Map<number, number>(); // note → vélocité 0..1
   private last = performance.now();
+  private lastCC: { cc: number; value: number } | null = null;
 
   stop(): void {
     this.enabled = false;
@@ -77,6 +78,8 @@ export class MidiInput {
         break;
       case 0xb0: // control change
         if (d1 === 1) this.mod = d2 / 127; // mod wheel
+        // Store all CC messages for MIDI Learn
+        this.lastCC = { cc: d1, value: d2 };
         break;
       case 0xe0: // pitch bend
         this.bend = (((d2 << 7) | d1) / 16383) * 2 - 1;
@@ -102,6 +105,12 @@ export class MidiInput {
 
   get polyphony(): number {
     return this.held.size;
+  }
+
+  getAndClearLastCC(): { cc: number; value: number } | null {
+    const cc = this.lastCC;
+    this.lastCC = null;
+    return cc;
   }
 }
 
