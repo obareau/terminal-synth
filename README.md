@@ -3,11 +3,11 @@
 > **Synthétiseur visuel dark/industriel** avec génération automatique de compositions, audio-réactivité temps réel, et rendu WebGL2 haute-performance.
 
 ![Status](https://img.shields.io/badge/status-Release-brightgreen)
-![Version](https://img.shields.io/badge/version-1.0.1--delta-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
-Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **~90 générateurs minimalistes**, **23 perturbateurs audio-réactifs**, **séquenceur Ableton Live-style** avec keyframe automation, **MIDI Learn** pour mappages CC, automation générative avec 4 presets, couche texte pixellisée, et système d'enregistrement vidéo.
+Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **~90 générateurs minimalistes**, **23 perturbateurs audio-réactifs**, **séquenceur Ableton Live-style** avec keyframe automation, **MIDI Learn** pour mappages CC, **Master Brightness** audio-réactif, automation générative avec 4 presets, couche texte pixellisée, et système d'enregistrement vidéo.
 
 Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
@@ -73,6 +73,16 @@ npm run package    # Build production
 | **Audio Reactive** | Effets + perturbateurs déclenchés par l'audio |
 | **MIDI Input** | Clavier MIDI + contrôleurs |
 | **System Audio** | Loopback + microphone |
+
+### 💡 Master Brightness (v1.2)
+| Feature | Details |
+|---------|---------|
+| **Audio-Reactive** | Fade to black avec le volume (quasi-noir au silence) |
+| **Smooth Fading** | Transitions graduelles via exponential moving average |
+| **Slider Control** | Amplitude ajustable (100% → 200% brightness at peak) |
+| **Power Curve** | Exponential mapping pour effet dramatique aux bas niveaux |
+| **Keyboard Shortcut** | **B** key pour toggle |
+| **Perfect For** | Fade-in/fade-out musicaux, transitions début/fin morceaux |
 
 ### 🎛️ Sequencer & MIDI Learn (v1.0.1)
 | Feature | Details |
@@ -314,5 +324,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v1.0.1-delta** · WebGL2 · 91 Generators · 31 Effects · Sequencer · MIDI Learn · Generative Automation  
-*The ultimate dark industrial visual synthesizer with Ableton Live-style automation*
+**v1.2.0** · WebGL2 · 91 Generators · 31 Effects · Sequencer · MIDI Learn · Master Brightness · Generative Automation  
+*The ultimate dark industrial visual synthesizer with Ableton Live-style automation and audio-reactive fade-to-black*
