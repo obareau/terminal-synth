@@ -651,4 +651,143 @@ vec3 process(vec2 uv) {
   return prev(clamp(warped, 0.0, 1.0));
 }`,
   },
+
+  // ── NTSC / Analog Effects ───────────────────────────────────────────────────
+
+  {
+    name: "NTSC Chroma",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  // NTSC-style chroma subsampling (lower chroma resolution)
+  float chroma_scale = mix(1.0, 4.0, a);
+  vec2 chroma_uv = floor(uv * chroma_scale) / chroma_scale;
+
+  // Sample RGB at different positions
+  vec3 c = prev(uv);
+  vec3 chroma = prev(chroma_uv);
+
+  // Blend based on amount
+  vec3 result = mix(c, vec3(c.r, chroma.g, chroma.b), a);
+
+  return result;
+}`,
+  },
+
+  {
+    name: "Composite Video",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+
+  // Simulate composite video artifacts
+  float freq = 3.579545 / 30.0; // NTSC subcarrier frequency
+  float phase = sin(uv.x * 100.0 + u_time * freq) * 0.5 + 0.5;
+
+  // Y (luminance)
+  vec3 c = prev(uv);
+  float luma = dot(c, vec3(0.299, 0.587, 0.114));
+
+  // U,V (chrominance) with phase distortion
+  vec3 chroma = prev(uv + vec2(sin(phase) * 0.01, 0.0));
+  float u = chroma.r - luma;
+  float v = chroma.b - luma;
+
+  // Reconstruct with artifacts
+  vec3 result = vec3(
+    luma + 1.13983 * v,
+    luma - 0.39465 * u - 0.58060 * v,
+    luma + 2.03211 * u
+  );
+
+  return mix(c, clamp(result, 0.0, 1.0), a);
+}`,
+  },
+
+  {
+    name: "Analog Ghosting",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+
+  // Multi-frame ghosting effect (CRT phosphor persistence)
+  vec3 c0 = prev(uv);
+  vec3 c1 = fb(uv + vec2(0.002, 0.001));
+  vec3 c2 = fb(uv + vec2(0.004, 0.002));
+
+  // Time-varying blend for analog feel
+  float t_phase = mod(u_time * 60.0, 3.0) / 3.0;
+  float blend = 0.5 + 0.5 * sin(t_phase * 3.14159);
+
+  vec3 ghost = mix(c1, c2, blend) * (0.4 + a * 0.4);
+  return mix(c0, c0 + ghost, a);
+}`,
+  },
+
+  {
+    name: "Color Bleed",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float bleed_amount = a * 0.05;
+
+  // Red channel bleeds right
+  float r = prev(uv - vec2(bleed_amount, 0.0)).r;
+  // Blue channel bleeds left
+  float b = prev(uv + vec2(bleed_amount, 0.0)).b;
+  // Green stays centered
+  float g = prev(uv).g;
+
+  // Vertical fringing (common in analog video)
+  float fringe = sin(uv.y * 30.0) * 0.5 + 0.5;
+  g *= 0.95 + 0.05 * fringe;
+
+  return vec3(r, g, b);
+}`,
+  },
+
+  {
+    name: "Luma Separation",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+
+  // Split into luminance and chrominance
+  vec3 c = prev(uv);
+  float luma = dot(c, vec3(0.299, 0.587, 0.114));
+
+  // Offset chroma by a few lines (like old video tape artifacts)
+  float offset = sin(u_time * 2.0) * 0.01 * a;
+  vec3 chroma = prev(uv + vec2(0.0, offset));
+
+  // Re-composite with exaggerated chroma
+  vec3 result = vec3(
+    luma + (chroma.r - luma) * (1.0 + a),
+    luma,
+    luma + (chroma.b - luma) * (1.0 + a)
+  );
+
+  return mix(c, clamp(result, 0.0, 1.0), a);
+}`,
+  },
+
+  {
+    name: "RF Noise",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+
+  // Radio frequency interference pattern
+  float freq_h = sin(uv.x * 50.0 + u_time * 3.0) * 0.5 + 0.5;
+  float freq_v = sin(uv.y * 30.0 + u_time * 2.0) * 0.5 + 0.5;
+  float interference = freq_h * freq_v;
+
+  // Add analog noise
+  float noise = hash(uv * u_resolution + u_time);
+  float rf_noise = mix(interference, noise, 0.5) * a;
+
+  vec3 c = prev(uv);
+  return c + vec3(rf_noise * 0.1) - vec3(rf_noise * 0.05, rf_noise * 0.02, 0.0);
+}`,
+  },
 ];

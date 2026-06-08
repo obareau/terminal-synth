@@ -27,6 +27,13 @@ let hudVisible = true;
 let cpuUsage = 0;
 let gpuUsage = 0;
 
+// Performance metrics
+let frameCount = 0;
+let lastFpsTime = performance.now();
+let fps = 0;
+let frameTimeMs = 0;
+let peakFrameTimeMs = 0;
+
 // Initialize mode
 if (isOutputMode) document.body.classList.add("output-mode");
 
@@ -833,7 +840,17 @@ function applyParameterValue(paramId: string, value: number): void {
 
 // --- Boucle ---
 function frame(now: number): void {
+  const frameStart = performance.now();
   const time = now / 1000;
+
+  // Update FPS counter
+  frameCount++;
+  const elapsed = frameStart - lastFpsTime;
+  if (elapsed >= 1000) {
+    fps = Math.round((frameCount * 1000) / elapsed);
+    lastFpsTime = frameStart;
+    frameCount = 0;
+  }
 
   if (audio.enabled) {
     audio.sample();
@@ -884,8 +901,11 @@ function frame(now: number): void {
   // Apply MIDI CC mappings (if any)
   const lastCC = midi.getAndClearLastCC();
   if (lastCC && midi.enabled) {
-    // Handle MIDI Learn
-    if (midiLearn.isLearning()) {
+    // Handle record mode (capture MIDI CC into keyframes)
+    if (sequencer.isRecording()) {
+      sequencer.recordMidiCC(lastCC.value);
+    } else if (midiLearn.isLearning()) {
+      // Handle MIDI Learn
       midiLearn.onMidiCC(lastCC.cc, lastCC.value);
     } else {
       // Apply mapped parameter values
@@ -977,22 +997,36 @@ function frame(now: number): void {
   if (midi.enabled) line += `  · midi ${midi.mode} e${pct(e)} poly${midi.polyphony}`;
   meter.textContent = line;
 
+  // Calculate frame time and update metrics
+  frameTimeMs = performance.now() - frameStart;
+  peakFrameTimeMs = Math.max(peakFrameTimeMs, frameTimeMs);
+
   // Update performance HUD
   if (performanceMode) {
     const hud = $("performance-hud");
     const layerA = SHADERS[currentShader]?.name || "—";
     const layerB = layerBEnabled ? SHADERS[Number(layerBSel.value)]?.name || "—" : "";
+    const activeFx = Array.from(document.querySelectorAll(".fx.on")).length;
+    const resolution = `${canvas.width}×${canvas.height}`;
+    const targetFps = 60;
+    const frameTimeTarget = (1000 / targetFps).toFixed(1);
+    const fpsColor = fps >= 55 ? "#0f0" : fps >= 45 ? "#ff0" : "#f44";
+    const frameTimeColor = frameTimeMs <= 16.7 ? "#0f0" : frameTimeMs <= 22 ? "#ff0" : "#f44";
+
     hud.innerHTML = `
-      <div style="font-weight:700;margin-bottom:4px">TERMINAL·SYNTH v0.9.5</div>
+      <div style="font-weight:700;margin-bottom:4px">TERMINAL·SYNTH v0.9.9</div>
+      <div style="font-size:11px;margin-bottom:6px;line-height:1.5;color:${fpsColor};font-weight:600">
+        ${fps} fps · ${frameTimeMs.toFixed(2)}ms
+      </div>
       <div style="font-size:10px;margin-bottom:6px;line-height:1.4">
-        <div>A: ${layerA}</div>
-        ${layerB ? `<div>B: ${layerB}</div>` : ""}
+        <div>A: ${layerA}${layerB ? ` | B: ${layerB}` : ""}</div>
+        <div>${resolution} · ${activeFx} fx</div>
       </div>
       <div style="font-size:10px;margin-bottom:6px;color:#999">
         bass${pct(bands.bass)} · cpu ${cpuUsage}% · gpu ${gpuUsage}%
       </div>
       <div style="font-size:9px;color:#666">
-        [Shift+P] exit · [H] hud
+        [Shift+P] exit · [H] hud · Peak: ${peakFrameTimeMs.toFixed(1)}ms
       </div>
     `;
   }
@@ -1214,6 +1248,11 @@ setInterval(() => {
 // --- Sequencer UI Setup ---
 const seqPlayBtn = $<HTMLButtonElement>("seq-play");
 const seqStopBtn = $<HTMLButtonElement>("seq-stop");
+const seqCopyBtn = $<HTMLButtonElement>("seq-copy-btn");
+const seqPasteBtn = $<HTMLButtonElement>("seq-paste-btn");
+const seqRandomizeBtn = $<HTMLButtonElement>("seq-randomize-btn");
+const seqRecordBtn = $<HTMLButtonElement>("seq-record-btn");
+const seqRecordStatus = $("seq-record-status");
 const seqBpmInput = $<HTMLInputElement>("seq-bpm");
 const seqStepCountSelect = $<HTMLSelectElement>("seq-step-count");
 const seqGrid = $("seq-grid");
@@ -1512,6 +1551,49 @@ midiLearnBtn.addEventListener("click", () => {
     midiLearnStatus.textContent = "Listening...";
     midiLearnStatus.classList.add("learning");
     midiLearnBtn.textContent = "◼ Waiting...";
+  }
+});
+
+// Phase 4: Copy/Paste/Randomize/Record buttons
+seqCopyBtn.addEventListener("click", () => {
+  const paramId = seqParamSelect.value;
+  sequencer.copyKeyframes(0, paramId);
+  const size = sequencer.getClipboardSize();
+  seqCopyBtn.textContent = size > 0 ? `📋 Copy (${size})` : "📋 Copy";
+  seqPasteBtn.disabled = size === 0;
+});
+
+seqPasteBtn.addEventListener("click", () => {
+  const paramId = seqParamSelect.value;
+  const targetStep = sequencer.getState().currentStep;
+  sequencer.pasteKeyframes(0, targetStep);
+  drawWaveform();
+  updateSequencerUI();
+  seqCopyBtn.click(); // Refresh copy button label
+});
+
+seqRandomizeBtn.addEventListener("click", () => {
+  const paramId = seqParamSelect.value;
+  sequencer.randomizeKeyframes(0, paramId, 0, 1);
+  drawWaveform();
+  updateSequencerUI();
+  seqRandomizeBtn.style.background = "#4a2a2a";
+  setTimeout(() => {
+    seqRandomizeBtn.style.background = "#2a1a1a";
+  }, 200);
+});
+
+seqRecordBtn.addEventListener("click", () => {
+  const isRecording = sequencer.isRecording();
+  if (isRecording) {
+    sequencer.stopRecordMode();
+    seqRecordBtn.classList.remove("rec", "active");
+    seqRecordStatus.textContent = "Not recording";
+  } else {
+    const paramId = seqParamSelect.value;
+    sequencer.startRecordMode(0, paramId);
+    seqRecordBtn.classList.add("rec", "active");
+    seqRecordStatus.textContent = `Recording ${paramId}...`;
   }
 });
 

@@ -2641,4 +2641,378 @@ vec3 render(vec2 uv, vec2 res) {
   return clamp(col, vec3(0.0), vec3(1.0));
 }`,
   },
+  {
+    name: "Void Vortex",
+    params: [
+      { label: "Spin", key: "u_p0", min: 0, max: 2, default: 1.2, step: 0.1 },
+      { label: "Event Horizon", key: "u_p1", min: 0.1, max: 0.8, default: 0.3, step: 0.05 },
+    ],
+    category: "Interactive",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0) * 2.0;
+  float t = u_time * u_p0;
+  float r = length(p);
+  float a = atan(p.y, p.x) + t * 0.5;
+
+  // Event horizon (inner void)
+  float horizon = u_p1 + u_level * 0.15;
+  float inside_horizon = smoothstep(horizon + 0.02, horizon - 0.02, r);
+
+  // Spiral distortion
+  float spiral = sin(a * 3.0 - t + r * 8.0) * 0.5 + 0.5;
+  float accretion = smoothstep(0.1, 0.6, r) * (1.0 - smoothstep(horizon, 0.0, r));
+
+  // Deep void center
+  vec3 col = mix(vec3(0.02, 0.0, 0.05), vec3(0.15, 0.05, 0.3), spiral * accretion);
+
+  // Accretion disk glow
+  float disk = smoothstep(horizon + 0.15, horizon + 0.05, r) *
+               smoothstep(horizon - 0.05, horizon - 0.15, r);
+  col += vec3(0.8, 0.2, 0.6) * disk * (0.6 + u_mid * 0.8);
+
+  // Event horizon ring
+  float ring = smoothstep(horizon + 0.01, horizon - 0.01, r);
+  col += vec3(0.9, 0.4, 0.8) * ring * 0.5;
+
+  col *= 0.5 + 0.5 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Singularity Core",
+    params: [
+      { label: "Collapse", key: "u_p0", min: 0, max: 1, default: 0.5, step: 0.05 },
+      { label: "Density", key: "u_p1", min: 1, max: 10, default: 5.0, step: 0.5 },
+    ],
+    category: "Interactive",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time;
+
+  float r = length(p);
+  float collapse = mix(0.1, 0.02, u_p0);
+  float density = u_p1;
+
+  // Particle field collapsing toward center
+  float particles = 0.0;
+  for(float i = 0.0; i < 5.0; i++) {
+    float seed = hash(vec2(i, 0.0));
+    float orbital_r = 0.5 + seed * 0.3;
+    float angle = t * (1.0 - seed) + seed * 6.28;
+    vec2 particle_pos = vec2(cos(angle), sin(angle)) * orbital_r;
+
+    // Pull toward center based on collapse parameter
+    particle_pos *= mix(1.0, collapse * 10.0, u_p0);
+
+    float d = length(p - particle_pos);
+    float particle = exp(-d * d * density * 10.0);
+    particles += particle * (0.3 + u_mid * 0.4);
+  }
+
+  // Core energy
+  float core = exp(-r * r * density * 20.0);
+
+  vec3 col = mix(vec3(0.01, 0.02, 0.04), vec3(0.6, 0.2, 0.9), core);
+  col += vec3(0.9, 0.3, 0.7) * particles;
+  col += vec3(1.0, 0.5, 0.2) * smoothstep(0.08, 0.02, r) * (0.4 + u_treble);
+
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Quantum Mesh",
+    params: [
+      { label: "Scale", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Breakdown", key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.05 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * 0.3;
+
+  float scale = u_p0;
+  float breakdown = u_p1;
+
+  // Crystalline lattice
+  vec2 gp = p * scale;
+  vec2 id = floor(gp);
+  vec2 frac = fract(gp);
+
+  // Grid lines
+  float grid = smoothstep(0.04, 0.0, min(frac.x, 1.0 - frac.x)) +
+               smoothstep(0.04, 0.0, min(frac.y, 1.0 - frac.y));
+
+  // Lattice nodes
+  float nodes = smoothstep(0.06, 0.02, length(frac - 0.5));
+
+  // Breakdown effect: corrupt grid based on parameter and time
+  float corruption = hash(id + sin(t));
+  float breakdown_fade = smoothstep(0.3, 0.7, breakdown + corruption * 0.3);
+
+  grid *= breakdown_fade;
+  nodes *= breakdown_fade;
+
+  // Oscillating energy at nodes
+  float energy = sin(length(id) * 2.0 + t) * 0.5 + 0.5;
+
+  vec3 col = vec3(0.0);
+  col += vec3(0.1, 0.4, 0.8) * grid * 0.4;
+  col += vec3(0.3, 0.8, 1.0) * nodes * energy;
+
+  // Glitch artifacts from breakdown
+  col += vec3(0.8, 0.2, 0.5) * smoothstep(1.0, 0.7, breakdown_fade) * 0.3;
+
+  col *= 0.5 + 0.5 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Entropic Decay",
+    params: [
+      { label: "Decay Rate", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.05 },
+      { label: "Particles", key: "u_p1", min: 1, max: 20, default: 8.0, step: 1.0 },
+    ],
+    category: "Noise",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time;
+  float decay = u_p0;
+
+  vec3 col = vec3(0.0);
+
+  // Multiple decaying particles dissolving outward
+  for(float i = 0.0; i < u_p1; i++) {
+    float seed = hash(vec2(i, 0.0));
+    float life = mod(t * (0.5 + seed) + seed, 2.0); // 0..2, cycles
+    float expansion = life * life * (1.0 + decay * 3.0);
+
+    // Birth angle
+    float birth_angle = seed * 6.28;
+    vec2 particle_center = vec2(cos(birth_angle), sin(birth_angle)) * 0.3;
+
+    float d = length(p - particle_center) / expansion;
+
+    // Dissolving cloud
+    float cloud = exp(-d * d * 8.0) * (1.0 - life * 0.5);
+
+    // Color based on life stage
+    vec3 particle_col = mix(vec3(1.0, 0.6, 0.2), vec3(0.3, 0.1, 0.2), life);
+    col += particle_col * cloud * 0.3;
+  }
+
+  // Background entropy
+  float entropy = hash(p * 20.0 + floor(t * 5.0));
+  col += vec3(0.05, 0.02, 0.08) * entropy * 0.2;
+
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Orbital Collapse",
+    params: [
+      { label: "Collapse Speed", key: "u_p0", min: 0, max: 2, default: 0.8, step: 0.1 },
+      { label: "Orbits", key: "u_p1", min: 2, max: 12, default: 6.0, step: 1.0 },
+    ],
+    category: "Interactive",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * u_p0;
+
+  vec3 col = vec3(0.01, 0.01, 0.03);
+
+  // Multiple rings collapsing inward
+  for(float i = 0.0; i < u_p1; i++) {
+    float fi = i / u_p1;
+    float delay = fi;
+
+    // Orbit radius shrinking over time
+    float max_radius = 0.7 - fi * 0.3;
+    float collapse_time = mod(t - delay * 2.0, 3.0);
+    float radius = mix(max_radius, 0.02, collapse_time / 3.0);
+
+    // Draw ring
+    float r = length(p);
+    float ring_width = 0.03 + (1.0 - collapse_time / 3.0) * 0.05;
+    float ring = smoothstep(radius + ring_width, radius - ring_width, r) *
+                 smoothstep(radius - ring_width, radius + ring_width, r);
+
+    // Color gradient
+    float hue = fi + t * 0.2;
+    vec3 ring_col = mix(vec3(0.2, 0.5, 1.0), vec3(0.9, 0.3, 0.6), sin(hue * 3.14) * 0.5 + 0.5);
+
+    col += ring_col * ring * (0.4 + collapse_time * 0.3 + u_mid * 0.3);
+  }
+
+  // Center flash on collapse
+  float center_flash = smoothstep(0.1, 0.0, length(p)) * sin(t * 8.0) * 0.5 + 0.5;
+  col += vec3(1.0, 0.7, 0.3) * center_flash * 0.3;
+
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Chrono Warp",
+    params: [
+      { label: "Warp Strength", key: "u_p0", min: 0, max: 2, default: 1.0, step: 0.1 },
+      { label: "Frequency", key: "u_p1", min: 1, max: 10, default: 4.0, step: 0.5 },
+    ],
+    category: "Plasma",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time;
+
+  // Time distortion field
+  float warp_strength = u_p0;
+  float freq = u_p1;
+
+  // Concentric time waves
+  float r = length(p);
+  float angle = atan(p.y, p.x);
+
+  // Distorted time field
+  float time_wave = sin(r * freq - t) * 0.5 + 0.5;
+  float time_dist = sin(angle * 3.0 + t * 2.0) * 0.5 + 0.5;
+
+  // Sample positions distorted by time
+  vec2 warp_offset = vec2(
+    sin(time_dist * 3.14 + t) * r * warp_strength * 0.3,
+    cos(time_dist * 3.14 + t * 0.7) * r * warp_strength * 0.3
+  );
+
+  vec2 warped_p = p + warp_offset;
+  float warped_r = length(warped_p);
+
+  // Temporal layers
+  float layer1 = sin(warped_r * 8.0 - t * 2.0);
+  float layer2 = cos(warped_r * 5.0 - t);
+  float layer3 = sin(warped_r * 3.0 - t * 0.5);
+
+  float pattern = layer1 * layer2 * layer3 * 0.5 + 0.5;
+
+  vec3 col = mix(vec3(0.02, 0.05, 0.15), vec3(0.4, 0.2, 0.8), pattern);
+  col += vec3(0.3, 0.7, 1.0) * time_wave * 0.3;
+
+  // Time distortion artifact
+  col += vec3(1.0, 0.3, 0.8) * smoothstep(0.1, 0.0, abs(warped_r - 0.3)) * 0.4;
+
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Dark Matter Flow",
+    params: [
+      { label: "Flow Speed", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.05 },
+      { label: "Density", key: "u_p1", min: 1, max: 10, default: 5.0, step: 0.5 },
+    ],
+    category: "Noise",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * u_p0;
+
+  // Gravitational lensing effect from invisible dark matter
+  float density = u_p1;
+
+  // Multiple point masses creating lensing distortion
+  vec3 col = vec3(0.01);
+
+  for(float i = 0.0; i < 5.0; i++) {
+    float fi = i / 5.0;
+    float seed = hash(vec2(fi, 0.0));
+
+    // Mass position, orbiting
+    float angle = t * (1.0 - seed * 0.5) + seed * 6.28;
+    vec2 mass_pos = vec2(cos(angle), sin(angle)) * (0.2 + seed * 0.3);
+
+    // Gravitational lensing: sample offset by gravity
+    vec2 to_mass = mass_pos - p;
+    float dist = length(to_mass) + 0.01;
+    vec2 gravity_dir = normalize(to_mass);
+
+    // Deflect sampling based on distance
+    vec2 lensed_p = p + gravity_dir * (1.0 / (dist * dist * 5.0)) * 0.1;
+
+    // Sample at lensed position
+    float lens_field = sin(lensed_p.x * density) * cos(lensed_p.y * density) * 0.5 + 0.5;
+
+    // Halo around mass
+    float halo = exp(-dist * dist * 8.0);
+
+    col += vec3(0.2, 0.4, 0.8) * lens_field * 0.1;
+    col += vec3(0.5, 0.2, 0.9) * halo * seed * 0.3;
+  }
+
+  // Background noise modulated by bass
+  col += vec3(0.02, 0.01, 0.05) * (0.5 + u_bass * 0.5);
+
+  col *= 0.6 + 0.4 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
+  {
+    name: "Disintegration",
+    params: [
+      { label: "Cascade Speed", key: "u_p0", min: 0, max: 2, default: 0.8, step: 0.1 },
+      { label: "Shatter Amount", key: "u_p1", min: 1, max: 20, default: 10.0, step: 1.0 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * u_p0;
+
+  vec3 col = vec3(0.0);
+
+  // Cascading destruction effect
+  float fragment_count = u_p1;
+
+  for(float i = 0.0; i < 50.0; i++) {
+    if(i >= fragment_count) break;
+
+    float seed = hash(vec2(i, 0.0));
+    float seed2 = hash(vec2(i, 1.0));
+
+    // Fragment lifetime in cascade
+    float delay = seed;
+    float life = mod(t - delay, 3.0);
+
+    // Fragment position: explodes outward from center
+    vec2 direction = vec2(cos(seed * 6.28), sin(seed * 6.28));
+    float distance = life * life * 0.5;
+    vec2 frag_pos = direction * distance;
+
+    // Fragment lifetime color
+    float brightness = (1.0 - life / 3.0);
+
+    // Size shrinking as it dissolves
+    float size = (1.0 - life / 3.0) * 0.08;
+
+    float d = length(p - frag_pos);
+    float fragment = smoothstep(size + 0.01, size - 0.01, d);
+
+    // Color: hot metal to cold void
+    vec3 frag_col = mix(vec3(1.0, 0.6, 0.1), vec3(0.2, 0.1, 0.5), life / 3.0);
+
+    col += frag_col * fragment * brightness * 0.4;
+  }
+
+  // Shock wave
+  float shock = sin(t * 5.0) * 0.5 + 0.5;
+  float shock_ring = smoothstep(0.2, 0.15, abs(length(p) - t * 0.3)) * shock;
+  col += vec3(0.9, 0.4, 0.2) * shock_ring * 0.3;
+
+  col *= 0.7 + 0.3 * u_level;
+  return clamp(col, vec3(0.0), vec3(1.0));
+}`,
+  },
 ];
