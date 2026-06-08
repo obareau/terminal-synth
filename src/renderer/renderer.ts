@@ -1012,11 +1012,11 @@ vec3 process(vec2 uv) {
 
     // Apply Master Brightness post-process via CSS filter on canvas
     if (masterBrightnessEnabled) {
-      const intensity = 0.3 + u.level * 1.7;
-      const boost = masterBrightnessAmount * Math.max(0, intensity - 1.0);
-
-      // Convert boost to brightness percentage (1.0 = 100% = no change, 1.5 = 150% = +50% brightness)
-      const brightnessPercent = 100 + (boost * 80); // Scale 0-1 to 0-80% increase
+      // Fade to black with audio level: 0% brightness when silent, 100%+ when loud
+      // Slider amplifies the effect: 0 = min brightness at peak, 1 = 180% at peak
+      const baseBrightness = u.level * 100; // 0-100% based on audio level
+      const amplification = 1 + (masterBrightnessAmount * 0.8); // 1.0 to 1.8x multiplier
+      const brightnessPercent = baseBrightness * amplification;
 
       canvas.style.filter = `brightness(${brightnessPercent}%)`;
 
