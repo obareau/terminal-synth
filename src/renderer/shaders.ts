@@ -1218,45 +1218,58 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Stripes wave",
+    params: [
+      { label: "Frequency", key: "u_p0", min: 1, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 2.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float freq = 8.0 + u_bass * 8.0;
-  float wave = sin(uv.x * freq + u_time * 2.0 - uv.y * 3.0);
-  float stripe = abs(wave) * 0.5;
+  float freq = u_p0 * (0.8 + u_bass * 1.2);
+  float wave = sin(uv.x * freq + u_time * u_p1 * (1.0 + u_treble) - uv.y * (2.0 + u_mid));
+  float stripe = abs(wave) * (0.4 + 0.2 * u_bass);
 
   vec3 col = vec3(0.0);
-  col.r = stripe + sin(u_time * 0.5) * 0.2;
-  col.g = stripe + cos(u_time * 0.7) * 0.2;
-  col.b = stripe + sin(u_time * 0.3) * 0.2;
+  col.r = stripe + sin(u_time * (0.5 + u_bass)) * 0.2;
+  col.g = stripe + cos(u_time * (0.7 + u_mid)) * 0.2;
+  col.b = stripe + sin(u_time * (0.3 + u_treble)) * 0.2;
 
-  col += fftAt(uv.x * 0.3) * vec3(0.4, 0.2, 0.8);
-  return col * (0.6 + u_level * 0.6);
+  col += fftAt(uv.x * 0.3) * vec3(0.4, 0.2, 0.8) * (0.6 + 0.4 * u_bass);
+  return col * (0.5 + 0.8 * u_level);
 }`,
   },
   {
     name: "Radial symmetry",
+    params: [
+      { label: "Sides", key: "u_p0", min: 3, max: 16, default: 6.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 pos = uv - 0.5;
   float angle = atan(pos.y, pos.x);
   float radius = length(pos);
 
-  float sides = 6.0 + u_mid * 8.0;
-  float pattern = cos(angle * sides + u_time);
-  float rings = sin(radius * 12.0 - u_time);
+  float sides = u_p0 * (0.9 + 0.2 * u_mid);
+  float pattern = cos(angle * sides + u_time * u_p1 * (0.8 + u_bass));
+  float rings = sin(radius * (12.0 + u_treble * 4.0) - u_time * u_p1);
 
-  float combined = pattern * rings;
-  vec3 col = mix(vec3(0.1, 0.05, 0.2), vec3(0.9, 0.3, 0.7), combined * 0.5 + 0.5);
+  float combined = pattern * rings * (0.7 + 0.3 * u_bass);
+  vec3 col = mix(vec3(0.1, 0.05 + u_bass * 0.1, 0.2), vec3(0.9, 0.3 + u_mid * 0.3, 0.7 + u_treble * 0.2), combined * 0.5 + 0.5);
   col *= smoothstep(1.0, 0.3, radius);
+  col *= 0.5 + 0.7 * u_level;
   return col;
 }`,
   },
   {
     name: "Chromatic shift",
+    params: [
+      { label: "Scale", key: "u_p0", min: 1, max: 10, default: 3.0, step: 0.5 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time;
-  float shift = 0.01 + u_bass * 0.05;
+  float t = u_time * u_p1 * (0.8 + u_bass);
+  float shift = (0.008 + u_bass * 0.06) * u_p0;
 
   float r = sin(uv.x * 10.0 + t) * 0.5 + 0.5;
   r = texture(u_audio, vec2(uv.x + shift, 0.25)).r;
@@ -1272,6 +1285,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Cube Raymarching",
+    params: [
+      { label: "Rotation", key: "u_p0", min: 0, max: 2, default: 0.5, step: 0.1 },
+      { label: "Scale", key: "u_p1", min: 0.3, max: 1.5, default: 0.6, step: 0.1 },
+    ],
     src: /* glsl */ `
 float sdBox(vec3 p, vec3 b) {
   vec3 q = abs(p) - b;
@@ -1280,84 +1297,98 @@ float sdBox(vec3 p, vec3 b) {
 
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0) * 2.5;
-  vec3 ro = vec3(sin(u_time*0.5)*1.5, 0.0, 3.0);
+  vec3 ro = vec3(sin(u_time * u_p0 * (0.5 + u_bass)) * 1.5, u_bass * 0.5, 3.0 - u_mid);
   vec3 rd = normalize(vec3(p, -1.0));
 
   float t = 0.1;
   for(int i = 0; i < 80; i++) {
     vec3 pos = ro + rd * t;
-    float d = sdBox(pos, vec3(0.6));
+    float d = sdBox(pos, vec3(u_p1 * (0.8 + 0.4 * u_bass)));
     if(d < 0.001) break;
     if(t > 50.0) break;
-    t += d * 0.7;
+    t += d * (0.6 + 0.4 * u_treble);
   }
 
   vec3 pos = ro + rd * t;
   vec3 n = normalize(vec3(
-    sdBox(pos+vec3(0.001,0,0), vec3(0.6))-sdBox(pos-vec3(0.001,0,0), vec3(0.6)),
-    sdBox(pos+vec3(0,0.001,0), vec3(0.6))-sdBox(pos-vec3(0,0.001,0), vec3(0.6)),
-    sdBox(pos+vec3(0,0,0.001), vec3(0.6))-sdBox(pos-vec3(0,0,0.001), vec3(0.6))
+    sdBox(pos+vec3(0.001,0,0), vec3(u_p1))-sdBox(pos-vec3(0.001,0,0), vec3(u_p1)),
+    sdBox(pos+vec3(0,0.001,0), vec3(u_p1))-sdBox(pos-vec3(0,0.001,0), vec3(u_p1)),
+    sdBox(pos+vec3(0,0,0.001), vec3(u_p1))-sdBox(pos-vec3(0,0,0.001), vec3(u_p1))
   ));
 
-  vec3 light = normalize(vec3(1.0, 1.0, -1.0));
-  float spec = pow(max(0.0, dot(reflect(-light, n), -rd)), 16.0);
-  vec3 col = vec3(0.2, 0.5, 0.9) * (0.3 + 0.7*max(0.0, dot(n, light))) + spec * 0.8;
-  col += u_bass * 0.3;
-  return col * exp(-t * 0.08);
+  vec3 light = normalize(vec3(1.0, 1.0 + u_mid, -1.0 - u_treble));
+  float spec = pow(max(0.0, dot(reflect(-light, n), -rd)), 16.0) * (0.6 + 0.4 * u_bass);
+  vec3 col = vec3(0.2, 0.5, 0.9 + u_treble * 0.2) * (0.3 + 0.7 * max(0.0, dot(n, light))) + spec * 0.8;
+  col += u_bass * 0.4;
+  col *= exp(-t * 0.08) * (0.7 + 0.3 * u_level);
+  return col;
 }`,
   },
   {
     name: "Neuron Network",
+    params: [
+      { label: "Grid Size", key: "u_p0", min: 3, max: 10, default: 7.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.4, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 center = vec2(0.5);
   vec2 p = uv - center;
   vec3 col = vec3(0.0);
-  float t = u_time * 0.4;
+  float t = u_time * u_p1 * (0.8 + u_bass * 1.2);
+  float grid_size = u_p0;
 
   // Réseau de neurones en grille 3D projeté
-  for(float i = 0.0; i < 7.0; i++) {
-    for(float j = 0.0; j < 7.0; j++) {
+  for(float i = 0.0; i < 10.0; i++) {
+    if(i >= grid_size) break;
+    for(float j = 0.0; j < 10.0; j++) {
+      if(j >= grid_size) break;
       // Position du neurone dans un cube
       float layer = mod(i, 3.0);
-      float angle = (i + j * 0.5) * 0.8 + t * 0.3;
-      float radius = 0.12 + 0.06 * sin(t + layer);
+      float angle = (i + j * 0.5) * (0.8 + u_treble * 0.3) + t * 0.3;
+      float radius = (0.12 + 0.06 * sin(t + layer)) * (0.8 + 0.4 * u_mid);
 
       vec2 pos = vec2(cos(angle), sin(angle)) * radius;
-      pos += vec2(cos(t + i*0.3), sin(t + j*0.3)) * 0.08;
+      pos += vec2(cos(t + i * 0.3 + u_bass), sin(t + j * 0.3 + u_mid)) * (0.06 + u_bass * 0.08);
 
       // Distance au neurone
       float d = distance(p, pos);
 
       // Neurone avec brillance
       vec3 neuron_col = vec3(
-        0.2 + 0.6*sin(t + i*0.5),
-        0.1 + 0.7*sin(t + j*0.5),
-        0.4 + 0.5*sin(t + i + j)
+        0.2 + 0.6 * sin(t + i * 0.5 + u_treble),
+        0.1 + 0.7 * sin(t + j * 0.5 + u_bass),
+        0.4 + 0.5 * sin(t + i + j + u_mid)
       );
-      col += neuron_col * (0.08 / (d * 80.0 + 0.05));
-      col += vec3(0.9, 0.8, 1.0) * pow(max(0.0, 0.02 - d), 2.0) * 0.5;
+      col += neuron_col * ((0.08 + u_bass * 0.04) / (d * 80.0 + 0.05));
+      col += vec3(0.9, 0.8, 1.0 + u_treble * 0.2) * pow(max(0.0, 0.02 - d), 2.0) * (0.3 + 0.2 * u_bass);
 
       // Connexions entre neurones proches
-      for(float k = i + 1.0; k < min(i + 3.0, 7.0); k++) {
-        for(float l = j; l < min(j + 2.0, 7.0); l++) {
-          float angle2 = (k + l * 0.5) * 0.8 + t * 0.3;
-          float radius2 = 0.12 + 0.06 * sin(t + mod(k, 3.0));
+      for(float k = i + 1.0; k < min(i + 3.0, grid_size); k++) {
+        for(float l = j; l < min(j + 2.0, grid_size); l++) {
+          float angle2 = (k + l * 0.5) * (0.8 + u_treble * 0.3) + t * 0.3;
+          float radius2 = (0.12 + 0.06 * sin(t + mod(k, 3.0))) * (0.8 + 0.4 * u_mid);
           vec2 pos2 = vec2(cos(angle2), sin(angle2)) * radius2;
-          pos2 += vec2(cos(t + k*0.3), sin(t + l*0.3)) * 0.08;
+          pos2 += vec2(cos(t + k * 0.3 + u_bass), sin(t + l * 0.3 + u_mid)) * (0.06 + u_bass * 0.08);
 
           float conn_d = distance(p, mix(pos, pos2, 0.5));
-          col += vec3(0.3, 0.6, 0.9) * 0.02 / (conn_d * 100.0 + 0.05);
+          col += vec3(0.3, 0.6, 0.9) * (0.015 + u_bass * 0.015) / (conn_d * 100.0 + 0.05);
         }
       }
     }
   }
 
-  return clamp(col * (0.6 + u_bass * 0.4), vec3(0.0), vec3(1.0));
+  col *= 0.5 + 0.8 * u_level;
+  col += vec3(u_bass * 0.2);
+  return clamp(col, vec3(0.0), vec3(1.0));
 }`,
   },
   {
     name: "Liquid Sphere",
+    params: [
+      { label: "Viscosity", key: "u_p0", min: 0, max: 1, default: 0.5, step: 0.05 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x/res.y, 1.0) * 2.0;
@@ -1394,6 +1425,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Scanlines",
+    params: [
+      { label: "Frequency", key: "u_p0", min: 5, max: 30, default: 20.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time;
@@ -1420,6 +1455,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Wire Grid",
+    params: [
+      { label: "Grid Scale", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -1445,6 +1484,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Circuit Board",
+    params: [
+      { label: "Density", key: "u_p0", min: 2, max: 20, default: 10.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.3;
@@ -1475,6 +1518,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Binary Stream",
+    params: [
+      { label: "Speed", key: "u_p0", min: 0, max: 2, default: 1.0, step: 0.1 },
+      { label: "Density", key: "u_p1", min: 0.1, max: 1.0, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time;
@@ -1538,6 +1585,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Node Grid",
+    params: [
+      { label: "Grid Size", key: "u_p0", min: 3, max: 10, default: 5.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.3, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.3;
@@ -1604,6 +1655,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Spiral Nodes",
+    params: [
+      { label: "Count", key: "u_p0", min: 5, max: 20, default: 15.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -1651,6 +1706,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Tree Network",
+    params: [
+      { label: "Branches", key: "u_p0", min: 2, max: 8, default: 4.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.4;
@@ -2048,6 +2107,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Sine Waves",
+    params: [
+      { label: "Frequency", key: "u_p0", min: 1, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.6;
@@ -2075,6 +2138,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Lattice Structure",
+    params: [
+      { label: "Scale", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.3;
@@ -2103,6 +2170,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Voronoi Diagram",
+    params: [
+      { label: "Cells", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.4;
@@ -2141,6 +2212,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Orbits",
+    params: [
+      { label: "Layers", key: "u_p0", min: 3, max: 10, default: 6.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -2180,6 +2255,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Rotating Rects",
+    params: [
+      { label: "Count", key: "u_p0", min: 3, max: 20, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.4;
@@ -2213,6 +2292,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Polygon Grid",
+    params: [
+      { label: "Sides", key: "u_p0", min: 3, max: 12, default: 6.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.3;
@@ -2251,6 +2334,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Expanding Rings",
+    params: [
+      { label: "Count", key: "u_p0", min: 3, max: 20, default: 10.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.8;
@@ -2275,6 +2362,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Twisted Bands",
+    params: [
+      { label: "Count", key: "u_p0", min: 2, max: 12, default: 6.0, step: 1.0 },
+      { label: "Twist", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -2296,6 +2387,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Double Orbits",
+    params: [
+      { label: "Layers", key: "u_p0", min: 3, max: 10, default: 6.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.4;
@@ -2339,6 +2434,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Spiral Orbits",
+    params: [
+      { label: "Spiral Arms", key: "u_p0", min: 1, max: 8, default: 3.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -2379,6 +2478,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Ellipse Orbits",
+    params: [
+      { label: "Count", key: "u_p0", min: 3, max: 12, default: 8.0, step: 1.0 },
+      { label: "Eccentricity", key: "u_p1", min: 0.1, max: 0.9, default: 0.6, step: 0.05 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.5;
@@ -2422,6 +2525,10 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Binary Stars",
+    params: [
+      { label: "Stars", key: "u_p0", min: 2, max: 8, default: 3.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.0, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * 0.4;
@@ -2525,25 +2632,32 @@ vec3 render(vec2 uv, vec2 res) {
   },
   {
     name: "Orbital Trail",
+    params: [
+      { label: "Planets", key: "u_p0", min: 3, max: 8, default: 5.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time * 0.5;
+  float t = u_time * u_p1 * (0.6 + u_bass * 2.0);
   vec2 p = (uv - 0.5) * 2.0;
   p.x *= res.x / res.y;
 
   vec3 col = vec3(0.0);
 
-  // Centre
+  // Centre - pulsates with bass
   vec2 center = vec2(0.0);
   float d_center = length(p - center);
-  float sun = smoothstep(0.08, 0.06, d_center) * smoothstep(0.06, 0.07, d_center);
-  col += vec3(sun * 0.9);
+  float sun_size = 0.07 + u_bass * 0.02;
+  float sun = smoothstep(sun_size + 0.01, sun_size - 0.01, d_center);
+  col += vec3(sun * (0.7 + 0.3 * u_bass));
 
   // Planètes avec trails
-  for(int i = 0; i < 5; i++) {
+  int planet_count = int(u_p0);
+  for(int i = 0; i < 8; i++) {
+    if(i >= planet_count) break;
     float fi = float(i);
-    float radius = 0.15 + fi * 0.15;
-    float speed = 2.0 - fi * 0.3;
+    float radius = 0.15 + fi * (0.15 * (0.8 + 0.4 * u_mid));
+    float speed = (2.0 - fi * 0.3) * (0.8 + 0.4 * u_treble);
     float angle = t * speed;
 
     vec2 planet_pos = center + vec2(cos(angle), sin(angle)) * radius;
@@ -2555,39 +2669,46 @@ vec3 render(vec2 uv, vec2 res) {
 
       float d_trail = length(p - trail_pos);
       float trail_dot = smoothstep(0.02, 0.0, d_trail);
-      col += vec3(trail_dot * (1.0 - trail) * 0.3);
+      col += vec3(trail_dot * (1.0 - trail) * (0.2 + 0.2 * u_bass));
     }
 
     // Planète actuelle
     float d = length(p - planet_pos);
-    float planet = smoothstep(0.04, 0.02, d) * smoothstep(0.02, 0.035, d);
-    col += vec3(planet * 0.8);
+    float planet_size = 0.03 + u_mid * 0.02;
+    float planet = smoothstep(planet_size + 0.01, planet_size - 0.01, d);
+    col += vec3(planet * (0.6 + 0.4 * u_bass));
 
     // Orbite
-    float orbit_line = smoothstep(0.007, 0.0, abs(length(p - center) - radius));
-    col += vec3(orbit_line * 0.2);
+    float orbit_line = smoothstep(0.007 * (0.8 + 0.4 * u_bass), 0.0, abs(length(p - center) - radius));
+    col += vec3(orbit_line * (0.15 + 0.15 * u_bass));
   }
 
-  col *= 0.8 + 0.2 * u_level;
-  col += vec3(u_bass * 0.06);
+  col *= 0.5 + 0.8 * u_level;
+  col += vec3(u_bass * 0.15 + u_treble * 0.05);
   return clamp(col, vec3(0.0), vec3(1.0));
 }`,
   },
   {
     name: "Tentacle Spheres",
+    params: [
+      { label: "Spheres", key: "u_p0", min: 3, max: 12, default: 8.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+    ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time * 0.6;
+  float t = u_time * u_p1 * (0.7 + u_bass * 1.5);
   vec2 p = uv * 2.0 - 1.0;
   p.x *= res.x / res.y;
 
   vec3 col = vec3(0.0);
 
-  // 7-8 sphères avec positions très random et chaotiques
-  vec2 nodes[8];
-  float sizes[8];
+  // Dynamically sized sphere array
+  vec2 nodes[12];
+  float sizes[12];
+  int sphere_count = int(u_p0);
 
-  for(int i = 0; i < 8; i++) {
+  for(int i = 0; i < 12; i++) {
+    if(i >= sphere_count) break;
     float fi = float(i);
 
     // Positions très aléatoires basées sur du hash
@@ -2597,28 +2718,31 @@ vec3 render(vec2 uv, vec2 res) {
 
     // Mouvement brownien : dérive progressive avec du sin/cos chaotique
     vec2 base = vec2(h1 * 2.0 - 1.0, h2 * 2.0 - 1.0) * 0.9;
-    float drift_x = sin(t * 0.5 + fi * 2.3) * sin(t * 0.3 + fi) * 0.3;
-    float drift_y = cos(t * 0.4 + fi * 1.7) * cos(t * 0.25 + fi * 0.5) * 0.3;
+    float drift_x = sin(t * (0.3 + u_mid) + fi * 2.3) * sin(t * (0.2 + u_treble) + fi) * (0.2 + u_bass * 0.2);
+    float drift_y = cos(t * (0.25 + u_bass) + fi * 1.7) * cos(t * (0.15 + u_mid) + fi * 0.5) * (0.2 + u_bass * 0.2);
 
     nodes[i] = base + vec2(drift_x, drift_y);
-    sizes[i] = 0.05 + h3 * 0.04;  // Tailles variables
+    sizes[i] = (0.04 + h3 * 0.05) * (0.8 + 0.4 * u_bass);
   }
 
   // Dessiner les nœuds (vides, juste le contour)
-  for(int i = 0; i < 8; i++) {
+  for(int i = 0; i < 12; i++) {
+    if(i >= sphere_count) break;
     float d = length(p - nodes[i]);
     // Juste le ring du nœud, pas rempli
     float ring = smoothstep(sizes[i] + 0.008, sizes[i] - 0.002, d) * smoothstep(sizes[i] - 0.008, sizes[i], d);
-    col += vec3(ring * 0.9);
+    col += vec3(ring * (0.7 + 0.3 * u_bass));
 
     // Lignes vers les autres sphères proches
-    for(int j = i + 1; j < 8; j++) {
+    for(int j = i + 1; j < 12; j++) {
+      if(j >= sphere_count) break;
       vec2 target = nodes[j];
       vec2 start = nodes[i];
       float dist_to_target = distance(start, target);
 
-      // Seulement tracer les lignes aux plus proches voisins
-      if(dist_to_target > 1.5) continue;
+      // Connection distance affected by bass
+      float connection_dist = 1.5 * (0.8 + 0.4 * u_mid);
+      if(dist_to_target > connection_dist) continue;
 
       // Tracer une ligne simple
       vec2 line_dir = normalize(target - start);
@@ -2629,23 +2753,22 @@ vec3 render(vec2 uv, vec2 res) {
 
       // Vérifier qu'on est entre les deux points
       if(dist_along_line >= 0.0 && dist_along_line <= dist_to_target) {
-        if(dist_to_line < 0.008) {
+        if(dist_to_line < 0.008 * (0.8 + 0.4 * u_bass)) {
           float line = smoothstep(0.01, 0.0, dist_to_line);
-          // Dégradé basé sur la distance vers le centre
-          float brightness = 0.3 + 0.7 * (0.5 + 0.5 * sin(dist_along_line * 5.0 + float(i) * 0.5));
-          col += vec3(line * brightness * 0.8);
+          float brightness = 0.3 + 0.7 * (0.5 + 0.5 * sin(dist_along_line * 5.0 + float(i) * 0.5 + u_treble));
+          col += vec3(line * brightness * (0.5 + 0.5 * u_bass));
         }
       }
     }
   }
 
-  // Fond très sombre
-  float bg = 0.02 * (0.5 + 0.5 * sin(t * 0.1));
+  // Fond affected by bass
+  float bg = 0.01 * (0.3 + 0.5 * sin(t * (0.1 + u_bass)) + 0.2 * u_mid);
   col += vec3(bg);
 
   // Audio reactivity très marquée
-  col *= 0.7 + 0.3 * u_level;
-  col += vec3(u_bass * 0.12);
+  col *= 0.5 + 0.8 * u_level;
+  col += vec3(u_bass * 0.2 + u_treble * 0.08);
 
   return clamp(col, vec3(0.0), vec3(1.0));
 }`,
@@ -2741,41 +2864,44 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * 0.3;
+  float t = u_time * (0.2 + u_bass * 1.2);
 
-  float scale = u_p0;
-  float breakdown = u_p1;
+  float scale = u_p0 * (0.8 + 0.4 * u_mid);
+  float breakdown = u_p1 + u_bass * 0.3;
 
   // Crystalline lattice
   vec2 gp = p * scale;
   vec2 id = floor(gp);
   vec2 frac = fract(gp);
 
-  // Grid lines
-  float grid = smoothstep(0.04, 0.0, min(frac.x, 1.0 - frac.x)) +
-               smoothstep(0.04, 0.0, min(frac.y, 1.0 - frac.y));
+  // Grid lines - thickness affected by bass
+  float grid_thickness = 0.04 * (0.7 + 0.6 * u_bass);
+  float grid = smoothstep(grid_thickness, 0.0, min(frac.x, 1.0 - frac.x)) +
+               smoothstep(grid_thickness, 0.0, min(frac.y, 1.0 - frac.y));
 
-  // Lattice nodes
-  float nodes = smoothstep(0.06, 0.02, length(frac - 0.5));
+  // Lattice nodes - size pulsates with bass
+  float node_size = 0.06 * (0.8 + 0.4 * u_mid);
+  float nodes = smoothstep(node_size, node_size * 0.3, length(frac - 0.5));
 
   // Breakdown effect: corrupt grid based on parameter and time
-  float corruption = hash(id + sin(t));
-  float breakdown_fade = smoothstep(0.3, 0.7, breakdown + corruption * 0.3);
+  float corruption = hash(id + sin(t + u_treble));
+  float breakdown_fade = smoothstep(0.3, 0.7, breakdown + corruption * (0.2 + u_bass));
 
-  grid *= breakdown_fade;
-  nodes *= breakdown_fade;
+  grid *= breakdown_fade * (0.6 + 0.4 * u_bass);
+  nodes *= breakdown_fade * (0.6 + 0.4 * u_bass);
 
-  // Oscillating energy at nodes
-  float energy = sin(length(id) * 2.0 + t) * 0.5 + 0.5;
+  // Oscillating energy at nodes - faster with bass
+  float energy = sin(length(id) * (2.0 + u_treble) + t) * 0.5 + 0.5;
 
   vec3 col = vec3(0.0);
-  col += vec3(0.1, 0.4, 0.8) * grid * 0.4;
-  col += vec3(0.3, 0.8, 1.0) * nodes * energy;
+  col += vec3(0.1, 0.4 + u_bass * 0.2, 0.8) * grid * (0.3 + 0.3 * u_bass);
+  col += vec3(0.3, 0.8, 1.0 + u_treble * 0.2) * nodes * energy * (0.6 + 0.4 * u_bass);
 
   // Glitch artifacts from breakdown
-  col += vec3(0.8, 0.2, 0.5) * smoothstep(1.0, 0.7, breakdown_fade) * 0.3;
+  col += vec3(0.8, 0.2 + u_bass * 0.3, 0.5) * smoothstep(1.0, 0.7, breakdown_fade) * (0.2 + 0.2 * u_mid);
 
-  col *= 0.5 + 0.5 * u_level;
+  col *= 0.4 + 0.8 * u_level;
+  col += vec3(u_bass * 0.2 + u_treble * 0.1);
   return clamp(col, vec3(0.0), vec3(1.0));
 }`,
   },
@@ -2789,29 +2915,31 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time;
-  float decay = u_p0;
+  float t = u_time * (0.5 + u_bass * 2.0);
+  float decay = u_p0 + u_bass * 0.2;
 
   vec3 col = vec3(0.0);
 
   // Multiple decaying particles dissolving outward
-  for(float i = 0.0; i < u_p1; i++) {
+  int particle_count = int(u_p1 * (0.8 + 0.4 * u_mid));
+  for(float i = 0.0; i < 20.0; i++) {
+    if(i >= float(particle_count)) break;
     float seed = hash(vec2(i, 0.0));
-    float life = mod(t * (0.5 + seed) + seed, 2.0); // 0..2, cycles
-    float expansion = life * life * (1.0 + decay * 3.0);
+    float life = mod(t * (0.5 + seed + u_treble) + seed, 2.0); // 0..2, cycles
+    float expansion = life * life * (0.8 + decay * 3.0 + u_bass * 0.5);
 
     // Birth angle
-    float birth_angle = seed * 6.28;
-    vec2 particle_center = vec2(cos(birth_angle), sin(birth_angle)) * 0.3;
+    float birth_angle = seed * 6.28 + u_treble * 0.5;
+    vec2 particle_center = vec2(cos(birth_angle), sin(birth_angle)) * (0.2 + u_mid * 0.2);
 
     float d = length(p - particle_center) / expansion;
 
     // Dissolving cloud
-    float cloud = exp(-d * d * 8.0) * (1.0 - life * 0.5);
+    float cloud = exp(-d * d * (8.0 + u_bass * 4.0)) * (1.0 - life * 0.5);
 
-    // Color based on life stage
-    vec3 particle_col = mix(vec3(1.0, 0.6, 0.2), vec3(0.3, 0.1, 0.2), life);
-    col += particle_col * cloud * 0.3;
+    // Color based on life stage - affected by bass
+    vec3 particle_col = mix(vec3(1.0, 0.6 + u_bass * 0.2, 0.2), vec3(0.3, 0.1, 0.2 + u_treble * 0.2), life);
+    col += particle_col * cloud * (0.2 + 0.2 * u_bass);
   }
 
   // Background entropy
