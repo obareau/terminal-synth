@@ -410,4 +410,12 @@ export class Pipeline {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     return pixels;
   }
+
+  getGL(): WebGL2RenderingContext {
+    return this.gl;
+  }
+
+  getCurrentFramebuffer(): WebGLFramebuffer | null {
+    return this.fbo[0]; // Return first FBO for reading
+  }
 }

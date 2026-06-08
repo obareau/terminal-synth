@@ -1010,16 +1010,24 @@ vec3 process(vec2 uv) {
   } else {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
 
-    // Apply Master Brightness post-process via canvas manipulation
+    // Apply Master Brightness post-process via CSS filter on canvas
     if (masterBrightnessEnabled) {
-      const gl = (canvas as any)._gl;
-      if (gl) {
-        // Read framebuffer for luminance detection
-        const w = canvas.width, h = canvas.height;
+      const intensity = 0.3 + u.level * 1.7;
+      const boost = masterBrightnessAmount * Math.max(0, intensity - 1.0);
+
+      // Convert boost to brightness percentage (1.0 = 100% = no change, 1.5 = 150% = +50% brightness)
+      const brightnessPercent = 100 + (boost * 80); // Scale 0-1 to 0-80% increase
+
+      canvas.style.filter = `brightness(${brightnessPercent}%)`;
+
+      // Auto-switch safety: read average luminance via WebGL
+      try {
+        const gl = pipeline.getGL();
+        const w = Math.min(canvas.width, 256);
+        const h = Math.min(canvas.height, 256);
         const pixels = new Uint8Array(w * h * 4);
         gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-        // Calculate average luminance
         let totalLum = 0;
         for (let i = 0; i < pixels.length; i += 4) {
           const lum = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
@@ -1027,33 +1035,18 @@ vec3 process(vec2 uv) {
         }
         const avgLum = totalLum / (pixels.length / 4) / 255;
 
-        // Auto-switch if image is too dark/bright (safety)
-        if (avgLum < 0.06 || avgLum > 0.94) {
-          if (Math.random() < 0.1) {
+        // Auto-switch if image is too dark/bright
+        if (avgLum < 0.05 || avgLum > 0.95) {
+          if (Math.random() < 0.08) {
+            canvas.style.filter = "none";
             selectSource((currentShader + 1) % SHADERS.length);
           }
         }
-
-        // Apply brightness boost via canvas composite
-        const tmpCanvas = document.createElement("canvas");
-        tmpCanvas.width = w;
-        tmpCanvas.height = h;
-        const tmpCtx = tmpCanvas.getContext("2d")!;
-        const imgData = tmpCtx.createImageData(w, h);
-        const intensity = 0.3 + u.level * 1.7;
-        const boost = masterBrightnessAmount * Math.max(0, intensity - 1.0) * 0.3;
-
-        for (let i = 0; i < pixels.length; i += 4) {
-          pixels[i] = Math.min(255, pixels[i] + boost * 255);
-          pixels[i + 1] = Math.min(255, pixels[i + 1] + boost * 255);
-          pixels[i + 2] = Math.min(255, pixels[i + 2] + boost * 255);
-        }
-        imgData.data.set(pixels);
-        tmpCtx.putImageData(imgData, 0, 0);
-
-        const canvasCtx = canvas.getContext("2d")!;
-        canvasCtx.drawImage(tmpCanvas, 0, 0);
+      } catch (e) {
+        // Fail silently if pixel reading is not available
       }
+    } else {
+      canvas.style.filter = "none";
     }
   }
 
