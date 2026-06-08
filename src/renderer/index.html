@@ -552,8 +552,34 @@
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Step Grid</div>
           <div id="seq-grid" style="display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin:4px 0"></div>
-          <div style="font-size:9px;color:#666;text-align:center">
+          <canvas id="seq-waveform" width="260" height="40" style="width:100%;height:40px;border:1px solid #333;border-radius:2px;background:#0a0a0a;margin-bottom:6px;display:none"></canvas>
+          <div style="font-size:9px;color:#666;text-align:center;margin-bottom:6px">
             <span id="seq-keyframe-count">0 keyframes</span>
+          </div>
+
+          <div id="seq-editor-panel" style="display:none;border:1px solid #333;padding:6px;background:#0a0a0a;border-radius:2px">
+            <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px">Edit Keyframe</div>
+
+            <div style="display:flex;gap:4px;margin-bottom:4px">
+              <label style="flex:1;font-size:10px">Value:</label>
+              <input id="seq-kf-value" type="range" min="0" max="1" step="0.01" style="flex:1">
+              <span id="seq-kf-value-display" style="font-size:10px;width:30px;text-align:right">0.50</span>
+            </div>
+
+            <div style="display:flex;gap:4px;margin-bottom:4px">
+              <label style="flex:1;font-size:10px">Easing:</label>
+              <select id="seq-kf-easing" style="flex:1;height:20px;font-size:9px">
+                <option value="linear">Linear</option>
+                <option value="ease-in">Ease In</option>
+                <option value="ease-out">Ease Out</option>
+                <option value="ease-in-out">Ease In-Out</option>
+              </select>
+            </div>
+
+            <div style="display:flex;gap:4px">
+              <button id="seq-kf-delete" style="flex:1;height:20px;font-size:10px;background:#400;border-color:#600;color:#f88">Delete</button>
+              <button id="seq-kf-close" style="flex:1;height:20px;font-size:10px">Done</button>
+            </div>
           </div>
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">MIDI Learn</div>

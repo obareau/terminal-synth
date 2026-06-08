@@ -1233,16 +1233,12 @@ function initSequencerGrid(): void {
     const step = document.createElement("div");
     step.className = "sequencer-step";
     step.dataset["step"] = String(i);
-    step.title = `Step ${i}`;
-
-    step.addEventListener("click", () => {
-      toggleKeyframe(i, selectedParam);
-      updateGridDisplay();
-    });
-
+    step.dataset["index"] = String(i);
+    step.title = `Step ${i} (click to edit, shift+click to add)`;
     seqGrid.appendChild(step);
   }
   updateGridDisplay();
+  makeGridClickable();
 }
 
 function toggleKeyframe(stepIndex: number, paramId: string): void {
@@ -1286,7 +1282,190 @@ initSequencerGrid();
 seqParamSelect.addEventListener("change", () => {
   selectedParam = seqParamSelect.value;
   updateGridDisplay();
+  drawWaveform();
 });
+
+// Remove the old makeGridClickable call and instead do it from initSequencerGrid
+// Update toggleKeyframe to refresh waveform
+function toggleKeyframeWithRefresh(stepIndex: number, paramId: string): void {
+  toggleKeyframe(stepIndex, paramId);
+  updateGridDisplay();
+  drawWaveform();
+}
+
+// --- Keyframe Editor Setup ---
+const seqEditorPanel = $("seq-editor-panel");
+const seqKfValue = $<HTMLInputElement>("seq-kf-value");
+const seqKfValueDisplay = $("seq-kf-value-display");
+const seqKfEasing = $<HTMLSelectElement>("seq-kf-easing");
+const seqKfDelete = $<HTMLButtonElement>("seq-kf-delete");
+const seqKfClose = $<HTMLButtonElement>("seq-kf-close");
+const seqWaveformCanvas = $<HTMLCanvasElement>("seq-waveform");
+
+let editingKeyframe: { stepIndex: number; trackIndex: number } | null = null;
+
+// Make grid steps clickable for editing (shift+click adds, regular click edits)
+function makeGridClickable(): void {
+  const steps = seqGrid.querySelectorAll(".sequencer-step");
+  steps.forEach((step, idx) => {
+    const stepEl = step as HTMLElement;
+    const originalHandler = stepEl.onclick;
+
+    stepEl.removeEventListener("click", null as any);
+    stepEl.addEventListener("click", (e) => {
+      const track = sequencer.getState().tracks[0];
+      if (!track) return;
+
+      const existing = track.keyframes.find(kf => kf.stepIndex === idx && kf.parameter === selectedParam);
+
+      if (e.shiftKey) {
+        // Shift+click: add/remove
+        toggleKeyframeWithRefresh(idx, selectedParam);
+      } else if (existing) {
+        // Regular click on keyframe: edit
+        openKeyframeEditor(idx, 0);
+      }
+    });
+  });
+}
+
+function openKeyframeEditor(stepIndex: number, trackIndex: number): void {
+  const track = sequencer.getState().tracks[trackIndex];
+  const kf = track?.keyframes.find(k => k.stepIndex === stepIndex && k.parameter === selectedParam);
+
+  if (!kf) return;
+
+  editingKeyframe = { stepIndex, trackIndex };
+  seqKfValue.value = String(kf.value);
+  seqKfValueDisplay.textContent = kf.value.toFixed(2);
+  seqKfEasing.value = kf.easing ?? "linear";
+  seqEditorPanel.style.display = "block";
+}
+
+function closeKeyframeEditor(): void {
+  if (!editingKeyframe) return;
+
+  const track = sequencer.getState().tracks[editingKeyframe.trackIndex];
+  const kf = track?.keyframes.find(k => k.stepIndex === editingKeyframe!.stepIndex && k.parameter === selectedParam);
+
+  if (kf) {
+    kf.value = Number(seqKfValue.value);
+    kf.easing = seqKfEasing.value as any;
+  }
+
+  editingKeyframe = null;
+  seqEditorPanel.style.display = "none";
+  updateGridDisplay();
+  drawWaveform();
+}
+
+// Value slider feedback
+seqKfValue.addEventListener("input", () => {
+  seqKfValueDisplay.textContent = Number(seqKfValue.value).toFixed(2);
+});
+
+// Delete button
+seqKfDelete.addEventListener("click", () => {
+  if (!editingKeyframe) return;
+  sequencer.removeKeyframe(editingKeyframe.trackIndex, editingKeyframe.stepIndex, selectedParam);
+  closeKeyframeEditor();
+});
+
+// Close button
+seqKfClose.addEventListener("click", closeKeyframeEditor);
+
+// Draw waveform visualization
+function drawWaveform(): void {
+  if (!seqWaveformCanvas) return;
+
+  const track = sequencer.getState().tracks[0];
+  const keyframes = track?.keyframes.filter(kf => kf.parameter === selectedParam) ?? [];
+
+  if (keyframes.length === 0) {
+    seqWaveformCanvas.style.display = "none";
+    return;
+  }
+
+  seqWaveformCanvas.style.display = "block";
+
+  const ctx = seqWaveformCanvas.getContext("2d");
+  if (!ctx) return;
+
+  const w = seqWaveformCanvas.width;
+  const h = seqWaveformCanvas.height;
+  const stepCount = sequencer.getState().stepCount;
+
+  // Clear
+  ctx.fillStyle = "#0a0a0a";
+  ctx.fillRect(0, 0, w, h);
+
+  // Draw grid
+  ctx.strokeStyle = "#1a1a1a";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= stepCount; i++) {
+    const x = (i / stepCount) * w;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+
+  // Sort keyframes by step
+  const sorted = [...keyframes].sort((a, b) => a.stepIndex - b.stepIndex);
+
+  // Draw waveform curve
+  ctx.strokeStyle = "#6dd5a3";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  for (let step = 0; step < stepCount; step++) {
+    const x = (step / stepCount) * w;
+
+    // Find interpolated value at this step
+    let y = 0;
+    const current = sorted.find(kf => kf.stepIndex === step);
+
+    if (current) {
+      y = h - current.value * h;
+    } else {
+      // Interpolate between nearest keyframes
+      const before = sorted.filter(kf => kf.stepIndex < step).pop();
+      const after = sorted.find(kf => kf.stepIndex > step);
+
+      if (before && after) {
+        const t = (step - before.stepIndex) / (after.stepIndex - before.stepIndex);
+        y = h - (before.value + (after.value - before.value) * t) * h;
+      } else if (before) {
+        y = h - before.value * h;
+      } else if (after) {
+        y = h - after.value * h;
+      }
+    }
+
+    if (step === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  ctx.stroke();
+
+  // Draw keyframe dots
+  sorted.forEach(kf => {
+    const x = (kf.stepIndex / stepCount) * w;
+    const y = h - kf.value * h;
+
+    ctx.fillStyle = "#ff9500";
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#6dd5a3";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+}
+
+// Initialize grid with editor support
+initSequencerGrid();
 
 // Play button
 seqPlayBtn.addEventListener("click", () => {
@@ -1314,6 +1493,7 @@ seqBpmInput.addEventListener("input", () => {
 seqStepCountSelect.addEventListener("change", () => {
   sequencer.setStepCount(Number(seqStepCountSelect.value));
   initSequencerGrid();
+  drawWaveform();
 });
 
 // MIDI Learn button
