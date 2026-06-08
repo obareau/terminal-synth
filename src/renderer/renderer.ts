@@ -566,6 +566,14 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
+  // Sequencer shortcuts: C = copy, V = paste, Shift+R = randomize, Shift+L = MIDI learn
+  if (!inInput) {
+    if (e.key === "c" || e.key === "C") { e.preventDefault(); seqCopyBtn.click(); return; }
+    if (e.key === "v" || e.key === "V") { e.preventDefault(); seqPasteBtn.click(); return; }
+    if (e.shiftKey && (e.key === "r" || e.key === "R")) { e.preventDefault(); seqRandomizeBtn.click(); return; }
+    if (e.shiftKey && (e.key === "l" || e.key === "L")) { e.preventDefault(); midiLearnBtn.click(); return; }
+  }
+
   // H = toggle HUD visibility (in performance mode)
   if ((e.key === "h" || e.key === "H") && performanceMode) {
     e.preventDefault();
@@ -1542,6 +1550,7 @@ midiLearnBtn.addEventListener("click", () => {
     midiLearn.exitLearnMode();
     midiLearnStatus.textContent = "Idle";
     midiLearnStatus.classList.remove("learning");
+    midiLearnBtn.classList.remove("learning");
     midiLearnBtn.textContent = "🎹 Learn";
   } else {
     midiLearn.enterLearnMode("shader.u_p0", (cc, paramId) => {
@@ -1550,6 +1559,7 @@ midiLearnBtn.addEventListener("click", () => {
     });
     midiLearnStatus.textContent = "Listening...";
     midiLearnStatus.classList.add("learning");
+    midiLearnBtn.classList.add("learning");
     midiLearnBtn.textContent = "◼ Waiting...";
   }
 });
@@ -1629,5 +1639,15 @@ setInterval(() => {
 
     const timeDisplay = $("seq-time");
     timeDisplay.textContent = `${measure}:${beat}:${step}`;
+
+    // Highlight current playing step
+    const steps = seqGrid.querySelectorAll(".sequencer-step");
+    steps.forEach((s, idx) => {
+      s.classList.toggle("current", idx === step);
+    });
+  } else {
+    // Clear current step highlight when not playing
+    const steps = seqGrid.querySelectorAll(".sequencer-step.current");
+    steps.forEach(s => s.classList.remove("current"));
   }
 }, 50);
