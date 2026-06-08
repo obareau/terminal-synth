@@ -15,21 +15,30 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
 ## 🚀 Quick Start
 
-### Windows (Executable)
-1. Télécharge `terminal-synth-0.9.5.exe` depuis [Releases](https://github.com/obareau/terminal-synth/releases)
-2. Lance directement (pas d'installation)
-3. Autorise l'accès audio quand demandé
+### Linux (Debian/Ubuntu)
+```bash
+# Download and install .deb package
+sudo dpkg -i terminal-synth_1.2.0_amd64.deb
+terminal-synth
+```
 
-### macOS / Linux (Build from Source)
+### Windows (Executable)
+1. Download `terminal-synth_1.2.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+2. Run directly (no installation needed)
+3. Grant audio access when prompted
+
+### macOS / Build from Source
 ```bash
 git clone https://github.com/obareau/terminal-synth.git
 cd terminal-synth
 npm install
-npm start          # Mode dev avec hot-reload
-npm run package    # Build production
+npm start              # Dev mode with hot-reload
+npm run package:mac    # Build for macOS
+npm run package:linux  # Build .deb for Linux
+npm run package        # Build Windows .exe
 ```
 
-**Prérequis**: Node.js 18+, npm 8+
+**Requirements**: Node.js 18+, npm 8+
 
 ---
 
@@ -136,8 +145,9 @@ npm run package    # Build production
 | **Paste Keyframes** | `V` | Paste keyframes |
 | **Randomize** | `Shift+R` | Randomize keyframe values |
 | **MIDI Learn** | `Shift+L` | Enter MIDI learn mode |
+| **Master Brightness** | `B` | Audio-reactive fade to black |
 
-**Sélection Générateur**: `1-9`, `q-p`, `a-k` (39 total)
+**Sélection Générateur**: `1-9`, `q-p`, `a-k` (91 total)
 
 ---
 
@@ -187,6 +197,16 @@ npm run package:linux  # Linux
 4. Mapping créé automatiquement
 5. Contrôle le parameter associé en temps réel
 
+### Master Brightness
+1. **Toggle**: Press `B` key or click 💡 Master button (bottom bar)
+2. **Adjust Intensity**: Drag slider (0 = normal, 1 = +100% amplification)
+3. **How It Works**:
+   - At silence: Image fades to quasi-black (1% brightness)
+   - As volume rises: Image progressively reveals (smooth fade-in)
+   - At peak: 100-200% brightness depending on slider
+4. **Perfect For**: Music fade-in/fade-out transitions at song start/end
+5. **Smooth Transitions**: Exponential moving average prevents abrupt changes
+
 ### Export Sessions & Presets
 ```
 Ctrl+A     → Start autoplay (presets, toggleable)
@@ -214,7 +234,7 @@ src/renderer/
 ├── gl.ts              ✓ Pipeline WebGL (multi-pass, effects chain)
 ├── shaders.ts         ✓ 91 générateurs GLSL ES 3.00 + audio reactivity
 ├── effects.ts         ✓ 31 effets post-process
-├── disruptors.ts      ✓ 17 perturbateurs audio-réactifs
+├── disruptors.ts      ✓ 23 perturbateurs audio-réactifs
 ├── sequencer.ts       ✓ Ableton Live-style automation (16-step grid, easing, record)
 ├── midiLearn.ts       ✓ MIDI Learn system (CC mapping, normalization, curves)
 ├── autoplayAdvanced.ts ✓ Génération automatique + 4 presets
@@ -222,7 +242,7 @@ src/renderer/
 ├── audio.ts           ✓ FFT + audio input
 ├── ascii.ts           ✓ ASCII glitch multicolore
 ├── midi.ts            ✓ MIDI input handler
-└── renderer.ts        ✓ Event loop + UI glue + frame loop automation
+└── renderer.ts        ✓ Event loop + UI glue + Master Brightness + frame loop
 ```
 
 ### Générateurs (91)
@@ -248,11 +268,11 @@ Tous les générateurs incluent:
 **Flip**: Flip Horizontal/Vertical (miroir X/Y)  
 **Autres**: Pixelate, Wave Spiral, Scanlines Distort
 
-### Perturbateurs (17)
-**Audio Triggers**: Déchirure, Dropout, Strobe, Corrupt, Tremor  
-**Visual**: Phosphore, Flicker, Shatter, Bloom Burst, Glitch Rows  
-**Glitch**: Flip Horizontal/Vertical, Mosaic Burst  
-**Advanced**: Spin Vortex, Psycho Shift, Displacement Storm
+### Perturbateurs (23)
+**Audio Triggers**: Déchirure, Dropout, Strobe, Corrupt, Tremor, Ripple, Zoom  
+**Visual**: Phosphore, Flicker, Shatter, Bloom Burst, Glitch Rows, Twist  
+**Glitch**: Flip Horizontal/Vertical, Mosaic Burst, Glitch Block  
+**Advanced**: Spin Vortex, Psycho Shift, Displacement Storm, Aberration, Feedback Shatter, Bloom Ring
 
 ---
 
