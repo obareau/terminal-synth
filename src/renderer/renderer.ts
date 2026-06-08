@@ -76,6 +76,7 @@ let asciiMode = false;
 let asciiGlitchPermanentEnabled = false;
 let masterBrightnessEnabled = false;
 let masterBrightnessAmount = 0.5;
+let smoothedAudioLevel = 0; // Exponential moving average for smooth fading
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
 
@@ -1012,13 +1013,21 @@ vec3 process(vec2 uv) {
 
     // Apply Master Brightness post-process via CSS filter on canvas
     if (masterBrightnessEnabled) {
-      // Fade to black with audio level: 0% brightness when silent, 100%+ when loud
-      // Slider amplifies the effect: 0 = min brightness at peak, 1 = 180% at peak
-      const baseBrightness = u.level * 100; // 0-100% based on audio level
-      const amplification = 1 + (masterBrightnessAmount * 0.8); // 1.0 to 1.8x multiplier
+      // Smooth the audio level for gradual fading (exponential moving average)
+      // Lower alpha = smoother/slower transitions, higher = more responsive
+      smoothedAudioLevel = smoothedAudioLevel * 0.85 + u.level * 0.15;
+
+      // Fade to black with smoothed audio level
+      // Use exponential curve to be more dramatic at low levels
+      const normalizedLevel = Math.pow(smoothedAudioLevel, 0.6); // Power curve for more dramatic fade
+      const minBrightness = 8; // Stay at least 8% to avoid complete black
+      const baseBrightness = minBrightness + (normalizedLevel * (100 - minBrightness));
+
+      // Slider amplifies the peak brightness: 0 = 100% at peak, 1 = 140% at peak
+      const amplification = 1 + (masterBrightnessAmount * 0.4);
       const brightnessPercent = baseBrightness * amplification;
 
-      canvas.style.filter = `brightness(${brightnessPercent}%)`;
+      canvas.style.filter = `brightness(${Math.max(8, Math.min(180, brightnessPercent))}%)`;
 
       // Auto-switch safety: read average luminance via WebGL
       try {
