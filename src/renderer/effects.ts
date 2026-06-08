@@ -794,156 +794,171 @@ vec3 process(vec2 uv) {
   // ── Minimalistic Geometric Effects ───────────────────────────────────────
 
   {
-    name: "Minimal Lines",
-    body: /* glsl */ `
-vec3 process(vec2 uv) {
-  float a = u_amount;
-
-  // Vertical and horizontal minimal lines
-  float line_h = smoothstep(0.01, 0.0, abs(mod(uv.y, 0.1) - 0.05)) * (0.5 + u_treble * 0.5);
-  float line_v = smoothstep(0.01, 0.0, abs(mod(uv.x, 0.1) - 0.05)) * (0.5 + u_mid * 0.5);
-
-  float grid = max(line_h, line_v) * a;
-
-  vec3 c = prev(uv);
-  return mix(c, c + vec3(0.2, 0.5, 0.8) * grid, a * 0.3);
-}`,
-  },
-
-  {
-    name: "Segment Mesh",
+    name: "Orbit Ring Lines",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
   float t = u_time * 0.5;
-
-  // Radiating segments from center
   vec2 p = uv - 0.5;
+  float r = length(p);
   float angle = atan(p.y, p.x) + t;
-  float r = length(p);
-
-  float seg_pattern = sin(angle * 6.0) * 0.5 + 0.5;
-  float segment = smoothstep(0.02 + a * 0.02, 0.0, mod(r * 10.0, 0.2) - 0.1);
-
-  float pattern = seg_pattern * segment;
-
+  float rings = sin(r * 30.0 - t * 3.0) * 0.5 + 0.5;
+  float ring_line = smoothstep(0.015, 0.0, abs(mod(r, 0.15) - 0.075));
+  float spokes = sin(angle * 8.0) * 0.5 + 0.5;
+  float spoke_line = smoothstep(0.01, 0.0, abs(sin(angle * 8.0)));
+  float pattern = (ring_line + spoke_line * 0.5) * (rings * 0.6 + 0.4);
   vec3 c = prev(uv);
-  return mix(c, c * (1.0 - pattern * 0.3), a);
+  return mix(c, c + vec3(0.2, 0.5, 0.9) * pattern, a * 0.4);
 }`,
   },
 
   {
-    name: "Dot Network",
-    body: /* glsl */ `
-vec3 process(vec2 uv) {
-  float a = u_amount;
-
-  // Regular dot pattern (nodes)
-  float dot_size = 0.02;
-  vec2 gp = fract(uv * 8.0 + u_time * 0.1);
-  float d = length(gp - 0.5);
-  float dot = smoothstep(dot_size, 0.0, d);
-
-  // Minimal connecting lines
-  vec2 cell = floor(uv * 8.0);
-  float line_h = smoothstep(0.008, 0.0, abs(fract(uv.y * 8.0) - 0.5));
-  float line_v = smoothstep(0.008, 0.0, abs(fract(uv.x * 8.0) - 0.5));
-
-  float network = dot * 0.5 + (line_h + line_v) * 0.1;
-
-  vec3 c = prev(uv);
-  return mix(c, c + vec3(0.3, 0.6, 1.0) * network, a * 0.4);
-}`,
-  },
-
-  {
-    name: "Pulse Grid",
+    name: "Orbit Nodes Connect",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
   float t = u_time;
-
-  // Pulsing grid pattern
-  vec2 grid_pos = fract(uv * 6.0);
-  float dist_to_node = length(grid_pos - 0.5);
-
-  // Radial pulse from center
-  float center_dist = length(uv - 0.5);
-  float pulse = sin(center_dist * 10.0 - t * 3.0) * 0.5 + 0.5;
-
-  float node = exp(-dist_to_node * dist_to_node * 30.0) * pulse;
-
-  vec3 c = prev(uv);
-  return mix(c, c + vec3(0.4, 0.7, 1.0) * node, a * 0.3);
+  vec2 p = uv - 0.5;
+  vec3 col = prev(uv);
+  for(float i = 0.0; i < 4.0; i++) {
+    float orbit_r = 0.1 + i * 0.15;
+    float nodes = 6.0 + i * 2.0;
+    for(float j = 0.0; j < nodes; j++) {
+      float angle = (t * (1.0 - i * 0.1)) + (j / nodes) * 6.28;
+      vec2 node_pos = vec2(cos(angle), sin(angle)) * orbit_r;
+      float d = length(p - node_pos);
+      float node = exp(-d * d * 80.0) * (0.3 + 0.7 * (1.0 - i / 4.0));
+      col += mix(vec3(0.2, 0.6, 1.0), vec3(0.8, 0.3, 0.6), i / 4.0) * node;
+    }
+    float orbit_d = abs(length(p) - orbit_r);
+    float orbit_line = smoothstep(0.008, 0.0, orbit_d);
+    col += vec3(0.1, 0.3, 0.6) * orbit_line * (0.3 + 0.7 * (1.0 - i / 4.0));
+  }
+  return mix(prev(uv), col, a * 0.5);
 }`,
   },
 
   {
-    name: "Minimal Rings",
+    name: "Orbit Spiral",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
   float t = u_time;
-
-  // Concentric rings from center
   vec2 p = uv - 0.5;
   float r = length(p);
-
-  // Smooth rings
-  float ring = sin(r * 20.0 - t * 2.0) * 0.5 + 0.5;
-  float line = smoothstep(0.01, 0.0, abs(mod(r, 0.1) - 0.05));
-
-  float pattern = ring * line;
-
-  vec3 c = prev(uv);
-  return mix(c, c * (1.0 - pattern * 0.2), a);
+  float angle = atan(p.y, p.x);
+  float spiral_angle = angle - t * 0.5 + r * 4.0;
+  float spiral = sin(spiral_angle * 3.0) * 0.5 + 0.5;
+  float node_pulse = exp(-(r - 0.25 - spiral * 0.1) * (r - 0.25 - spiral * 0.1) * 30.0);
+  float spiral_ring = smoothstep(0.008, 0.0, abs(mod(angle - t * 0.5 + r * 4.0, 1.0) - 0.5));
+  vec3 col = prev(uv);
+  col += vec3(0.3, 0.7, 1.0) * node_pulse * 0.6;
+  col += vec3(0.2, 0.5, 0.8) * spiral_ring * 0.4;
+  return mix(prev(uv), col, a * 0.4);
 }`,
   },
 
   {
-    name: "Minimal Nodes",
+    name: "Pulsing Orbits",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
   float t = u_time;
-
-  // Sparse random nodes pulsing
-  vec2 cell = floor(uv * 3.0);
-  float seed = hash(cell);
-
-  // Pulse animation
-  float pulse = 0.5 + 0.5 * sin(t * 2.0 + seed * 6.28);
-
-  vec2 cell_uv = fract(uv * 3.0);
-  float d = length(cell_uv - 0.5);
-
-  float node = smoothstep(0.15, 0.05, d) * pulse;
-
-  vec3 c = prev(uv);
-  vec3 node_col = mix(vec3(0.3, 0.6, 1.0), vec3(1.0, 0.4, 0.2), seed);
-  return mix(c, c + node_col * node, a * 0.3);
+  vec2 p = uv - 0.5;
+  float r = length(p);
+  vec3 col = vec3(0.0);
+  for(float i = 1.0; i < 5.0; i++) {
+    float pulse = sin(t * 2.0 + i) * 0.5 + 0.5;
+    float orbit_r = i * 0.15;
+    float ring = smoothstep(0.025 * pulse, 0.005 * pulse, abs(r - orbit_r));
+    col += vec3(0.2 + i * 0.1, 0.5, 0.9 - i * 0.1) * ring * pulse;
+  }
+  float center = exp(-r * r * 50.0);
+  col += vec3(1.0, 0.4, 0.2) * center;
+  return mix(prev(uv), col, a * 0.5);
 }`,
   },
 
   {
-    name: "Minimal Waves",
+    name: "Network Pulse",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
   float t = u_time;
+  vec2 p = uv - 0.5;
+  vec3 col = vec3(0.0);
+  float node_count = 8.0;
+  for(float layer = 0.0; layer < 3.0; layer++) {
+    float orbit_r = 0.08 + layer * 0.12;
+    float pulse = sin(t * 1.5 + layer) * 0.5 + 0.5;
+    for(float i = 0.0; i < node_count; i++) {
+      float angle = (i / node_count) * 6.28 + t * (1.0 - layer * 0.1);
+      vec2 node_pos = vec2(cos(angle), sin(angle)) * orbit_r;
+      float d = length(p - node_pos);
+      float node = exp(-d * d * 100.0) * pulse;
+      col += mix(vec3(0.2, 0.8, 0.6), vec3(0.8, 0.3, 0.9), layer / 3.0) * node * 0.7;
+    }
+    float orbit_line = smoothstep(0.01, 0.0, abs(length(p) - orbit_r));
+    col += vec3(0.4, 0.6, 1.0) * orbit_line * pulse * 0.4;
+  }
+  return mix(prev(uv), prev(uv) + col, a * 0.4);
+}`,
+  },
 
-  // Minimal wave pattern
-  float wave_h = sin(uv.y * 20.0 + t * 2.0) * 0.5 + 0.5;
-  float wave_v = sin(uv.x * 20.0 + t * 1.5) * 0.5 + 0.5;
+  {
+    name: "Orbital Nodes",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 p = uv - 0.5;
+  vec3 col = prev(uv);
+  float orbit_count = 4.0;
+  float nodes_per_orbit = 6.0;
+  for(float orbit_idx = 0.0; orbit_idx < orbit_count; orbit_idx++) {
+    float orbit_r = 0.06 + orbit_idx * 0.1;
+    for(float node_idx = 0.0; node_idx < nodes_per_orbit; node_idx++) {
+      float angle = (node_idx / nodes_per_orbit) * 6.28 + t * 0.8;
+      float radius_modulation = sin(t + orbit_idx + node_idx) * 0.02;
+      vec2 node_pos = vec2(cos(angle), sin(angle)) * (orbit_r + radius_modulation);
+      float d = length(p - node_pos);
+      float brightness = sin(t + node_idx * 2.0 + orbit_idx) * 0.5 + 0.5;
+      float node = exp(-d * d * 120.0) * brightness;
+      vec3 hue = vec3(
+        0.5 + 0.5 * cos(orbit_idx * 2.0),
+        0.5 + 0.5 * sin(orbit_idx),
+        0.5 + 0.5 * cos(orbit_idx + node_idx)
+      );
+      col += hue * node * 0.6;
+    }
+  }
+  return mix(prev(uv), col, a * 0.35);
+}`,
+  },
 
-  // Only show as thin lines
-  float line_h = smoothstep(0.02, 0.0, abs(fract(uv.y * 20.0) - 0.5));
-  float line_v = smoothstep(0.02, 0.0, abs(fract(uv.x * 20.0) - 0.5));
-
-  float pattern = (line_h + line_v) * 0.5;
-
-  vec3 c = prev(uv);
-  return mix(c, c * (1.0 - pattern * 0.15), a);
+  {
+    name: "Wave Rings",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 p = uv - 0.5;
+  float r = length(p);
+  float angle = atan(p.y, p.x);
+  vec3 col = prev(uv);
+  for(float i = 0.0; i < 5.0; i++) {
+    float ring_r = i * 0.1 + 0.05;
+    float wave = sin(angle * 5.0 + t * 2.0 + i) * 0.5 + 0.5;
+    float ring_width = 0.02 * (1.0 + wave * 0.5);
+    float ring = smoothstep(ring_width, ring_width * 0.5, abs(r - ring_r));
+    vec3 ring_col = vec3(
+      0.3 + 0.4 * cos(i * 0.8 + t),
+      0.5 + 0.3 * sin(i * 1.2 + t * 0.7),
+      0.8 + 0.2 * cos(i * 0.5 + t * 1.3)
+    );
+    col += ring_col * ring * (0.5 + 0.5 * wave);
+  }
+  return mix(prev(uv), col, a * 0.45);
 }`,
   },
 ];
