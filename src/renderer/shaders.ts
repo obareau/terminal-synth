@@ -101,12 +101,14 @@ vec3 render(vec2 uv, vec2 res) {
     ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float v = fftAt(uv.x);                          // hauteur de la barre (0..1)
-  float bar = step(uv.y, v);                       // rempli sous la valeur
-  vec3 col = mix(vec3(0.0, 0.04, 0.03), vec3(0.10, 0.90, 0.40), bar);
-  col += vec3(0.9, 0.3, 0.05) * smoothstep(u_p1, 0.0, abs(uv.y - v)); // crête chaude
+  float v = fftAt(uv.x) * (0.8 + 0.4 * u_bass);  // hauteur de la barre (0..1), modulée par les basses
+  float bar = step(uv.y, v);                      // rempli sous la valeur
+  vec3 col = mix(vec3(0.0, 0.04 * (1.0 - u_mid), 0.03), vec3(0.10 + u_treble * 0.1, 0.90, 0.40 + u_mid * 0.2), bar);
+  float peak_width = u_p1 * (0.8 + 0.4 * u_bass);
+  col += vec3(0.9, 0.3 + u_treble * 0.2, 0.05) * smoothstep(peak_width, 0.0, abs(uv.y - v)); // crête chaude
   // séparation des barres
-  col *= 0.4 + 0.6 * step(0.12, fract(uv.x * u_p0));
+  col *= (0.4 + 0.4 * u_level) + 0.6 * step(0.12, fract(uv.x * u_p0));
+  col += vec3(0.0, u_bass * 0.1, 0.0);
   return col;
 }`,
   },
@@ -120,9 +122,12 @@ vec3 render(vec2 uv, vec2 res) {
 vec3 render(vec2 uv, vec2 res) {
   float w = waveAt(uv.x);                          // 0..1, 0.5 = zéro
   float d = abs(uv.y - w);
-  float line = smoothstep(mix(0.004, 0.06, u_p0), 0.0, d);
-  vec3 col = vec3(0.0, 0.02, 0.04) + vec3(0.10, 0.70, 0.90) * line;
-  col += vec3(0.10, 0.70, 0.90) * 0.15 * smoothstep(mix(0.02, 0.4, u_p1), 0.0, d); // halo
+  float line_thickness = mix(0.004, 0.06, u_p0) * (0.7 + 0.6 * u_bass);
+  float line = smoothstep(line_thickness, 0.0, d);
+  vec3 col = vec3(0.0, 0.02 * (1.0 - u_mid), 0.04) + vec3(0.10, 0.70, 0.90) * line * (0.6 + 0.4 * u_bass);
+  float halo_thickness = mix(0.02, 0.4, u_p1) * (0.8 + 0.4 * u_treble);
+  col += vec3(0.10, 0.70, 0.90) * (0.1 + 0.15 * u_mid) * smoothstep(halo_thickness, 0.0, d);
+  col *= 0.5 + 0.7 * u_level;
   return col;
 }`,
   },
@@ -1199,14 +1204,15 @@ float perlin_like(vec2 p) {
 }
 
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time * 0.5;
-  float n1 = perlin_like(uv * 3.0 + t);
-  float n2 = perlin_like(uv * 6.0 - t * 0.7);
+  float t = u_time * (0.3 + u_bass * 1.5);
+  float n1 = perlin_like(uv * (3.0 + u_treble * 3.0) + t);
+  float n2 = perlin_like(uv * (6.0 + u_mid * 4.0) - t * 0.7);
   float n3 = perlin_like(uv * 12.0 + t * 1.3);
 
   float fbm = n1 * 0.5 + n2 * 0.25 + n3 * 0.125;
-  vec3 col = mix(vec3(0.1, 0.2, 0.4), vec3(0.8, 0.4, 0.1), fbm);
-  col += fftAt(uv.x) * 0.3;
+  vec3 col = mix(vec3(0.1, 0.2 * (1.0 - u_mid), 0.4), vec3(0.8 + u_treble * 0.2, 0.4 + u_bass * 0.3, 0.1), fbm);
+  col += fftAt(uv.x) * (0.2 + 0.3 * u_bass);
+  col *= 0.5 + 0.7 * u_level;
   return col;
 }`,
   },
@@ -1503,28 +1509,31 @@ vec3 render(vec2 uv, vec2 res) {
     name: "Glitch Minimal",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time;
+  float t = u_time * (0.8 + u_bass * 1.5);
 
-  // Corruption minimaliste
+  // Corruption minimaliste - audio-reactive
   vec2 p = uv;
 
-  // Décalage aléatoire par scanlines
+  // Décalage aléatoire par scanlines - affected by bass
   float scan = floor(p.y * 20.0);
-  float glitch_intensity = abs(sin(scan * 0.1 + t * 3.0)) * step(0.8, fract(scan * 0.3 + t));
+  float glitch_intensity = abs(sin(scan * 0.1 + t * (3.0 + u_treble * 2.0))) * step(0.8, fract(scan * 0.3 + t)) * (0.5 + 0.5 * u_bass);
 
   // Offset et duplication
-  float offset = glitch_intensity * 0.08;
+  float offset = glitch_intensity * (0.06 + u_mid * 0.12);
   float r = texture(u_audio, vec2(p.x + offset, p.y * 0.25)).r;
   float g = texture(u_audio, vec2(p.x, (p.y + offset) * 0.25)).r;
   float b = texture(u_audio, vec2(p.x - offset, p.y * 0.25)).r;
 
-  // Pattern blocky
-  float block = floor(p.x * 16.0);
-  float block_glitch = step(0.9, fract(block * 0.1 + t * 2.0)) * glitch_intensity;
+  // Pattern blocky - influenced by bass
+  float block = floor(p.x * (12.0 + u_treble * 4.0));
+  float block_glitch = step(0.9, fract(block * 0.1 + t * (2.0 + u_mid))) * glitch_intensity;
 
   float brightness = max(max(r, g), b) * (1.0 - block_glitch) + block_glitch;
 
-  return vec3(brightness * 0.7);
+  brightness *= 0.5 + 0.8 * u_level;
+  brightness += u_bass * 0.2;
+
+  return vec3(brightness);
 }`,
   },
   {
@@ -2918,33 +2927,35 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1;
+  float t = u_time * u_p1 * (0.8 + 0.4 * u_bass);
   vec3 col = vec3(0.0);
 
   // Concentric orbital rings - wireframe style
   for(float i = 1.0; i <= u_p0; i++) {
-    float orbit_r = i * 0.12;
-    float ring_thickness = 0.006;
+    float orbit_r = i * 0.12 * (1.0 + u_bass * 0.3);
+    float ring_thickness = 0.006 * (0.8 + u_mid * 0.4);
     float ring = smoothstep(ring_thickness, 0.0, abs(length(p) - orbit_r));
     col += vec3(ring * 0.8);
 
     // Radial spokes connecting through orbits
-    float angle = atan(p.y, p.x);
+    float angle = atan(p.y, p.x) + u_treble * 0.3;
     float num_spokes = 4.0 + i;
     float spoke = sin(angle * num_spokes) * 0.5 + 0.5;
     float spoke_line = smoothstep(0.4, 0.0, spoke);
     float r = length(p);
     if(r > orbit_r - 0.015 && r < orbit_r + 0.015) {
-      col += vec3(spoke_line * 0.6);
+      col += vec3(spoke_line * (0.4 + 0.6 * u_mid));
     }
   }
 
-  // Center node
+  // Center node - pulses with bass
   float center_d = length(p);
-  float center_ring = smoothstep(0.008, 0.0, abs(center_d - 0.02));
-  col += vec3(center_ring);
+  float center_pulse = 0.02 + u_bass * 0.01;
+  float center_ring = smoothstep(center_pulse + 0.008, center_pulse - 0.008, center_d);
+  col += vec3(center_ring * (0.5 + 0.5 * u_bass));
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.5 + 0.8 * u_level;
+  col += vec3(u_bass * 0.2);
   return col;
 }`,
   },
@@ -2958,33 +2969,34 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p0;
+  float t = u_time * u_p0 * (0.5 + u_bass * 2.0);
   vec3 col = vec3(0.0);
 
   // Exploding wireframe fragments
-  float frag_count = u_p1;
+  float frag_count = u_p1 * (0.8 + 0.4 * u_mid);
   for(float i = 0.0; i < 50.0; i++) {
     if(i >= frag_count) break;
 
     float seed = hash(vec2(i, 0.0));
-    float delay = seed;
-    float life = mod(t - delay, 2.5);
+    float delay = seed * (1.0 - u_bass * 0.5);
+    float life = mod(t - delay, 2.5 + u_treble);
 
     // Fragment direction from center
-    vec2 dir = vec2(cos(seed * 6.28), sin(seed * 6.28));
-    float distance = life * life * 0.4;
+    vec2 dir = vec2(cos(seed * 6.28 + u_treble), sin(seed * 6.28 + u_treble));
+    float distance = life * life * (0.3 + u_bass * 0.2);
     vec2 frag_pos = dir * distance;
 
     // Fragment as wireframe ring
     float d = length(p - frag_pos);
     float frag_size = 0.04 * (1.0 - life / 2.5);
     float ring = smoothstep(frag_size + 0.004, frag_size - 0.004, d);
-    ring *= (1.0 - life / 2.5);
+    ring *= (1.0 - life / 2.5) * (0.5 + 0.5 * u_mid);
 
-    col += vec3(ring * 0.7);
+    col += vec3(ring * 0.8);
   }
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.4 + 0.9 * u_level;
+  col += vec3(u_bass * 0.15);
   return col;
 }`,
   },
@@ -2999,33 +3011,34 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1;
+  float t = u_time * u_p1 * (0.8 + 0.4 * u_bass);
   float r = length(p);
-  float angle = atan(p.y, p.x) + t;
+  float angle = atan(p.y, p.x) + t + u_treble * 0.5;
 
   vec3 col = vec3(0.0);
 
   // Wireframe concentric rings with radial spokes
   for(float i = 1.0; i <= u_p0; i++) {
-    float ring_r = i * 0.12;
+    float ring_r = i * 0.12 * (1.0 + u_mid * 0.2);
 
-    // Ring - thin wireframe line only
-    float ring_thickness = 0.005;
+    // Ring - thin wireframe line only, thickness affected by bass
+    float ring_thickness = 0.005 * (0.7 + 0.6 * u_bass);
     float ring = smoothstep(ring_thickness, 0.0, abs(r - ring_r));
-    col += vec3(ring * 0.8);
+    col += vec3(ring * (0.6 + 0.4 * u_mid));
 
     // Radial lines/spokes
-    float spoke_count = 6.0 + i * 0.5;
+    float spoke_count = 6.0 + i * 0.5 + u_treble * 2.0;
     float spoke = sin(angle * spoke_count) * 0.5 + 0.5;
     float spoke_line = smoothstep(0.4, 0.0, spoke);
 
     // Only draw spokes at ring radius
     if(r > ring_r - 0.01 && r < ring_r + 0.01) {
-      col += vec3(spoke_line * 0.6);
+      col += vec3(spoke_line * (0.4 + 0.6 * u_bass));
     }
   }
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.4 + 0.8 * u_level;
+  col += vec3(u_bass * 0.15 + u_mid * 0.1);
   return col;
 }`,
   },
@@ -3040,36 +3053,36 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1;
+  float t = u_time * u_p1 * (0.5 + u_bass * 2.0);
   vec3 col = vec3(0.0);
 
   // Wireframe tentacles radiating from center
   for(float i = 0.0; i < u_p0; i++) {
     float fi = i / u_p0;
-    float base_angle = fi * 6.28;
+    float base_angle = fi * 6.28 + u_treble * 0.5;
     float seed = hash(vec2(fi, 0.0));
 
     // Wireframe segments along each arm
     for(float seg = 0.0; seg < 1.0; seg += 0.08) {
-      float wave = sin(seg * 6.0 + t) * 0.1;
-      float seg_length = seg * 0.5;
+      float wave = sin(seg * 6.0 + t) * (0.08 + u_mid * 0.15);
+      float seg_length = seg * (0.4 + u_bass * 0.2);
       vec2 seg_pos = vec2(cos(base_angle + wave), sin(base_angle + wave)) * seg_length;
 
       // Draw each segment as small ring
       float d = length(p - seg_pos);
-      float seg_size = 0.02;
+      float seg_size = 0.02 * (0.8 + 0.4 * u_mid);
       float segment = smoothstep(seg_size + 0.003, seg_size - 0.003, d);
 
-      col += vec3(segment * 0.8);
+      col += vec3(segment * (0.6 + 0.4 * u_bass));
     }
 
     // Connect segments with line
     for(float seg = 0.0; seg < 0.9; seg += 0.08) {
-      float wave1 = sin(seg * 6.0 + t) * 0.1;
-      float wave2 = sin((seg + 0.08) * 6.0 + t) * 0.1;
+      float wave1 = sin(seg * 6.0 + t) * (0.08 + u_mid * 0.15);
+      float wave2 = sin((seg + 0.08) * 6.0 + t) * (0.08 + u_mid * 0.15);
 
-      vec2 pos1 = vec2(cos(base_angle + wave1), sin(base_angle + wave1)) * (seg * 0.5);
-      vec2 pos2 = vec2(cos(base_angle + wave2), sin(base_angle + wave2)) * ((seg + 0.08) * 0.5);
+      vec2 pos1 = vec2(cos(base_angle + wave1), sin(base_angle + wave1)) * (seg * (0.4 + u_bass * 0.2));
+      vec2 pos2 = vec2(cos(base_angle + wave2), sin(base_angle + wave2)) * ((seg + 0.08) * (0.4 + u_bass * 0.2));
 
       // Draw line between segments
       vec2 line_dir = normalize(pos2 - pos1);
@@ -3077,11 +3090,12 @@ vec3 render(vec2 uv, vec2 res) {
       float dist_to_line = abs(dot(p - pos1, line_perp));
       float line = smoothstep(0.004, 0.0, dist_to_line);
 
-      col += vec3(line * 0.5);
+      col += vec3(line * (0.3 + 0.7 * u_bass));
     }
   }
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.4 + 0.8 * u_level;
+  col += vec3(u_bass * 0.2);
   return col;
 }`,
   },
@@ -3096,7 +3110,7 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1;
+  float t = u_time * u_p1 * (0.7 + u_bass * 1.5);
   vec3 col = vec3(0.0);
 
   // Wireframe particles with connecting lines
@@ -3107,15 +3121,15 @@ vec3 render(vec2 uv, vec2 res) {
     float seed2 = hash(vec2(fi, 1.0));
 
     // Orbiting particle positions
-    float orbit_r = 0.1 + seed * 0.25;
-    float orbit_angle = t * (1.0 - seed2 * 0.5) + fi * 6.28;
+    float orbit_r = (0.1 + seed * 0.25) * (1.0 + u_mid * 0.3);
+    float orbit_angle = t * (1.0 - seed2 * 0.5) + fi * 6.28 + u_treble;
     particle_pos[int(i)] = vec2(cos(orbit_angle), sin(orbit_angle)) * orbit_r;
 
     // Draw particle as wireframe ring
     float d = length(p - particle_pos[int(i)]);
-    float particle_size = 0.025;
+    float particle_size = 0.025 * (0.8 + 0.4 * u_mid);
     float ring = smoothstep(particle_size + 0.004, particle_size - 0.004, d);
-    col += vec3(ring * 0.8);
+    col += vec3(ring * (0.6 + 0.4 * u_bass));
   }
 
   // Connect nearby particles with wireframe lines
@@ -3134,13 +3148,14 @@ vec3 render(vec2 uv, vec2 res) {
 
         if(along_line > 0.0 && along_line < dist) {
           float line = smoothstep(0.004, 0.0, dist_to_line);
-          col += vec3(line * 0.5);
+          col += vec3(line * (0.3 + 0.7 * u_bass));
         }
       }
     }
   }
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.4 + 0.8 * u_level;
+  col += vec3(u_bass * 0.15 + u_mid * 0.1);
   return col;
 }`,
   },
@@ -3155,7 +3170,7 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0) * 2.0;
-  float t = u_time * u_p1;
+  float t = u_time * u_p1 * (0.6 + u_bass * 1.8);
   float grid_size = u_p0;
   vec3 col = vec3(0.0);
 
@@ -3166,10 +3181,10 @@ vec3 render(vec2 uv, vec2 res) {
       vec2 node_pos = vec2(x, y) * step_size;
       float d = length(p - node_pos);
 
-      // Node as small wireframe ring
-      float node_size = 0.03;
+      // Node as small wireframe ring - pulsates with bass
+      float node_size = 0.03 * (0.8 + 0.4 * u_bass);
       float node = smoothstep(node_size + 0.004, node_size - 0.004, d);
-      col += vec3(node * 0.8);
+      col += vec3(node * (0.6 + 0.4 * u_mid));
 
       // Horizontal and vertical connections
       if(x < grid_size - 1.0) {
@@ -3179,7 +3194,7 @@ vec3 render(vec2 uv, vec2 res) {
         float dist_to_line = abs(dot(p - node_pos, line_perp));
         float along = dot(p - node_pos, line_dir);
         if(along > 0.0 && along < step_size && dist_to_line < 0.004) {
-          col += vec3(0.6);
+          col += vec3(0.4 + 0.6 * u_bass);
         }
       }
 
@@ -3190,13 +3205,14 @@ vec3 render(vec2 uv, vec2 res) {
         float dist_to_line = abs(dot(p - node_pos, line_perp));
         float along = dot(p - node_pos, line_dir);
         if(along > 0.0 && along < step_size && dist_to_line < 0.004) {
-          col += vec3(0.6);
+          col += vec3(0.4 + 0.6 * u_bass);
         }
       }
     }
   }
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.4 + 0.8 * u_level;
+  col += vec3(u_bass * 0.2 + u_treble * 0.05);
   return col;
 }`,
   },
@@ -3211,7 +3227,7 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1;
+  float t = u_time * u_p1 * (1.0 + u_bass * 2.0);
   vec3 col = vec3(0.0);
 
   // Wireframe network with pulsing nodes
@@ -3225,14 +3241,14 @@ vec3 render(vec2 uv, vec2 res) {
     // Random node positions
     node_pos[int(i)] = (vec2(seed_x, seed_y) - 0.5) * 1.8;
 
-    // Pulsing animation
-    node_pulse[int(i)] = 0.5 + 0.5 * sin(t * 2.0 + i * 0.5);
+    // Pulsing animation - faster with bass
+    node_pulse[int(i)] = 0.5 + 0.5 * sin(t * (2.0 + u_mid) + i * 0.5);
 
     // Draw pulsing wireframe ring
     float d = length(p - node_pos[int(i)]);
-    float size = 0.03 * node_pulse[int(i)];
+    float size = 0.03 * (0.7 + 0.6 * node_pulse[int(i)] + u_bass * 0.2);
     float ring = smoothstep(size + 0.004, size - 0.004, d);
-    col += vec3(ring * 0.8);
+    col += vec3(ring * (0.5 + 0.5 * node_pulse[int(i)]));
   }
 
   // Connect nearby nodes with wireframe lines
@@ -3250,14 +3266,15 @@ vec3 render(vec2 uv, vec2 res) {
         float along_line = dot(p - pos1, line_dir);
 
         if(along_line > 0.0 && along_line < dist && dist_to_line < 0.004) {
-          float line_brightness = 0.5 + 0.5 * (node_pulse[int(i)] + node_pulse[int(j)]) / 2.0;
-          col += vec3(line_brightness * 0.6);
+          float line_brightness = 0.4 + 0.6 * (node_pulse[int(i)] + node_pulse[int(j)]) / 2.0;
+          col += vec3(line_brightness * (0.4 + 0.6 * u_bass));
         }
       }
     }
   }
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.4 + 0.8 * u_level;
+  col += vec3(u_bass * 0.2 + u_treble * 0.08);
   return col;
 }`,
   },
@@ -3272,18 +3289,18 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1;
+  float t = u_time * u_p1 * (0.8 + u_bass * 1.5);
   vec3 col = vec3(0.0);
 
   // Radiating wireframe segments
   for(float i = 0.0; i < u_p0; i++) {
     float fi = i / u_p0;
-    float angle = t + fi * 6.28;
+    float angle = t + fi * 6.28 + u_treble * 0.3;
     vec2 dir = vec2(cos(angle), sin(angle));
 
     // Segment length with wave modulation
-    float wave = sin(fi * 8.0 + t) * 0.1;
-    float seg_length = 0.3 + wave;
+    float wave = sin(fi * 8.0 + t) * (0.08 + u_mid * 0.15);
+    float seg_length = (0.25 + u_bass * 0.15) + wave;
 
     // Segment tip
     vec2 tip = dir * seg_length;
@@ -3295,23 +3312,25 @@ vec3 render(vec2 uv, vec2 res) {
     float dist_to_line = abs(dot(p - vec2(0.0), line_perp));
     float along_line = dot(p - vec2(0.0), line_dir);
 
-    if(along_line > 0.0 && along_line < seg_length && dist_to_line < 0.004) {
-      col += vec3(0.8);
+    if(along_line > 0.0 && along_line < seg_length && dist_to_line < 0.004 * (0.7 + 0.6 * u_bass)) {
+      col += vec3(0.6 + 0.4 * u_bass);
     }
 
     // Draw endpoint as small ring
     float d_tip = length(p - tip);
-    float endpoint_size = 0.02;
+    float endpoint_size = 0.02 * (0.8 + 0.4 * u_mid);
     float endpoint = smoothstep(endpoint_size + 0.003, endpoint_size - 0.003, d_tip);
-    col += vec3(endpoint * 0.8);
+    col += vec3(endpoint * (0.6 + 0.4 * u_bass));
   }
 
-  // Center ring
+  // Center ring - pulses with bass
   float center_d = length(p);
-  float center_ring = smoothstep(0.01, 0.0, abs(center_d - 0.02));
-  col += vec3(center_ring);
+  float center_pulse = 0.02 + u_bass * 0.008;
+  float center_ring = smoothstep(center_pulse + 0.01, center_pulse - 0.01, center_d);
+  col += vec3(center_ring * (0.5 + 0.5 * u_bass));
 
-  col *= 0.7 + 0.3 * u_level;
+  col *= 0.4 + 0.8 * u_level;
+  col += vec3(u_bass * 0.15 + u_mid * 0.08);
   return col;
 }`,
   },
