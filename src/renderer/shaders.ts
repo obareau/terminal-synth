@@ -2911,45 +2911,40 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Dark Matter Flow",
     params: [
-      { label: "Glitch Amount", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.05 },
-      { label: "Grid Density", key: "u_p1", min: 1, max: 20, default: 8.0, step: 1.0 },
+      { label: "Orbits", key: "u_p0", min: 3, max: 10, default: 5.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
     ],
-    category: "Noise",
+    category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * 0.3;
-  float grid = u_p1;
-  float glitch = u_p0;
+  float t = u_time * u_p1;
+  vec3 col = vec3(0.0);
 
-  // Scanline glitch distortion
-  float glitch_amt = sin(t + p.y * 20.0) * glitch;
-  p.x += glitch_amt * 0.1;
+  // Concentric orbital rings - wireframe style
+  for(float i = 1.0; i <= u_p0; i++) {
+    float orbit_r = i * 0.12;
+    float ring_thickness = 0.006;
+    float ring = smoothstep(ring_thickness, 0.0, abs(length(p) - orbit_r));
+    col += vec3(ring * 0.8);
 
-  // Grid-based moiré pattern
-  vec2 grid_pos = fract(p * grid);
-  float grid_x = smoothstep(0.48, 0.52, grid_pos.x);
-  float grid_y = smoothstep(0.48, 0.52, grid_pos.y);
-  float grid_pattern = grid_x + grid_y - grid_x * grid_y;
-
-  // Dither pattern using triangle wave
-  float dither = mod(p.x * 50.0 + p.y * 30.0 + t * 2.0, 1.0) > 0.5 ? 1.0 : 0.0;
-
-  // Monochrome cyan scanline noise
-  float scan = abs(sin(p.y * 40.0 + t * 5.0)) * 0.3;
-  float brightness = length(p) > 0.8 ? 0.0 : mix(grid_pattern, dither, 0.5) + scan;
-
-  // Data stream effect
-  float data = 0.0;
-  for(float i = 0.0; i < 3.0; i++) {
-    float stream_y = mod(p.y - t * (1.0 + i * 0.2), 2.0);
-    float stream = smoothstep(0.1, 0.0, abs(stream_y - 0.5));
-    data += stream * (1.0 - i / 3.0) * 0.3;
+    // Radial spokes connecting through orbits
+    float angle = atan(p.y, p.x);
+    float num_spokes = 4.0 + i;
+    float spoke = sin(angle * num_spokes) * 0.5 + 0.5;
+    float spoke_line = smoothstep(0.4, 0.0, spoke);
+    float r = length(p);
+    if(r > orbit_r - 0.015 && r < orbit_r + 0.015) {
+      col += vec3(spoke_line * 0.6);
+    }
   }
 
-  vec3 col = vec3(0.0, brightness * 0.8 + data, brightness);
-  col += vec3(0.0, 0.3, 0.5) * (u_bass * 0.5);
-  col *= u_level * 0.8 + 0.2;
+  // Center node
+  float center_d = length(p);
+  float center_ring = smoothstep(0.008, 0.0, abs(center_d - 0.02));
+  col += vec3(center_ring);
+
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
@@ -2957,42 +2952,39 @@ vec3 render(vec2 uv, vec2 res) {
     name: "Disintegration",
     params: [
       { label: "Speed", key: "u_p0", min: 0, max: 2, default: 0.8, step: 0.1 },
-      { label: "Block Size", key: "u_p1", min: 2, max: 20, default: 8.0, step: 1.0 },
+      { label: "Fragments", key: "u_p1", min: 2, max: 20, default: 10.0, step: 1.0 },
     ],
-    category: "Noise",
+    category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
   float t = u_time * u_p0;
-  float block_size = u_p1;
-
   vec3 col = vec3(0.0);
 
-  // Pixelated disintegration blocks
-  vec2 block_pos = floor(p * block_size) / block_size;
-  float seed = hash(block_pos);
-  float block_age = mod(t - seed, 2.0);
+  // Exploding wireframe fragments
+  float frag_count = u_p1;
+  for(float i = 0.0; i < 50.0; i++) {
+    if(i >= frag_count) break;
 
-  // Random blocks disappearing
-  if(seed < 0.5 && block_age < 1.0) {
-    float dissolve = block_age;
-    // Monochrome dither effect
-    float dither = mod(block_pos.x * 100.0 + block_pos.y * 70.0, 1.0) > 0.5 ? 1.0 : 0.0;
-    float brightness = (1.0 - dissolve) * dither;
-    col = vec3(brightness * 0.9, brightness, brightness * 0.8);
+    float seed = hash(vec2(i, 0.0));
+    float delay = seed;
+    float life = mod(t - delay, 2.5);
+
+    // Fragment direction from center
+    vec2 dir = vec2(cos(seed * 6.28), sin(seed * 6.28));
+    float distance = life * life * 0.4;
+    vec2 frag_pos = dir * distance;
+
+    // Fragment as wireframe ring
+    float d = length(p - frag_pos);
+    float frag_size = 0.04 * (1.0 - life / 2.5);
+    float ring = smoothstep(frag_size + 0.004, frag_size - 0.004, d);
+    ring *= (1.0 - life / 2.5);
+
+    col += vec3(ring * 0.7);
   }
 
-  // Glitch artifacts
-  float glitch_y = mod(p.y * 20.0 + t * 5.0, 1.0);
-  float glitch_line = smoothstep(0.08, 0.0, glitch_y);
-  col += vec3(0.0, 0.3, 0.2) * glitch_line * 0.4;
-
-  // Data corruption lines
-  float corruption = sin(t * 3.0 + p.x * 10.0) * 0.5 + 0.5;
-  float lines = sin((p.x - t * 0.5) * 30.0) * 0.5 + 0.5;
-  col += vec3(0.0, lines * 0.2 * corruption, lines * 0.15 * corruption);
-
-  col *= u_level * 0.7 + 0.3;
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
@@ -3013,33 +3005,27 @@ vec3 render(vec2 uv, vec2 res) {
 
   vec3 col = vec3(0.0);
 
-  // Concentric grid rings with scanline moiré
+  // Wireframe concentric rings with radial spokes
   for(float i = 1.0; i <= u_p0; i++) {
-    float ring_r = i * 0.15;
-    float ring_width = 0.01;
-    float ring = smoothstep(ring_width, 0.0, abs(r - ring_r));
+    float ring_r = i * 0.12;
 
-    // Radial lines creating grid
-    float line_count = 8.0 + i;
-    float radial = sin((angle - t * (1.0 - i / u_p0)) * line_count) * 0.5 + 0.5;
-    float radial_lines = smoothstep(0.5 + 0.2, 0.5 - 0.2, radial);
+    // Ring - thin wireframe line only
+    float ring_thickness = 0.005;
+    float ring = smoothstep(ring_thickness, 0.0, abs(r - ring_r));
+    col += vec3(ring * 0.8);
 
-    // Monochrome grid pattern
-    float brightness = ring * radial_lines;
+    // Radial lines/spokes
+    float spoke_count = 6.0 + i * 0.5;
+    float spoke = sin(angle * spoke_count) * 0.5 + 0.5;
+    float spoke_line = smoothstep(0.4, 0.0, spoke);
 
-    // Add ASCII-like dither
-    float dither = mod(p.x * 40.0 + p.y * 25.0 + t, 1.0) > 0.5 ? 1.0 : 0.0;
-    brightness = mix(brightness, dither * brightness, 0.4);
-
-    // Green monochrome with decay
-    col += vec3(0.0, brightness * 0.7 * (1.0 - i / u_p0), 0.0);
+    // Only draw spokes at ring radius
+    if(r > ring_r - 0.01 && r < ring_r + 0.01) {
+      col += vec3(spoke_line * 0.6);
+    }
   }
 
-  // Scanline interference pattern
-  float scanline = abs(sin(p.y * 50.0 + t * 3.0)) * 0.2;
-  col += vec3(0.0, scanline * 0.3, 0.0);
-
-  col *= 0.5 + 0.5 * u_level;
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
@@ -3048,48 +3034,54 @@ vec3 render(vec2 uv, vec2 res) {
     name: "Tentacle Network",
     params: [
       { label: "Arms", key: "u_p0", min: 3, max: 12, default: 6.0, step: 1.0 },
-      { label: "Chaos", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+      { label: "Frequency", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
     ],
-    category: "Noise",
+    category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
   float t = u_time * u_p1;
   vec3 col = vec3(0.0);
 
-  // ASCII-like tentacle lines radiating from center
+  // Wireframe tentacles radiating from center
   for(float i = 0.0; i < u_p0; i++) {
     float fi = i / u_p0;
     float base_angle = fi * 6.28;
     float seed = hash(vec2(fi, 0.0));
 
-    // Glitchy line segments
-    for(float seg = 0.0; seg < 1.0; seg += 0.05) {
-      float glitch = sin(t + seg * 5.0 + fi) * 0.1 * u_p1;
-      float wave = sin(seg * 8.0 + t * (1.0 + seed * 2.0)) * 0.12;
-      vec2 seg_pos = vec2(cos(base_angle + wave + glitch), sin(base_angle + wave + glitch)) * (seg * 0.5);
+    // Wireframe segments along each arm
+    for(float seg = 0.0; seg < 1.0; seg += 0.08) {
+      float wave = sin(seg * 6.0 + t) * 0.1;
+      float seg_length = seg * 0.5;
+      vec2 seg_pos = vec2(cos(base_angle + wave), sin(base_angle + wave)) * seg_length;
 
+      // Draw each segment as small ring
       float d = length(p - seg_pos);
-      float line = exp(-d * d * 50.0);
+      float seg_size = 0.02;
+      float segment = smoothstep(seg_size + 0.003, seg_size - 0.003, d);
 
-      // Dither pattern on lines
-      float dither = mod(seg * 20.0 + t * 2.0, 1.0) > 0.5 ? 1.0 : 0.0;
-      line *= mix(1.0, dither, 0.3);
+      col += vec3(segment * 0.8);
+    }
 
-      // Cyan/white monochrome
-      col += vec3(0.0, line * 0.6, line * 0.8);
+    // Connect segments with line
+    for(float seg = 0.0; seg < 0.9; seg += 0.08) {
+      float wave1 = sin(seg * 6.0 + t) * 0.1;
+      float wave2 = sin((seg + 0.08) * 6.0 + t) * 0.1;
+
+      vec2 pos1 = vec2(cos(base_angle + wave1), sin(base_angle + wave1)) * (seg * 0.5);
+      vec2 pos2 = vec2(cos(base_angle + wave2), sin(base_angle + wave2)) * ((seg + 0.08) * 0.5);
+
+      // Draw line between segments
+      vec2 line_dir = normalize(pos2 - pos1);
+      vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+      float dist_to_line = abs(dot(p - pos1, line_perp));
+      float line = smoothstep(0.004, 0.0, dist_to_line);
+
+      col += vec3(line * 0.5);
     }
   }
 
-  // Data corruption scanlines
-  float scan = abs(sin(p.y * 60.0 + t * 4.0)) * 0.15;
-  col += vec3(0.0, scan * 0.4, scan * 0.3);
-
-  // Center glow (monochrome)
-  float glow = 0.3 / (length(p) + 0.3);
-  col += vec3(glow * 0.2, glow * 0.4, glow * 0.3);
-
-  col *= 0.6 + 0.4 * u_level;
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
@@ -3098,7 +3090,7 @@ vec3 render(vec2 uv, vec2 res) {
     name: "Particle Swarm",
     params: [
       { label: "Particles", key: "u_p0", min: 5, max: 20, default: 12.0, step: 1.0 },
-      { label: "Chaos", key: "u_p1", min: 0, max: 2, default: 0.7, step: 0.1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.7, step: 0.1 },
     ],
     category: "Geometry",
     src: /* glsl */ `
@@ -3107,42 +3099,48 @@ vec3 render(vec2 uv, vec2 res) {
   float t = u_time * u_p1;
   vec3 col = vec3(0.0);
 
-  // Chaotic particle field with dither
+  // Wireframe particles with connecting lines
+  vec2 particle_pos[20];
   for(float i = 0.0; i < u_p0; i++) {
     float fi = i / u_p0;
     float seed = hash(vec2(fi, 0.0));
     float seed2 = hash(vec2(fi, 1.0));
 
-    // Chaotic motion
-    float chaos_x = sin(t * seed + fi) * 0.3;
-    float chaos_y = cos(t * seed2 + fi * 2.0) * 0.3;
-    vec2 particle_pos = vec2(chaos_x, chaos_y);
+    // Orbiting particle positions
+    float orbit_r = 0.1 + seed * 0.25;
+    float orbit_angle = t * (1.0 - seed2 * 0.5) + fi * 6.28;
+    particle_pos[int(i)] = vec2(cos(orbit_angle), sin(orbit_angle)) * orbit_r;
 
-    float d = length(p - particle_pos);
-    float particle = exp(-d * d * 40.0);
-
-    // Dithered particle
-    float dither = mod(particle_pos.x * 50.0 + particle_pos.y * 30.0 + t, 1.0) > 0.5 ? 1.0 : 0.0;
-    particle *= mix(1.0, dither, 0.5);
-
-    // Monochrome cyan/white
-    col += vec3(0.0, particle * 0.7, particle);
+    // Draw particle as wireframe ring
+    float d = length(p - particle_pos[int(i)]);
+    float particle_size = 0.025;
+    float ring = smoothstep(particle_size + 0.004, particle_size - 0.004, d);
+    col += vec3(ring * 0.8);
   }
 
-  // Glitch fractures
-  float fracture_y = floor(p.y * 20.0) / 20.0;
-  float glitch_amount = sin(t * 5.0 + fracture_y * 3.0) * 0.5 + 0.5;
-  p.x += (glitch_amount - 0.5) * 0.05 * sin(t + fracture_y);
+  // Connect nearby particles with wireframe lines
+  for(float i = 0.0; i < u_p0; i++) {
+    for(float j = i + 1.0; j < u_p0; j++) {
+      vec2 pos1 = particle_pos[int(i)];
+      vec2 pos2 = particle_pos[int(j)];
+      float dist = length(pos2 - pos1);
 
-  // Scanline noise
-  float lines = sin(p.y * 80.0 + t * 3.0) * 0.5 + 0.5;
-  col += vec3(0.0, lines * 0.15, lines * 0.1);
+      // Only draw lines for nearby particles
+      if(dist < 0.3 && dist > 0.01) {
+        vec2 line_dir = normalize(pos2 - pos1);
+        vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+        float dist_to_line = abs(dot(p - pos1, line_perp));
+        float along_line = dot(p - pos1, line_dir);
 
-  // Moiré interference
-  float moire = sin((p.x - p.y) * 30.0 + t) * 0.5 + 0.5;
-  col += vec3(0.0, moire * 0.1, 0.0);
+        if(along_line > 0.0 && along_line < dist) {
+          float line = smoothstep(0.004, 0.0, dist_to_line);
+          col += vec3(line * 0.5);
+        }
+      }
+    }
+  }
 
-  col *= 0.6 + 0.4 * u_level;
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
@@ -3150,47 +3148,55 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Minimal Node Grid",
     params: [
-      { label: "Cell Size", key: "u_p0", min: 3, max: 12, default: 6.0, step: 1.0 },
-      { label: "Glitch Freq", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+      { label: "Grid Size", key: "u_p0", min: 3, max: 12, default: 6.0, step: 1.0 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
     ],
-    category: "Noise",
+    category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0) * 2.0;
   float t = u_time * u_p1;
   float grid_size = u_p0;
-
-  // ASCII/text-like grid cells
-  vec2 cell = floor(p * grid_size) / grid_size;
-  vec2 cell_uv = fract(p * grid_size);
-  float seed = hash(cell);
-
-  // Cell glitch state
-  float glitch_chance = sin(t * 2.0 + seed) * 0.5 + 0.5;
-
   vec3 col = vec3(0.0);
 
-  // Draw grid lines (monochrome cyan)
-  float h_line = smoothstep(0.48, 0.52, cell_uv.y);
-  float v_line = smoothstep(0.48, 0.52, cell_uv.x);
-  float grid_line = h_line + v_line - h_line * v_line;
+  // Wireframe grid nodes
+  float step_size = 2.0 / grid_size;
+  for(float x = -grid_size; x < grid_size; x++) {
+    for(float y = -grid_size; y < grid_size; y++) {
+      vec2 node_pos = vec2(x, y) * step_size;
+      float d = length(p - node_pos);
 
-  col += vec3(0.0, grid_line * 0.6, grid_line * 0.8);
+      // Node as small wireframe ring
+      float node_size = 0.03;
+      float node = smoothstep(node_size + 0.004, node_size - 0.004, d);
+      col += vec3(node * 0.8);
 
-  // ASCII character-like dots
-  if(seed > 0.7) {
-    float d = length(cell_uv - 0.5);
-    float char_dot = exp(-d * d * 30.0) * (1.0 - glitch_chance);
-    col += vec3(0.0, char_dot * 0.8, char_dot);
+      // Horizontal and vertical connections
+      if(x < grid_size - 1.0) {
+        vec2 next_pos = vec2(x + 1.0, y) * step_size;
+        vec2 line_dir = normalize(next_pos - node_pos);
+        vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+        float dist_to_line = abs(dot(p - node_pos, line_perp));
+        float along = dot(p - node_pos, line_dir);
+        if(along > 0.0 && along < step_size && dist_to_line < 0.004) {
+          col += vec3(0.6);
+        }
+      }
+
+      if(y < grid_size - 1.0) {
+        vec2 next_pos = vec2(x, y + 1.0) * step_size;
+        vec2 line_dir = normalize(next_pos - node_pos);
+        vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+        float dist_to_line = abs(dot(p - node_pos, line_perp));
+        float along = dot(p - node_pos, line_dir);
+        if(along > 0.0 && along < step_size && dist_to_line < 0.004) {
+          col += vec3(0.6);
+        }
+      }
+    }
   }
 
-  // Glitch corruption blocks
-  if(glitch_chance > 0.8) {
-    float dither = mod(cell.x * 50.0 + cell.y * 30.0 + t * 3.0, 1.0) > 0.5 ? 1.0 : 0.0;
-    col = mix(col, vec3(0.0, dither * 0.5, dither * 0.3), 0.4);
-  }
-
-  col *= 0.6 + 0.4 * u_level;
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
@@ -3198,49 +3204,60 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Pulsing Network",
     params: [
-      { label: "Corruption", key: "u_p0", min: 4, max: 20, default: 10.0, step: 1.0 },
-      { label: "Frequency", key: "u_p1", min: 0, max: 1, default: 0.7, step: 0.1 },
+      { label: "Nodes", key: "u_p0", min: 4, max: 20, default: 10.0, step: 1.0 },
+      { label: "Pulse Speed", key: "u_p1", min: 0, max: 1, default: 0.7, step: 0.1 },
     ],
-    category: "Noise",
+    category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
   float t = u_time * u_p1;
   vec3 col = vec3(0.0);
 
-  // Data corruption bands
-  float band_count = u_p0;
-  for(float i = 0.0; i < band_count; i++) {
-    float band_y = i / band_count * 2.0 - 1.0;
-    float seed = hash(vec2(i, 0.0));
+  // Wireframe network with pulsing nodes
+  vec2 node_pos[25];
+  float node_pulse[25];
 
-    // Glitchy horizontal band
-    float dist_y = abs(p.y - band_y);
-    float band_width = 0.08 + seed * 0.04;
-    float band = smoothstep(band_width, 0.0, dist_y);
+  for(float i = 0.0; i < min(u_p0, 25.0); i++) {
+    float seed_x = hash(vec2(i, 0.0));
+    float seed_y = hash(vec2(i, 1.0));
 
-    // Horizontal scanline pattern
-    float scan = sin(p.x * 50.0 + t * 3.0 + seed * 6.28) * 0.5 + 0.5;
+    // Random node positions
+    node_pos[int(i)] = (vec2(seed_x, seed_y) - 0.5) * 1.8;
 
-    // Dither corruption
-    float dither = mod(p.x * 40.0 + t * 5.0, 1.0) > 0.5 ? 1.0 : 0.0;
+    // Pulsing animation
+    node_pulse[int(i)] = 0.5 + 0.5 * sin(t * 2.0 + i * 0.5);
 
-    // Monochrome cyan/white with corruption
-    float brightness = band * mix(scan, dither, 0.5);
-    col += vec3(0.0, brightness * 0.7, brightness * 0.9);
+    // Draw pulsing wireframe ring
+    float d = length(p - node_pos[int(i)]);
+    float size = 0.03 * node_pulse[int(i)];
+    float ring = smoothstep(size + 0.004, size - 0.004, d);
+    col += vec3(ring * 0.8);
   }
 
-  // Vertical glitch lines
-  float glitch_x = sin(t * 4.0 + p.y * 3.0) * 0.5 + 0.5;
-  float glitch_line = smoothstep(0.02, 0.0, abs(p.x - (glitch_x - 0.5) * 0.3));
-  col += vec3(0.0, glitch_line * 0.4, glitch_line * 0.3);
+  // Connect nearby nodes with wireframe lines
+  for(float i = 0.0; i < min(u_p0, 25.0); i++) {
+    for(float j = i + 1.0; j < min(u_p0, 25.0); j++) {
+      vec2 pos1 = node_pos[int(i)];
+      vec2 pos2 = node_pos[int(j)];
+      float dist = length(pos2 - pos1);
 
-  // Center pulse (monochrome)
-  float pulse = sin(t * 2.0) * 0.5 + 0.5;
-  float center_glow = 0.2 / (length(p) + 0.4) * pulse;
-  col += vec3(0.0, center_glow * 0.3, center_glow * 0.2);
+      // Only connect reasonably close nodes
+      if(dist < 0.5 && dist > 0.01) {
+        vec2 line_dir = normalize(pos2 - pos1);
+        vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+        float dist_to_line = abs(dot(p - pos1, line_perp));
+        float along_line = dot(p - pos1, line_dir);
 
-  col *= 0.6 + 0.4 * u_level;
+        if(along_line > 0.0 && along_line < dist && dist_to_line < 0.004) {
+          float line_brightness = 0.5 + 0.5 * (node_pulse[int(i)] + node_pulse[int(j)]) / 2.0;
+          col += vec3(line_brightness * 0.6);
+        }
+      }
+    }
+  }
+
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
@@ -3249,45 +3266,52 @@ vec3 render(vec2 uv, vec2 res) {
     name: "Minimal Segments",
     params: [
       { label: "Segments", key: "u_p0", min: 5, max: 20, default: 12.0, step: 1.0 },
-      { label: "Moire Scale", key: "u_p1", min: 0.001, max: 0.01, default: 0.004, step: 0.001 },
+      { label: "Speed", key: "u_p1", min: 0, max: 1, default: 0.4, step: 0.05 },
     ],
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * 0.2;
+  float t = u_time * u_p1;
   vec3 col = vec3(0.0);
 
-  // Radiating moiré pattern segments
-  float moire_scale = u_p1 * 200.0;
-  float r = length(p);
-  float angle = atan(p.y, p.x);
-
+  // Radiating wireframe segments
   for(float i = 0.0; i < u_p0; i++) {
     float fi = i / u_p0;
-    float seg_angle = t + fi * 6.28;
+    float angle = t + fi * 6.28;
+    vec2 dir = vec2(cos(angle), sin(angle));
 
-    // Radial segments
-    float angle_dist = abs(sin((angle - seg_angle) * 2.0));
-    float seg = smoothstep(0.3, 0.0, angle_dist);
+    // Segment length with wave modulation
+    float wave = sin(fi * 8.0 + t) * 0.1;
+    float seg_length = 0.3 + wave;
 
-    // Moiré interference pattern
-    float moire = sin(r * moire_scale + t) * cos((angle - seg_angle) * moire_scale);
-    float moire_pattern = (moire * 0.5 + 0.5) * seg;
+    // Segment tip
+    vec2 tip = dir * seg_length;
 
-    // Dither layering
-    float dither = mod(p.x * 60.0 + p.y * 40.0 + t * 2.0, 1.0) > 0.5 ? 1.0 : 0.0;
+    // Draw segment as line from center to tip
+    vec2 line_dir = dir;
+    vec2 line_perp = vec2(-line_dir.y, line_dir.x);
 
-    // Monochrome cyan
-    float brightness = moire_pattern * mix(1.0, dither, 0.3);
-    col += vec3(0.0, brightness * 0.7, brightness * 0.8);
+    float dist_to_line = abs(dot(p - vec2(0.0), line_perp));
+    float along_line = dot(p - vec2(0.0), line_dir);
+
+    if(along_line > 0.0 && along_line < seg_length && dist_to_line < 0.004) {
+      col += vec3(0.8);
+    }
+
+    // Draw endpoint as small ring
+    float d_tip = length(p - tip);
+    float endpoint_size = 0.02;
+    float endpoint = smoothstep(endpoint_size + 0.003, endpoint_size - 0.003, d_tip);
+    col += vec3(endpoint * 0.8);
   }
 
-  // Center interference
-  float center_moire = sin(r * moire_scale * 2.0) * cos(angle * 5.0 + t);
-  col += vec3(0.0, (center_moire * 0.5 + 0.5) * 0.2, (center_moire * 0.5 + 0.5) * 0.15);
+  // Center ring
+  float center_d = length(p);
+  float center_ring = smoothstep(0.01, 0.0, abs(center_d - 0.02));
+  col += vec3(center_ring);
 
-  col *= 0.6 + 0.4 * u_level;
+  col *= 0.7 + 0.3 * u_level;
   return col;
 }`,
   },
