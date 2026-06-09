@@ -3657,91 +3657,91 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Nightcall Mountains",
     params: [
-      { label: "Peaks", key: "u_p0", min: 3, max: 10, default: 6, step: 1 },
-      { label: "Speed", key: "u_p1", min: 0, max: 1.5, default: 0.3, step: 0.1 },
+      { label: "Fractal Detail", key: "u_p0", min: 1, max: 8, default: 3, step: 1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1, step: 0.1 },
     ],
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1;
+  vec2 p = uv; // Keep 0-1 range for perspective effect
+  float t = u_time * u_p1 * 0.5;
 
-  // Synthwave background: dark blue to dark purple
-  vec3 bg = mix(vec3(0.0, 0.05, 0.2), vec3(0.1, 0.0, 0.1), uv.y);
-  vec3 col = bg;
+  // Perspective: scroll depth toward camera
+  float depth = mod(t, 1.0);
 
-  // Grid floor - perspective grid
-  float grid_scale = 0.5;
-  float grid_lines = 20.0;
-  for(float i = 0.0; i < grid_lines; i++) {
-    float y_grid = -0.8 + (i / grid_lines) * 1.6;
-    float y_depth = (y_grid + 0.8) / 1.6;
-    float grid_thickness = mix(0.002, 0.008, y_depth) * (1.0 + 0.5 * u_bass);
+  // Synthwave background gradient
+  vec3 col = mix(vec3(0.05, 0.01, 0.15), vec3(0.0, 0.1, 0.3), p.y);
 
-    float d_grid = abs(p.y - y_grid);
-    float grid = smoothstep(grid_thickness, 0.0, d_grid);
+  // === GRID FLOOR ===
+  // Creates perspective grid moving toward camera
+  for(float i = 0.0; i < 50.0; i++) {
+    float grid_z = mod(i / 10.0 - depth, 2.0); // Grid lines coming toward camera
+    if(grid_z < 0.05) { // Only draw visible lines
+      float y = mix(0.5, 0.95, grid_z / 0.1); // Perspective: far to near
+      float thickness = mix(0.002, 0.01, grid_z / 0.1);
 
-    // Grid color: cyan floor
-    col += grid * vec3(0.0, 0.6, 0.9) * (0.3 + 0.4 * y_depth) * 0.4;
+      float d = abs(p.y - y);
+      float line = smoothstep(thickness, 0.0, d);
 
-    // Vertical grid lines
-    for(float j = -8.0; j <= 8.0; j++) {
-      float x_grid = j * 0.2 * (1.0 - y_depth * 0.3);
-      float d_x = abs(p.x - x_grid);
-      float v_grid = smoothstep(grid_thickness, 0.0, d_x);
-      col += v_grid * vec3(0.0, 0.4, 0.8) * (0.2 + 0.3 * y_depth) * 0.3;
+      // Cyan grid
+      col += line * vec3(0.0, 0.8, 1.0) * (0.4 + 0.6 * grid_z);
     }
   }
 
-  // Mountain peaks - wireframe with proper triangles
-  float peak_count = u_p0;
-  for(float i = 0.0; i < peak_count; i++) {
-    float peak_x = -0.8 + (i / peak_count) * 1.6;
-    float peak_height = 0.3 + 0.25 * sin(t * 0.5 + i * 0.7) + u_mid * 0.15;
+  // Vertical grid lines (perspective distortion)
+  for(float j = 0.0; j < 50.0; j++) {
+    float grid_z = mod(j / 10.0 - depth * 0.5, 2.0);
+    if(grid_z < 0.05) {
+      float y_persp = mix(0.5, 0.95, grid_z / 0.1);
+      float x_center = p.x - 0.5;
+      float width_at_y = mix(0.15, 0.5, grid_z / 0.1); // Perspective spread
+      float x_distorted = (p.x - 0.5) / (width_at_y * 0.5) + 0.5;
 
-    // Left slope
-    float dx = p.x - peak_x;
-    float left_y = peak_height + abs(dx) * 0.8 * (1.0 - abs(dx) * 2.0);
-
-    // Right slope from peak
-    float right_peak_x = peak_x + 0.3;
-    float right_dx = p.x - right_peak_x;
-    float right_y = peak_height - abs(right_dx) * 1.2;
-
-    // Draw left edge of mountain
-    float left_edge = abs(p.y - left_y);
-    float left_line = smoothstep(0.006, 0.001, left_edge);
-
-    // Draw right edge of mountain
-    float right_edge = abs(p.y - right_y);
-    float right_line = smoothstep(0.006, 0.001, right_edge);
-
-    // Synthwave magenta/pink for mountains
-    vec3 peak_color = mix(
-      vec3(1.0, 0.0, 0.5),    // Magenta
-      vec3(1.0, 0.2, 0.8),    // Hot pink
-      0.5 + 0.5 * sin(i * 1.3 + t)
-    );
-
-    col += (left_line + right_line) * peak_color * (0.8 + 0.2 * u_bass);
-
-    // Snow/peak caps
-    float peak_dot_d = length(vec2(p.x - peak_x, p.y - peak_height));
-    float peak_dot = exp(-peak_dot_d * peak_dot_d * 100.0);
-    col += peak_dot * vec3(0.9, 0.8, 1.0) * 0.6;
+      // Vertical lines with perspective
+      for(float k = -2.0; k <= 2.0; k++) {
+        float x_line = 0.5 + (k - x_center) * width_at_y;
+        float thickness = mix(0.002, 0.008, grid_z / 0.1);
+        float d = abs(p.x - x_line);
+        float vline = smoothstep(thickness, 0.0, d);
+        col += vline * vec3(0.0, 0.5, 0.9) * (0.3 + 0.5 * grid_z);
+      }
+    }
   }
 
-  // Sun/moon glow
-  float sun_y = 0.6;
-  float sun_d = length(vec2(p.x + 0.3, p.y - sun_y));
-  float sun = exp(-sun_d * sun_d * 8.0);
-  col += sun * vec3(1.0, 0.2, 0.5) * 0.4;
+  // === FRACTAL MOUNTAIN AT HORIZON ===
+  float mountain_y = mix(0.45, 0.5, sin(t * 0.3));
 
-  // Horizontal scan lines (CRT effect)
-  float scanline = 0.5 + 0.5 * sin(uv.y * res.y * 2.0);
-  col *= 0.95 + 0.05 * scanline;
+  // Simple fractal-like mountain silhouette
+  float x_norm = p.x;
+  float mountain = 0.0;
 
-  col *= 0.8 + 0.4 * u_level;
+  // Multi-level fractal oscillation
+  for(float level = 0.0; level < u_p0; level++) {
+    float freq = pow(2.0, level);
+    float amp = 1.0 / freq;
+    mountain += sin(x_norm * freq * 6.28 + t * 0.5) * amp * 0.15;
+  }
+
+  float fractal_height = mountain_y + mountain;
+
+  // Mountain silhouette (magenta glow)
+  float mountain_dist = abs(p.y - fractal_height);
+  float mountain_line = smoothstep(0.015, 0.001, mountain_dist);
+  vec3 magenta = mix(vec3(1.0, 0.0, 0.5), vec3(1.0, 0.3, 0.8), 0.5 + 0.5 * sin(t));
+  col += mountain_line * magenta * 0.9;
+
+  // Mountain glow (magenta halo)
+  float glow = exp(-mountain_dist * mountain_dist * 20.0);
+  col += glow * magenta * 0.3;
+
+  // ===  MOTION BLUR / SPEED EFFECT ===
+  float speed_intensity = (0.5 + 0.5 * u_bass) * u_level;
+  col *= 1.0 - (1.0 - p.y) * speed_intensity * 0.15; // Darken outer edges during speed
+
+  // CRT scan lines
+  float scan = 0.5 + 0.5 * sin(p.y * res.y * 1.5);
+  col *= 0.92 + 0.08 * scan;
+
   return col;
 }`,
   },
