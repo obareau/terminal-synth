@@ -3,7 +3,7 @@
 > **Synthétiseur visuel dark/industriel** avec génération automatique de compositions, audio-réactivité temps réel, et rendu WebGL2 haute-performance.
 
 ![Status](https://img.shields.io/badge/status-Release-brightgreen)
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+![Version](https://img.shields.io/badge/version-1.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
@@ -18,12 +18,12 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 ### Linux (Debian/Ubuntu)
 ```bash
 # Download and install .deb package
-sudo dpkg -i terminal-synth_1.2.0_amd64.deb
+sudo dpkg -i terminal-synth_1.5.0_amd64.deb
 terminal-synth
 ```
 
 ### Windows (Executable)
-1. Download `terminal-synth_1.2.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+1. Download `terminal-synth_1.5.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
 2. Run directly (no installation needed)
 3. Grant audio access when prompted
 
@@ -107,6 +107,26 @@ npm run package        # Build Windows .exe
 | **Animations** | Pulsing feedback for MIDI learn & record modes, current step highlighting |
 | **Presets** | Sequencer state + MIDI mappings saved/loaded with presets |
 
+### 🏔️ Nightcall Mountains (v1.5.0) ⭐
+| Feature | Details |
+|---------|---------|
+| **Landscape** | 32 hexagonal pyramidal mountains in procedural valley |
+| **Rendering** | Hidden-face culling with 3D perspective projection |
+| **Details** | Contour rings (adaptive LOD for distant mountains) |
+| **Animation** | Forward-scrolling motion with wrapping depth cycle |
+| **Sky** | Gradient (violet → yellow) with animated sun halo |
+| **Floor Grid** | Cyan wireframe rotated 20°, fast scroll effect |
+| **Visual Style** | Synthwave: magenta mountains, blue/cyan grid, black background |
+
+### 🌈 Light/Dark Theme Toggle (v1.5.0)
+| Feature | Details |
+|---------|---------|
+| **Toggle** | Press `T` key or click ☀ button in topbar |
+| **Dark Mode** | Original dark theme: #1a1a1a bg, neon green/cyan accents |
+| **Light Mode** | Inverted palette: #f5f3ef bg, dark text, readable UI |
+| **Persistence** | Theme preference saved to localStorage, restored on restart |
+| **Smooth Transitions** | CSS filter-based, instant switching |
+
 ### 🌀 Automation Générative (v0.9.5)
 | Preset | Behavior |
 |--------|----------|
@@ -146,6 +166,7 @@ npm run package        # Build Windows .exe
 | **Randomize** | `Shift+R` | Randomize keyframe values |
 | **MIDI Learn** | `Shift+L` | Enter MIDI learn mode |
 | **Master Brightness** | `B` | Audio-reactive fade to black |
+| **Theme Toggle** | `T` | Switch light/dark theme (persistent) |
 
 **Sélection Générateur**: `1-9`, `q-p`, `a-k` (91 total)
 

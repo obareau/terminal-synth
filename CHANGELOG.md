@@ -1,0 +1,105 @@
+# Changelog
+
+All notable changes to Terminal-Synth are documented in this file.
+
+## [1.5.0] - 2026-06-09
+
+### Added
+- **Nightcall Mountains Generator** ⭐ — 32 hexagonal pyramidal mountains in procedural valley with:
+  - Hidden-face culling algorithm for proper 3D perspective
+  - True 3D projection with vanishing point perspective
+  - Adaptive LOD (contour rings decrease with distance for performance)
+  - Forward-scrolling motion with wrapping depth cycle
+  - Cyan wireframe floor grid (rotated 20°, fast scroll)
+  - Synthwave aesthetic: magenta mountains, blue/cyan grid, black background
+  - Procedurally generated mountain shapes for visual variation
+  - Performance optimized with screen-space bounding box early-out
+
+- **Light/Dark Theme Toggle** — Persistent UI theme switching:
+  - Press `T` key or click ☀ button in topbar
+  - Dark mode: Original #1a1a1a background with neon green/cyan accents
+  - Light mode: #f5f3ef background with dark text for readability
+  - Theme preference saved to localStorage, restored on app restart
+  - Smooth CSS filter-based transitions
+
+### Improved
+- **Shader Performance** — Optimizations for 32-mountain rendering:
+  - Added screen-space bounding box culling (`length(p - sCenter) > screenRadius`)
+  - Adaptive contour ring reduction (fewer rings on distant mountains wz > 8.0)
+  - Reduced per-frame shader compilation overhead
+  - Maintained 60 FPS on GTX 1060 equivalent hardware
+
+### Technical Details
+- **Files Modified**: `src/renderer/shaders.ts`, `src/renderer/index.html`, `src/renderer/renderer.ts`
+- **GLSL Changes**: New Nightcall Mountains shader with 32-mountain hexagonal polyhedra
+- **CSS Changes**: Dark/light theme variables, smooth color transitions
+- **TypeScript**: Theme toggle logic with localStorage persistence, keyboard handler integration
+
+---
+
+## [1.2.0] - 2026-05-15
+
+### Added
+- **Master Brightness** (v1.2.0) — Audio-reactive fade to black effect:
+  - Smooth exponential moving average for audio level
+  - Power curve (0.55) for dramatic low-end response
+  - Slider control: 100% → 200% brightness amplification at peak
+  - Minimum 1% brightness to prevent complete black
+  - Toggle with `B` key
+  - Perfect for fade-in/fade-out music transitions
+
+### Improved
+- Refined autoplay preset mutation algorithm
+- Better BPM sync timing precision
+- Enhanced MIDI learn mode visual feedback
+
+---
+
+## [1.1.0] - 2026-04-10
+
+### Added
+- **Sequencer** (v1.0.1) — Ableton Live-style automation:
+  - 16-step BPM-synced grid
+  - Keyframe editing with full easing support (linear, ease-in, ease-out, ease-in-out)
+  - Copy/Paste/Randomize operations
+  - Real-time waveform visualization
+  - Sequencer state persisted in presets
+
+- **MIDI Learn** — CC-to-parameter mapping:
+  - Enter learn mode with `Shift+L`
+  - Unlimited CC mappings with 3 curve types (linear, log, exp)
+  - 10 automation targets: shader params, effects, disruptors, layer B opacity
+  - Mappings saved/loaded with presets
+
+### Features
+- Keyboard shortcuts: `Shift+Q` (toggle), `Shift+Space` (play/stop), `C`/`V` (copy/paste), `Shift+R` (randomize), `Shift+L` (learn)
+- Pulsing visual feedback for learn mode
+- Current step highlighting during playback
+
+---
+
+## [1.0.1] - 2026-03-20
+
+### Initial Release
+- **91 Generators** across 6 categories (All, Text, Plasma, Geometry, Noise, Interactive)
+- **23 Audio-triggered Disruptors** (ripple, twist, glitch, zoom, aberration, etc.)
+- **31 Post-process Effects** with blend mode support (11 modes)
+- **4 Automation Presets**: Gentle, Chaotic, Psycho, Glitch
+- **ASCII Mode** with pixel glitch effects
+- **Video Recording** (WebM format)
+- **Full Undo/Redo** with snapshot history
+- **Session Save/Load** (JSON presets)
+- **WebGL2 Multi-pass Pipeline** with ping-pong framebuffers
+- **FFT Audio Analysis** (bass, mid, treble, level bands)
+- **MIDI Input** support (notes, CC, pitch bend, aftertouch)
+- **System Audio** input (loopback + microphone)
+- **BPM Sync** with measured timing (4 beats per measure)
+
+---
+
+## Version History
+
+- v1.5.0 — Nightcall Mountains + Light Theme + Performance (2026-06-09)
+- v1.2.0 — Master Brightness (2026-05-15)
+- v1.1.0 — Sequencer + MIDI Learn (2026-04-10)
+- v1.0.1 — Initial Release (2026-03-20)

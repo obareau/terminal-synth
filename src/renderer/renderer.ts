@@ -61,6 +61,27 @@ const meter = $("meter");
 const chain = $("chain");
 const masterBrightnessToggle = $<HTMLButtonElement>("master-brightness-toggle");
 const masterBrightnessSlider = $<HTMLInputElement>("master-brightness-slider");
+const themeToggle = $<HTMLButtonElement>("theme-toggle");
+
+// === Light/Dark theme toggle (persisted in localStorage) ===
+function applyTheme(light: boolean): void {
+  document.body.classList.toggle("light-theme", light);
+  if (themeToggle) themeToggle.textContent = light ? "☾" : "☀";
+  localStorage.setItem("terminal-synth-theme", light ? "light" : "dark");
+}
+applyTheme(localStorage.getItem("terminal-synth-theme") === "light");
+themeToggle?.addEventListener("click", () => {
+  applyTheme(!document.body.classList.contains("light-theme"));
+});
+document.addEventListener("keydown", (e) => {
+  if (!e.ctrlKey && !e.shiftKey && (e.key === "t" || e.key === "T")) {
+    const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
+    if (!inInput) {
+      e.preventDefault();
+      applyTheme(!document.body.classList.contains("light-theme"));
+    }
+  }
+});
 
 const pipeline = new Pipeline(canvas);
 const audio = new AudioInput();

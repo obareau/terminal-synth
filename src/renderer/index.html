@@ -25,6 +25,32 @@
       --cyan:       #4fc3f7;
       --font: "Cascadia Mono", Consolas, "Courier New", monospace;
     }
+    body.light-theme {
+      --bg:         #f5f3ef;
+      --panel:      #e8e6e0;
+      --panel2:     #dedcd5;
+      --ctrl:       #d2cfc7;
+      --border:     #b8b3a8;
+      --border2:    #a59f93;
+      --dim:        #888;
+      --text-dim:   #555;
+      --text-sec:   #333;
+      --text:       #1a1a1a;
+      --text-hi:    #000;
+      --accent:     #2e8055;
+      --accent-bg:  #c8e6d4;
+      --accent-dim: #67a585;
+      --orange:     #c46e00;
+      --red:        #b83232;
+      --cyan:       #1976b3;
+    }
+    body.light-theme ::-webkit-scrollbar-thumb { background: #b8b3a8; }
+    body.light-theme .ph,
+    body.light-theme .tab-content,
+    body.light-theme .tab-btn.active { background: #efece5; }
+    body.light-theme .tab-btn:hover { background: #d8d4c9; }
+    body.light-theme .src-item:hover { background: #d8d4c9; }
+    body.light-theme button.on { color: #fff; }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; overflow: hidden; user-select: none; }
 
     /* ── Scrollbars ──────────────────────────────────────────────── */
@@ -417,6 +443,8 @@
     <button id="undo" title="Undo snapshot [Ctrl+Z]">↶</button>
     <button id="redo" title="Redo snapshot [Ctrl+Y]">↷</button>
     <button id="session-export" title="Export session">⊙ Session</button>
+    <div class="sep"></div>
+    <button id="theme-toggle" title="Toggle light/dark theme [T]">☀</button>
     <div class="spacer"></div>
     <span id="autoplay-status" style="font-size:10px;color:#666;margin-right:10px;"></span>
     <div class="sep"></div>

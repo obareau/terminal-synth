@@ -3777,10 +3777,16 @@ vec3 render(vec2 uv, vec2 res) {
     float wzCycle = 22.0;
     float wzInit = 1.0 + idx * 2.5 + r1 * 2.0 + r7 * 1.5;
     float wz = mod(wzInit - t * 3.5, wzCycle) + 0.7;
-    if (wz < 0.4) continue;
+    if (wz < 0.4 || wz > 18.0) continue;  // Skip too close & too far
 
     // Also random Z offset perpendicular to camera direction
     wx += (r6 - 0.5) * 0.3 * wz * 0.2;  // perspective wiggle
+
+    // === EARLY-OUT: bounding box check in screen space ===
+    // Approximate screen bounds: center around projected base, radius accordingly
+    vec2 sCenter = vec2(wx, -ch) / wz;
+    float screenRadius = (r_base + mh) / wz * 1.5;
+    if (length(p - sCenter) > screenRadius) continue;
 
     // === Build 6-sided base (vertices on floor, varying radius) ===
     vec3 apexW = vec3(wx + apexSkewX, mh + apexSkewY, wz);
@@ -3882,22 +3888,26 @@ vec3 render(vec2 uv, vec2 res) {
       if (vis4 || vis3) md = min(md, distLine(p, sApex3, sV4));
     }
 
-    // === CONTOUR RINGS on visible faces (more segments) ===
-    for (int ring = 1; ring <= 3; ring++) {
-      float rt = float(ring) / 4.0;
-      vec2 r0 = mix(sV0, sApex, rt);
-      vec2 r1v = mix(sV1, sApex, rt);
-      vec2 r2v = mix(sV2, sApex, rt);
-      vec2 r3v = mix(sV3, sApex, rt);
-      vec2 r4v = mix(sV4, sApex, rt);
-      vec2 r5v = mix(sV5, sApex, rt);
+    // === CONTOUR RINGS on visible faces (skip for distant mountains) ===
+    if (wz < 8.0) {
+      int ringMax = (wz < 4.0) ? 3 : 2; // fewer rings on medium-far mountains
+      for (int ring = 1; ring <= 3; ring++) {
+        if (ring > ringMax) break;
+        float rt = float(ring) / 4.0;
+        vec2 r0 = mix(sV0, sApex, rt);
+        vec2 r1v = mix(sV1, sApex, rt);
+        vec2 r2v = mix(sV2, sApex, rt);
+        vec2 r3v = mix(sV3, sApex, rt);
+        vec2 r4v = mix(sV4, sApex, rt);
+        vec2 r5v = mix(sV5, sApex, rt);
 
-      if (vis0) md = min(md, distLine(p, r0, r1v));
-      if (vis1) md = min(md, distLine(p, r1v, r2v));
-      if (vis2) md = min(md, distLine(p, r2v, r3v));
-      if (vis3) md = min(md, distLine(p, r3v, r4v));
-      if (vis4) md = min(md, distLine(p, r4v, r5v));
-      if (vis5) md = min(md, distLine(p, r5v, r0));
+        if (vis0) md = min(md, distLine(p, r0, r1v));
+        if (vis1) md = min(md, distLine(p, r1v, r2v));
+        if (vis2) md = min(md, distLine(p, r2v, r3v));
+        if (vis3) md = min(md, distLine(p, r3v, r4v));
+        if (vis4) md = min(md, distLine(p, r4v, r5v));
+        if (vis5) md = min(md, distLine(p, r5v, r0));
+      }
     }
 
     // Wireframe & glow, with distance fade
