@@ -3675,45 +3675,43 @@ vec3 render(vec2 uv, vec2 res) {
   col += exp(-sun_dist * sun_dist * 15.0) * vec3(1.0, 0.0, 1.0); // Magenta core
 
   // === HORIZONTAL GRID LINES (FAST SCROLL) ===
-  for(float i = 0.0; i < 50.0; i++) {
-    float line_z = mod(i * 0.15 - t * 0.5, 1.5);
-    if(line_z > 0.0 && line_z < 1.0) {
-      float y_line = 0.5 + line_z * 0.4;
-      float thickness = 0.002 + line_z * 0.008;
-      float d = abs(uv.y - y_line);
-      float line = smoothstep(thickness * 1.5, 0.0, d);
-      col += line * vec3(0.0, 1.0, 1.0) * (0.3 + 0.7 * line_z);
-    }
+  for(float i = 0.0; i < 80.0; i++) {
+    float line_z = mod(i * 0.1 - t * 0.6, 2.0);
+    float y_line = line_z; // 0 (near) to 1 (far)
+
+    float thickness = mix(0.008, 0.001, line_z); // Thicker near, thinner far
+    float d = abs(uv.y - y_line);
+    float line = smoothstep(thickness, 0.0, d);
+    col += line * vec3(0.0, 1.0, 1.0) * (0.2 + 0.8 * (1.0 - line_z));
   }
 
   // === VERTICAL GRID LINES (CONVERGE TO CENTER) ===
-  for(float i = 0.0; i < 50.0; i++) {
-    float line_z = mod(i * 0.15 - t * 0.4, 1.5);
-    if(line_z > 0.0 && line_z < 1.0) {
-      float y_line = 0.5 + line_z * 0.4;
-      float width = (1.0 - line_z) * 0.4; // Converge to center
-      float thickness = 0.002 + line_z * 0.006;
+  for(float i = 0.0; i < 80.0; i++) {
+    float line_z = mod(i * 0.1 - t * 0.5, 2.0);
+    float y_line = line_z;
 
-      float x_left = 0.5 - width;
-      float x_right = 0.5 + width;
+    float width = line_z * 0.5; // 0 at far (converged), 0.5 at near (spread)
+    float thickness = mix(0.006, 0.001, line_z);
 
-      float d_left = abs(uv.x - x_left);
-      float d_right = abs(uv.x - x_right);
+    float x_left = 0.5 - width;
+    float x_right = 0.5 + width;
 
-      float line_left = smoothstep(thickness * 1.5, 0.0, d_left);
-      float line_right = smoothstep(thickness * 1.5, 0.0, d_right);
+    float d_left = abs(uv.x - x_left);
+    float d_right = abs(uv.x - x_right);
 
-      col += (line_left + line_right) * vec3(0.0, 0.8, 1.0) * (0.2 + 0.6 * line_z);
-    }
+    float line_left = smoothstep(thickness, 0.0, d_left);
+    float line_right = smoothstep(thickness, 0.0, d_right);
+
+    col += (line_left + line_right) * vec3(0.0, 0.8, 1.0) * (0.15 + 0.85 * (1.0 - line_z));
   }
 
   // === CYAN TRIANGLE MOUNTAINS ===
-  for(float peak_i = 0.0; peak_i < 6.0; peak_i++) {
-    float peak_z = mod(peak_i * 0.2 - t * 0.3, 1.4);
+  for(float peak_i = 0.0; peak_i < 8.0; peak_i++) {
+    float peak_z = mod(peak_i * 0.15 - t * 0.4, 1.6);
     if(peak_z > 0.05 && peak_z < 1.0) {
-      float y_base = 0.5 + peak_z * 0.35;
-      float peak_height = u_p1 * (0.3 - peak_z * 0.2);
-      float peak_width = 0.2 * (1.0 - peak_z);
+      float y_base = peak_z; // Mountain base scrolls from bottom to top
+      float peak_height = u_p1 * (0.4 - peak_z * 0.35); // Taller far, shorter near
+      float peak_width = 0.25 * peak_z; // Wider at near, point at far
 
       float y_peak = y_base - peak_height;
       float x_left = 0.5 - peak_width;
