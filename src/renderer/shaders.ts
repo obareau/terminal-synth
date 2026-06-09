@@ -3679,39 +3679,39 @@ vec3 render(vec2 uv, vec2 res) {
   float sun_glow = smoothstep(sun_r, sun_r - 0.02, sun_d);
   col += sun_glow * sun_col;
 
-  // VHS bands on sun (horizontal scan lines)
-  float sun_scan = sin(sun_d * res.y * 0.5 + t * 5.0) * 0.5 + 0.5;
-  col += sun_glow * sun_col * sun_scan * 0.3;
+  // VHS bands on sun (horizontal scan lines) — MUCH MORE VISIBLE
+  float sun_scan = abs(sin(uv.y * res.y * 3.0 + t * 8.0));
+  col += sun_glow * sun_scan * vec3(1.0, 0.3, 1.0) * 0.6; // BRIGHT purple bands
 
   // === ROAD: Center quadrille grid (converging toward horizon) ===
-  float road_left = 0.35;   // Road boundaries
-  float road_right = 0.65;
+  float road_left = 0.25;   // Road boundaries (WIDER: 50% of screen)
+  float road_right = 0.75;
 
-  // Horizontal road lines
-  for(float i = 0.0; i < 100.0; i++) {
-    float z = mod(i * 0.08 - t * 0.7, 2.0);
+  // Horizontal road lines (THICKER and BRIGHTER)
+  for(float i = 0.0; i < 120.0; i++) {
+    float z = mod(i * 0.06 - t * 0.8, 2.5);
     float y = z;
 
     if(y > 0.0 && y < 1.0) {
-      float thickness = mix(0.01, 0.002, z);
+      float thickness = mix(0.02, 0.003, z); // THICKER lines
       float d = abs(uv.y - y);
       float line = smoothstep(thickness, 0.0, d);
 
       // Draw only in road area
       if(uv.x > road_left && uv.x < road_right) {
-        col += line * vec3(0.9, 0.9, 0.2) * (0.3 + 0.7 * (1.0 - z));
+        col += line * vec3(1.0, 1.0, 0.3) * (0.5 + 1.0 * (1.0 - z)); // BRIGHTER
       }
     }
   }
 
-  // Vertical road lines (converge to center)
-  for(float i = 0.0; i < 100.0; i++) {
-    float z = mod(i * 0.08 - t * 0.6, 2.0);
+  // Vertical road lines (converge to center) — VERY VISIBLE CENTER LINE
+  for(float i = 0.0; i < 120.0; i++) {
+    float z = mod(i * 0.06 - t * 0.7, 2.5);
     float y = z;
 
     if(y > 0.0 && y < 1.0) {
-      float road_width = mix(0.15, 0.01, z); // Converge from 0.35-0.65 to center
-      float thickness = mix(0.008, 0.001, z);
+      float road_width = mix(0.25, 0.005, z); // Converge from 25-75 to center
+      float thickness = mix(0.015, 0.002, z); // THICKER
 
       float x_left = 0.5 - road_width;
       float x_right = 0.5 + road_width;
@@ -3722,7 +3722,7 @@ vec3 render(vec2 uv, vec2 res) {
       float line_left = smoothstep(thickness, 0.0, d_left);
       float line_right = smoothstep(thickness, 0.0, d_right);
 
-      col += (line_left + line_right) * vec3(0.8, 0.8, 0.1) * (0.25 + 0.75 * (1.0 - z));
+      col += (line_left + line_right) * vec3(1.0, 1.0, 0.2) * (0.5 + 1.0 * (1.0 - z)); // BRIGHTER
     }
   }
 
