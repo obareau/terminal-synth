@@ -3658,107 +3658,112 @@ vec3 render(vec2 uv, vec2 res) {
     name: "Nightcall Mountains",
     params: [
       { label: "Grid Speed", key: "u_p0", min: 0.5, max: 3, default: 2, step: 0.1 },
-      { label: "Mountain Height", key: "u_p1", min: 0, max: 1, default: 0.6, step: 0.05 },
+      { label: "Mountain Height", key: "u_p1", min: 0.3, max: 1, default: 0.6, step: 0.05 },
     ],
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time * u_p0 * 2.0; // FAST scroll - multiply by 2
+  float t = u_time * u_p0 * 1.5;
 
   // === BACKGROUND ===
-  // Black bottom, blue/purple gradient top
-  vec3 col = mix(vec3(0.0, 0.0, 0.0), vec3(0.05, 0.0, 0.2), smoothstep(0.5, 1.0, uv.y));
+  // Pure black bottom, fade to blue/purple at top
+  vec3 col = vec3(0.0);
+  col = mix(col, vec3(0.02, 0.0, 0.15), smoothstep(0.4, 1.0, uv.y));
 
-  // Stars in upper sky
-  for(float i = 0.0; i < 20.0; i++) {
-    vec2 star_pos = vec2(
-      fract(sin(i * 2.3) * 0.5) * 2.0 - 1.0,
-      0.5 + fract(cos(i * 1.7) * 0.5) * 0.3
-    );
-    float d = length(uv - star_pos);
-    float star = exp(-d * d * 200.0);
-    col += star * vec3(1.0) * 0.4;
-  }
+  // === MAGENTA SUN ===
+  vec2 sun_pos = vec2(0.5, 0.6);
+  float sun_dist = length(uv - sun_pos);
+  float sun_r = 0.15;
 
-  // === LARGE MAGENTA SUN ===
-  float sun_y = 0.55;
-  float sun_d = length(uv - vec2(0.5, sun_y));
+  // Sun glow (outer)
+  float sun_glow = smoothstep(sun_r + 0.1, sun_r - 0.05, sun_dist);
+  col = mix(col, vec3(1.0, 0.0, 0.8), sun_glow * 0.5);
 
-  // Sun glow (large)
-  float sun_glow = exp(-sun_d * sun_d * 8.0);
-  vec3 sun_color = mix(vec3(1.0, 0.0, 1.0), vec3(1.0, 0.3, 0.0), sun_d * 3.0);
-  col += sun_glow * sun_color;
-
-  // Sun bright core magenta
-  float sun_core = exp(-sun_d * sun_d * 80.0);
-  col += sun_core * vec3(1.0, 0.2, 0.8) * 1.2;
+  // Sun core (bright magenta + orange)
+  vec3 sun_inner = mix(vec3(1.0, 0.3, 0.0), vec3(1.0, 0.0, 1.0), smoothstep(0.0, sun_r, sun_dist));
+  float sun_core = smoothstep(sun_r, sun_r - 0.02, sun_dist);
+  col += sun_core * sun_inner;
 
   // === GRID HORIZONTAL LINES ===
-  // Fast scrolling toward camera
-  for(float i = 0.0; i < 100.0; i++) {
-    float grid_z = mod(i * 0.02 - t, 1.0);
-    float y_pos = 1.0 - grid_z; // Far (y=1) to near (y=0)
+  for(float i = 0.0; i < 60.0; i++) {
+    float z = mod(i * 0.1 - t * 0.4, 1.5);
+    if(z > 0.0 && z < 1.0) {
+      float y = mix(0.55, 0.0, z); // Far to near
+      float thickness = mix(0.003, 0.012, z);
+      float d = abs(uv.y - y);
+      float h_line = smoothstep(thickness, 0.0, d);
 
-    if(y_pos > 0.0 && y_pos < 1.0) {
-      float thickness = mix(0.002, 0.015, grid_z); // Thicker as comes closer
-      float d = abs(uv.y - y_pos);
-      float line = smoothstep(thickness, 0.0, d);
-
-      // BRIGHT CYAN
-      col += line * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * grid_z);
+      col += h_line * vec3(0.0, 1.0, 1.0) * (0.3 + 0.7 * z);
     }
   }
 
-  // === GRID VERTICAL LINES (PERSPECTIVE) ===
-  // Lines converge to center
-  for(float i = 0.0; i < 100.0; i++) {
-    float grid_z = mod(i * 0.02 - t * 0.8, 1.0);
-    float y_pos = 1.0 - grid_z;
+  // === GRID VERTICAL LINES (CONVERGE) ===
+  for(float i = 0.0; i < 60.0; i++) {
+    float z = mod(i * 0.1 - t * 0.3, 1.5);
+    if(z > 0.0 && z < 1.0) {
+      float y = mix(0.55, 0.0, z);
+      float width = mix(0.5, 0.02, z);
+      float thickness = mix(0.003, 0.01, z);
 
-    if(y_pos > 0.0 && y_pos < 1.0) {
-      // Converge: far lines are wide, near lines are close to center
-      float line_spread = mix(1.0, 0.05, grid_z);
+      // Left and right vertical lines
+      float x_left = 0.5 - width;
+      float x_right = 0.5 + width;
 
-      // Check left and right vertical lines
-      for(float k = -3.0; k <= 3.0; k++) {
-        float x_line = 0.5 + (k * line_spread);
-        float thickness = mix(0.002, 0.012, grid_z);
-        float d = abs(uv.x - x_line);
-        float vline = smoothstep(thickness, 0.0, d);
+      float d_left = abs(uv.x - x_left);
+      float d_right = abs(uv.x - x_right);
 
-        col += vline * vec3(0.0, 0.8, 0.9) * (0.3 + 0.5 * grid_z);
-      }
+      float v_left = smoothstep(thickness, 0.0, d_left);
+      float v_right = smoothstep(thickness, 0.0, d_right);
+
+      col += (v_left + v_right) * vec3(0.0, 0.9, 1.0) * (0.25 + 0.5 * z);
     }
   }
 
-  // === CYAN WIREFRAME MOUNTAINS ===
-  // Simple triangles on both sides
-  for(float peak = 0.0; peak < 10.0; peak++) {
-    float z = mod(peak * 0.1 - t * 0.6, 1.2);
-
+  // === CYAN MOUNTAIN PEAKS ===
+  for(float p = 0.0; p < 8.0; p++) {
+    float z = mod(p * 0.15 - t * 0.5, 1.3);
     if(z > 0.05 && z < 1.0) {
-      float y_base = mix(0.55, 0.0, z); // Base comes toward camera
-      float peak_width = mix(0.4, 0.02, z); // Peaks converge
-      float peak_top = y_base - u_p1 * mix(0.3, 0.05, z);
+      float y_base = mix(0.55, 0.05, z);
+      float peak_h = u_p1 * mix(0.35, 0.08, z);
+      float peak_w = mix(0.25, 0.01, z);
 
-      // Left peak triangle
-      float x_left = 0.5 - peak_width;
-      float left_x_dist = abs(uv.x - x_left) / (peak_width + 0.01);
-      float left_y_dist = uv.y - mix(y_base, peak_top, left_x_dist * 0.5);
-      float left_edge = abs(left_y_dist) - left_x_dist * (y_base - peak_top);
+      // Peak center Y
+      float y_peak = y_base - peak_h;
 
-      // Right peak triangle
-      float x_right = 0.5 + peak_width;
-      float right_x_dist = abs(uv.x - x_right) / (peak_width + 0.01);
-      float right_y_dist = uv.y - mix(y_base, peak_top, right_x_dist * 0.5);
-      float right_edge = abs(right_y_dist) - right_x_dist * (y_base - peak_top);
+      // Left mountain edge (from base-left to peak)
+      float x_left = 0.5 - peak_w;
+      float slope_left_dist = length(vec2(uv.x - x_left, uv.y - y_base)) -
+                              length(vec2(0.0, -peak_h));
 
-      // Draw peaks BRIGHT CYAN
-      float left_line = smoothstep(0.008, 0.001, left_edge);
-      float right_line = smoothstep(0.008, 0.001, right_edge);
-      float peak_brightness = (0.5 + 0.5 * z);
+      // Simple: draw lines from peak to base corners
+      // Left edge: from (0.5-w, base) to (0.5, peak)
+      vec2 line_start_l = vec2(0.5 - peak_w, y_base);
+      vec2 line_end_l = vec2(0.5, y_peak);
+      vec2 to_point_l = uv - line_start_l;
+      vec2 line_dir_l = normalize(line_end_l - line_start_l);
+      float proj_l = clamp(dot(to_point_l, line_dir_l), 0.0, length(line_end_l - line_start_l));
+      float dist_left = length(to_point_l - proj_l * line_dir_l);
 
-      col += (left_line + right_line) * vec3(0.0, 1.0, 1.0) * peak_brightness * (0.7 + 0.3 * u_bass);
+      // Right edge: from (0.5+w, base) to (0.5, peak)
+      vec2 line_start_r = vec2(0.5 + peak_w, y_base);
+      vec2 line_end_r = vec2(0.5, y_peak);
+      vec2 to_point_r = uv - line_start_r;
+      vec2 line_dir_r = normalize(line_end_r - line_start_r);
+      float proj_r = clamp(dot(to_point_r, line_dir_r), 0.0, length(line_end_r - line_start_r));
+      float dist_right = length(to_point_r - proj_r * line_dir_r);
+
+      // Base line
+      float dist_base = abs(uv.y - y_base);
+      if(uv.x > (0.5 - peak_w - 0.02) && uv.x < (0.5 + peak_w + 0.02)) {
+        dist_base = min(dist_base, 0.1);
+      }
+
+      float line_thickness = mix(0.004, 0.008, z);
+      float left_edge = smoothstep(line_thickness, 0.0, dist_left);
+      float right_edge = smoothstep(line_thickness, 0.0, dist_right);
+      float base_edge = smoothstep(line_thickness, 0.0, dist_base);
+
+      col += (left_edge + right_edge) * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * z);
     }
   }
 
