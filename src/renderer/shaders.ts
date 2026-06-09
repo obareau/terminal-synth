@@ -3663,107 +3663,89 @@ vec3 render(vec2 uv, vec2 res) {
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float t = u_time * u_p0 * 1.5;
-
-  // === BACKGROUND ===
-  // Pure black bottom, fade to blue/purple at top
+  float t = u_time * u_p0;
   vec3 col = vec3(0.0);
-  col = mix(col, vec3(0.02, 0.0, 0.15), smoothstep(0.4, 1.0, uv.y));
+
+  // Background: black to purple gradient
+  col = mix(vec3(0.0), vec3(0.05, 0.0, 0.2), uv.y);
 
   // === MAGENTA SUN ===
-  vec2 sun_pos = vec2(0.5, 0.6);
-  float sun_dist = length(uv - sun_pos);
-  float sun_r = 0.15;
+  float sun_dist = length(uv - vec2(0.5, 0.6));
+  col += exp(-sun_dist * sun_dist * 5.0) * vec3(1.0, 0.3, 0.0); // Orange halo
+  col += exp(-sun_dist * sun_dist * 15.0) * vec3(1.0, 0.0, 1.0); // Magenta core
 
-  // Sun glow (outer)
-  float sun_glow = smoothstep(sun_r + 0.1, sun_r - 0.05, sun_dist);
-  col = mix(col, vec3(1.0, 0.0, 0.8), sun_glow * 0.5);
-
-  // Sun core (bright magenta + orange)
-  vec3 sun_inner = mix(vec3(1.0, 0.3, 0.0), vec3(1.0, 0.0, 1.0), smoothstep(0.0, sun_r, sun_dist));
-  float sun_core = smoothstep(sun_r, sun_r - 0.02, sun_dist);
-  col += sun_core * sun_inner;
-
-  // === GRID HORIZONTAL LINES ===
-  for(float i = 0.0; i < 60.0; i++) {
-    float z = mod(i * 0.1 - t * 0.4, 1.5);
-    if(z > 0.0 && z < 1.0) {
-      float y = mix(0.55, 0.0, z); // Far to near
-      float thickness = mix(0.003, 0.012, z);
-      float d = abs(uv.y - y);
-      float h_line = smoothstep(thickness, 0.0, d);
-
-      col += h_line * vec3(0.0, 1.0, 1.0) * (0.3 + 0.7 * z);
+  // === HORIZONTAL GRID LINES (FAST SCROLL) ===
+  for(float i = 0.0; i < 50.0; i++) {
+    float line_z = mod(i * 0.15 - t * 0.5, 1.5);
+    if(line_z > 0.0 && line_z < 1.0) {
+      float y_line = 0.5 + line_z * 0.4;
+      float thickness = 0.002 + line_z * 0.008;
+      float d = abs(uv.y - y_line);
+      float line = smoothstep(thickness * 1.5, 0.0, d);
+      col += line * vec3(0.0, 1.0, 1.0) * (0.3 + 0.7 * line_z);
     }
   }
 
-  // === GRID VERTICAL LINES (CONVERGE) ===
-  for(float i = 0.0; i < 60.0; i++) {
-    float z = mod(i * 0.1 - t * 0.3, 1.5);
-    if(z > 0.0 && z < 1.0) {
-      float y = mix(0.55, 0.0, z);
-      float width = mix(0.5, 0.02, z);
-      float thickness = mix(0.003, 0.01, z);
+  // === VERTICAL GRID LINES (CONVERGE TO CENTER) ===
+  for(float i = 0.0; i < 50.0; i++) {
+    float line_z = mod(i * 0.15 - t * 0.4, 1.5);
+    if(line_z > 0.0 && line_z < 1.0) {
+      float y_line = 0.5 + line_z * 0.4;
+      float width = (1.0 - line_z) * 0.4; // Converge to center
+      float thickness = 0.002 + line_z * 0.006;
 
-      // Left and right vertical lines
       float x_left = 0.5 - width;
       float x_right = 0.5 + width;
 
       float d_left = abs(uv.x - x_left);
       float d_right = abs(uv.x - x_right);
 
-      float v_left = smoothstep(thickness, 0.0, d_left);
-      float v_right = smoothstep(thickness, 0.0, d_right);
+      float line_left = smoothstep(thickness * 1.5, 0.0, d_left);
+      float line_right = smoothstep(thickness * 1.5, 0.0, d_right);
 
-      col += (v_left + v_right) * vec3(0.0, 0.9, 1.0) * (0.25 + 0.5 * z);
+      col += (line_left + line_right) * vec3(0.0, 0.8, 1.0) * (0.2 + 0.6 * line_z);
     }
   }
 
-  // === CYAN MOUNTAIN PEAKS ===
-  for(float p = 0.0; p < 8.0; p++) {
-    float z = mod(p * 0.15 - t * 0.5, 1.3);
-    if(z > 0.05 && z < 1.0) {
-      float y_base = mix(0.55, 0.05, z);
-      float peak_h = u_p1 * mix(0.35, 0.08, z);
-      float peak_w = mix(0.25, 0.01, z);
+  // === CYAN TRIANGLE MOUNTAINS ===
+  for(float peak_i = 0.0; peak_i < 6.0; peak_i++) {
+    float peak_z = mod(peak_i * 0.2 - t * 0.3, 1.4);
+    if(peak_z > 0.05 && peak_z < 1.0) {
+      float y_base = 0.5 + peak_z * 0.35;
+      float peak_height = u_p1 * (0.3 - peak_z * 0.2);
+      float peak_width = 0.2 * (1.0 - peak_z);
 
-      // Peak center Y
-      float y_peak = y_base - peak_h;
+      float y_peak = y_base - peak_height;
+      float x_left = 0.5 - peak_width;
+      float x_right = 0.5 + peak_width;
 
-      // Left mountain edge (from base-left to peak)
-      float x_left = 0.5 - peak_w;
-      float slope_left_dist = length(vec2(uv.x - x_left, uv.y - y_base)) -
-                              length(vec2(0.0, -peak_h));
+      // Left edge of triangle: line from (x_left, y_base) to (0.5, y_peak)
+      vec2 p1 = vec2(x_left, y_base);
+      vec2 p2 = vec2(0.5, y_peak);
+      vec2 pa = uv - p1;
+      vec2 ba = p2 - p1;
+      float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      float dist_left = length(pa - ba * h);
 
-      // Simple: draw lines from peak to base corners
-      // Left edge: from (0.5-w, base) to (0.5, peak)
-      vec2 line_start_l = vec2(0.5 - peak_w, y_base);
-      vec2 line_end_l = vec2(0.5, y_peak);
-      vec2 to_point_l = uv - line_start_l;
-      vec2 line_dir_l = normalize(line_end_l - line_start_l);
-      float proj_l = clamp(dot(to_point_l, line_dir_l), 0.0, length(line_end_l - line_start_l));
-      float dist_left = length(to_point_l - proj_l * line_dir_l);
+      // Right edge of triangle: line from (x_right, y_base) to (0.5, y_peak)
+      vec2 p3 = vec2(x_right, y_base);
+      pa = uv - p3;
+      ba = p2 - p3;
+      h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      float dist_right = length(pa - ba * h);
 
-      // Right edge: from (0.5+w, base) to (0.5, peak)
-      vec2 line_start_r = vec2(0.5 + peak_w, y_base);
-      vec2 line_end_r = vec2(0.5, y_peak);
-      vec2 to_point_r = uv - line_start_r;
-      vec2 line_dir_r = normalize(line_end_r - line_start_r);
-      float proj_r = clamp(dot(to_point_r, line_dir_r), 0.0, length(line_end_r - line_start_r));
-      float dist_right = length(to_point_r - proj_r * line_dir_r);
-
-      // Base line
+      // Base line from (x_left, y_base) to (x_right, y_base)
       float dist_base = abs(uv.y - y_base);
-      if(uv.x > (0.5 - peak_w - 0.02) && uv.x < (0.5 + peak_w + 0.02)) {
-        dist_base = min(dist_base, 0.1);
+      if(uv.x > x_left - 0.01 && uv.x < x_right + 0.01) {
+        dist_base = min(dist_base, 0.05);
       }
 
-      float line_thickness = mix(0.004, 0.008, z);
-      float left_edge = smoothstep(line_thickness, 0.0, dist_left);
-      float right_edge = smoothstep(line_thickness, 0.0, dist_right);
-      float base_edge = smoothstep(line_thickness, 0.0, dist_base);
+      float line_width = 0.004 + peak_z * 0.004;
+      float edge_left = smoothstep(line_width, 0.0, dist_left);
+      float edge_right = smoothstep(line_width, 0.0, dist_right);
+      float edge_base = smoothstep(line_width * 2.0, 0.0, dist_base);
 
-      col += (left_edge + right_edge) * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * z);
+      col += (edge_left + edge_right + edge_base) * vec3(0.0, 1.0, 1.0) * (0.5 + 0.5 * peak_z);
     }
   }
 
