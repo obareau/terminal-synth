@@ -3699,7 +3699,6 @@ vec3 render(vec2 uv, vec2 res) {
   }
 
   // Horizontal scan lines (CRT effect)
-  float scan = 0.5 + 0.5 * sin(p.y * 80.0);
   float scanline = smoothstep(0.005, 0.001, abs(mod(p.y * 40.0, 0.1) - 0.05));
   col += vec3(0.1, 0.0, 0.15) * scanline * 0.3;
 
