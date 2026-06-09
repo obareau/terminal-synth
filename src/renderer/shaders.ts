@@ -3653,4 +3653,61 @@ vec3 render(vec2 uv, vec2 res) {
   return col;
 }`,
   },
+
+  {
+    name: "Nightcall Mountains",
+    params: [
+      { label: "Peaks", key: "u_p0", min: 3, max: 12, default: 7, step: 1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * u_p1 * (0.8 + u_bass * 0.5);
+
+  vec3 col = vec3(0.02, 0.0, 0.04); // Deep purple-black background
+
+  // Mountain peaks - wireframe style
+  float peak_count = u_p0;
+  float spacing = 2.0 / peak_count;
+
+  for(float i = 0.0; i < peak_count; i++) {
+    float x_center = -1.0 + i * spacing + spacing * 0.5;
+    float peak_height = 0.5 + 0.3 * sin(t * 0.7 + i * 0.5) + u_mid * 0.2;
+
+    // Left slope of mountain
+    float dx = p.x - x_center;
+    float slope_left = peak_height - abs(dx) * 1.5;
+
+    // Add wave modulation
+    float wave = sin(p.x * 3.0 + t - i * 0.3) * 0.08;
+    slope_left += wave;
+
+    // Wireframe line for left slope
+    float d_left = abs(p.y - slope_left);
+    float line_left = smoothstep(0.01, 0.002, d_left);
+
+    // Color: synthwave neon (magenta to cyan)
+    vec3 neon = mix(
+      vec3(1.0, 0.1, 0.5),    // Magenta
+      vec3(0.0, 0.8, 1.0),    // Cyan
+      0.5 + 0.5 * sin(i + t * 0.5)
+    );
+
+    col += line_left * neon * (0.7 + 0.3 * u_bass);
+  }
+
+  // Horizontal scan lines (CRT effect)
+  float scan = 0.5 + 0.5 * sin(p.y * 80.0);
+  float scanline = smoothstep(0.005, 0.001, abs(mod(p.y * 40.0, 0.1) - 0.05));
+  col += vec3(0.1, 0.0, 0.15) * scanline * 0.3;
+
+  // Glow effect - brighten on bass
+  col += vec3(0.4, 0.1, 0.6) * (0.2 + 0.3 * u_bass) * 0.15;
+
+  col *= 0.7 + 0.5 * u_level;
+  return col;
+}`,
+  },
 ];
