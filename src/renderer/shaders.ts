@@ -3657,93 +3657,135 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Nightcall Mountains",
     params: [
-      { label: "Grid Speed", key: "u_p0", min: 0.5, max: 3, default: 2, step: 0.1 },
+      { label: "Speed", key: "u_p0", min: 0.5, max: 3, default: 2, step: 0.1 },
       { label: "Mountain Height", key: "u_p1", min: 0.3, max: 1, default: 0.6, step: 0.05 },
     ],
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float t = u_time * u_p0;
+  vec2 p = uv - 0.5; // Center coordinate
   vec3 col = vec3(0.0);
 
-  // Background: black to purple gradient
+  // === BACKGROUND ===
   col = mix(vec3(0.0), vec3(0.05, 0.0, 0.2), uv.y);
 
-  // === MAGENTA SUN ===
-  float sun_dist = length(uv - vec2(0.5, 0.6));
-  col += exp(-sun_dist * sun_dist * 5.0) * vec3(1.0, 0.3, 0.0); // Orange halo
-  col += exp(-sun_dist * sun_dist * 15.0) * vec3(1.0, 0.0, 1.0); // Magenta core
+  // === VHS SUN: Yellow-Violet gradient with scan lines ===
+  float sun_d = length(uv - vec2(0.5, 0.65));
+  float sun_r = 0.12;
 
-  // === HORIZONTAL GRID LINES (FAST SCROLL) ===
-  for(float i = 0.0; i < 80.0; i++) {
-    float line_z = mod(i * 0.1 - t * 0.6, 2.0);
-    float y_line = line_z; // 0 (near) to 1 (far)
+  // Sun gradient: yellow center to violet edge
+  vec3 sun_col = mix(vec3(1.0, 1.0, 0.0), vec3(0.7, 0.0, 1.0), sun_d / sun_r);
+  float sun_glow = smoothstep(sun_r, sun_r - 0.02, sun_d);
+  col += sun_glow * sun_col;
 
-    float thickness = mix(0.008, 0.001, line_z); // Thicker near, thinner far
-    float d = abs(uv.y - y_line);
-    float line = smoothstep(thickness, 0.0, d);
-    col += line * vec3(0.0, 1.0, 1.0) * (0.2 + 0.8 * (1.0 - line_z));
+  // VHS bands on sun (horizontal scan lines)
+  float sun_scan = sin(sun_d * res.y * 0.5 + t * 5.0) * 0.5 + 0.5;
+  col += sun_glow * sun_col * sun_scan * 0.3;
+
+  // === ROAD: Center quadrille grid (converging toward horizon) ===
+  float road_left = 0.35;   // Road boundaries
+  float road_right = 0.65;
+
+  // Horizontal road lines
+  for(float i = 0.0; i < 100.0; i++) {
+    float z = mod(i * 0.08 - t * 0.7, 2.0);
+    float y = z;
+
+    if(y > 0.0 && y < 1.0) {
+      float thickness = mix(0.01, 0.002, z);
+      float d = abs(uv.y - y);
+      float line = smoothstep(thickness, 0.0, d);
+
+      // Draw only in road area
+      if(uv.x > road_left && uv.x < road_right) {
+        col += line * vec3(0.9, 0.9, 0.2) * (0.3 + 0.7 * (1.0 - z));
+      }
+    }
   }
 
-  // === VERTICAL GRID LINES (CONVERGE TO CENTER) ===
-  for(float i = 0.0; i < 80.0; i++) {
-    float line_z = mod(i * 0.1 - t * 0.5, 2.0);
-    float y_line = line_z;
+  // Vertical road lines (converge to center)
+  for(float i = 0.0; i < 100.0; i++) {
+    float z = mod(i * 0.08 - t * 0.6, 2.0);
+    float y = z;
 
-    float width = line_z * 0.5; // 0 at far (converged), 0.5 at near (spread)
-    float thickness = mix(0.006, 0.001, line_z);
+    if(y > 0.0 && y < 1.0) {
+      float road_width = mix(0.15, 0.01, z); // Converge from 0.35-0.65 to center
+      float thickness = mix(0.008, 0.001, z);
 
-    float x_left = 0.5 - width;
-    float x_right = 0.5 + width;
+      float x_left = 0.5 - road_width;
+      float x_right = 0.5 + road_width;
 
-    float d_left = abs(uv.x - x_left);
-    float d_right = abs(uv.x - x_right);
+      float d_left = abs(uv.x - x_left);
+      float d_right = abs(uv.x - x_right);
 
-    float line_left = smoothstep(thickness, 0.0, d_left);
-    float line_right = smoothstep(thickness, 0.0, d_right);
+      float line_left = smoothstep(thickness, 0.0, d_left);
+      float line_right = smoothstep(thickness, 0.0, d_right);
 
-    col += (line_left + line_right) * vec3(0.0, 0.8, 1.0) * (0.15 + 0.85 * (1.0 - line_z));
+      col += (line_left + line_right) * vec3(0.8, 0.8, 0.1) * (0.25 + 0.75 * (1.0 - z));
+    }
   }
 
-  // === CYAN TRIANGLE MOUNTAINS ===
-  for(float peak_i = 0.0; peak_i < 8.0; peak_i++) {
-    float peak_z = mod(peak_i * 0.15 - t * 0.4, 1.6);
-    if(peak_z > 0.05 && peak_z < 1.0) {
-      float y_base = peak_z; // Mountain base scrolls from bottom to top
-      float peak_height = u_p1 * (0.4 - peak_z * 0.35); // Taller far, shorter near
-      float peak_width = 0.25 * peak_z; // Wider at near, point at far
+  // === CYAN WIREFRAME MOUNTAINS (ON SIDES) ===
+  // Left mountain chain
+  for(float peak_i = 0.0; peak_i < 6.0; peak_i++) {
+    float z = mod(peak_i * 0.2 - t * 0.5, 1.8);
+    if(z > 0.05 && z < 1.0) {
+      float y_base = z;
+      float x_center = 0.2; // Left side
+      float peak_h = u_p1 * (0.35 - z * 0.3);
+      float peak_w = 0.12 * (1.0 - z);
 
-      float y_peak = y_base - peak_height;
-      float x_left = 0.5 - peak_width;
-      float x_right = 0.5 + peak_width;
+      float y_peak = y_base - peak_h;
 
-      // Left edge of triangle: line from (x_left, y_base) to (0.5, y_peak)
-      vec2 p1 = vec2(x_left, y_base);
-      vec2 p2 = vec2(0.5, y_peak);
+      // Triangle edges
+      vec2 p1 = vec2(x_center - peak_w, y_base);
+      vec2 p2 = vec2(x_center, y_peak);
       vec2 pa = uv - p1;
       vec2 ba = p2 - p1;
       float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-      float dist_left = length(pa - ba * h);
+      float dist_l = length(pa - ba * h);
 
-      // Right edge of triangle: line from (x_right, y_base) to (0.5, y_peak)
-      vec2 p3 = vec2(x_right, y_base);
+      vec2 p3 = vec2(x_center + peak_w, y_base);
       pa = uv - p3;
       ba = p2 - p3;
       h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-      float dist_right = length(pa - ba * h);
+      float dist_r = length(pa - ba * h);
 
-      // Base line from (x_left, y_base) to (x_right, y_base)
-      float dist_base = abs(uv.y - y_base);
-      if(uv.x > x_left - 0.01 && uv.x < x_right + 0.01) {
-        dist_base = min(dist_base, 0.05);
-      }
+      float line_w = 0.005;
+      col += smoothstep(line_w, 0.0, dist_l) * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * z);
+      col += smoothstep(line_w, 0.0, dist_r) * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * z);
+    }
+  }
 
-      float line_width = 0.004 + peak_z * 0.004;
-      float edge_left = smoothstep(line_width, 0.0, dist_left);
-      float edge_right = smoothstep(line_width, 0.0, dist_right);
-      float edge_base = smoothstep(line_width * 2.0, 0.0, dist_base);
+  // Right mountain chain
+  for(float peak_i = 0.0; peak_i < 6.0; peak_i++) {
+    float z = mod(peak_i * 0.2 - t * 0.5, 1.8);
+    if(z > 0.05 && z < 1.0) {
+      float y_base = z;
+      float x_center = 0.8; // Right side
+      float peak_h = u_p1 * (0.35 - z * 0.3);
+      float peak_w = 0.12 * (1.0 - z);
 
-      col += (edge_left + edge_right + edge_base) * vec3(0.0, 1.0, 1.0) * (0.5 + 0.5 * peak_z);
+      float y_peak = y_base - peak_h;
+
+      // Triangle edges
+      vec2 p1 = vec2(x_center - peak_w, y_base);
+      vec2 p2 = vec2(x_center, y_peak);
+      vec2 pa = uv - p1;
+      vec2 ba = p2 - p1;
+      float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      float dist_l = length(pa - ba * h);
+
+      vec2 p3 = vec2(x_center + peak_w, y_base);
+      pa = uv - p3;
+      ba = p2 - p3;
+      h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      float dist_r = length(pa - ba * h);
+
+      float line_w = 0.005;
+      col += smoothstep(line_w, 0.0, dist_l) * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * z);
+      col += smoothstep(line_w, 0.0, dist_r) * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * z);
     }
   }
 
