@@ -3657,55 +3657,91 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Nightcall Mountains",
     params: [
-      { label: "Peaks", key: "u_p0", min: 3, max: 12, default: 7, step: 1 },
-      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.6, step: 0.1 },
+      { label: "Peaks", key: "u_p0", min: 3, max: 10, default: 6, step: 1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 1.5, default: 0.3, step: 0.1 },
     ],
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  float t = u_time * u_p1 * (0.8 + u_bass * 0.5);
+  float t = u_time * u_p1;
 
-  vec3 col = vec3(0.02, 0.0, 0.04); // Deep purple-black background
+  // Synthwave background: dark blue to dark purple
+  vec3 bg = mix(vec3(0.0, 0.05, 0.2), vec3(0.1, 0.0, 0.1), uv.y);
+  vec3 col = bg;
 
-  // Mountain peaks - wireframe style
-  float peak_count = u_p0;
-  float spacing = 2.0 / peak_count;
+  // Grid floor - perspective grid
+  float grid_scale = 0.5;
+  float grid_lines = 20.0;
+  for(float i = 0.0; i < grid_lines; i++) {
+    float y_grid = -0.8 + (i / grid_lines) * 1.6;
+    float y_depth = (y_grid + 0.8) / 1.6;
+    float grid_thickness = mix(0.002, 0.008, y_depth) * (1.0 + 0.5 * u_bass);
 
-  for(float i = 0.0; i < peak_count; i++) {
-    float x_center = -1.0 + i * spacing + spacing * 0.5;
-    float peak_height = 0.5 + 0.3 * sin(t * 0.7 + i * 0.5) + u_mid * 0.2;
+    float d_grid = abs(p.y - y_grid);
+    float grid = smoothstep(grid_thickness, 0.0, d_grid);
 
-    // Left slope of mountain
-    float dx = p.x - x_center;
-    float slope_left = peak_height - abs(dx) * 1.5;
+    // Grid color: cyan floor
+    col += grid * vec3(0.0, 0.6, 0.9) * (0.3 + 0.4 * y_depth) * 0.4;
 
-    // Add wave modulation
-    float wave = sin(p.x * 3.0 + t - i * 0.3) * 0.08;
-    slope_left += wave;
-
-    // Wireframe line for left slope
-    float d_left = abs(p.y - slope_left);
-    float line_left = smoothstep(0.01, 0.002, d_left);
-
-    // Color: synthwave neon (magenta to cyan)
-    vec3 neon = mix(
-      vec3(1.0, 0.1, 0.5),    // Magenta
-      vec3(0.0, 0.8, 1.0),    // Cyan
-      0.5 + 0.5 * sin(i + t * 0.5)
-    );
-
-    col += line_left * neon * (0.7 + 0.3 * u_bass);
+    // Vertical grid lines
+    for(float j = -8.0; j <= 8.0; j++) {
+      float x_grid = j * 0.2 * (1.0 - y_depth * 0.3);
+      float d_x = abs(p.x - x_grid);
+      float v_grid = smoothstep(grid_thickness, 0.0, d_x);
+      col += v_grid * vec3(0.0, 0.4, 0.8) * (0.2 + 0.3 * y_depth) * 0.3;
+    }
   }
 
+  // Mountain peaks - wireframe with proper triangles
+  float peak_count = u_p0;
+  for(float i = 0.0; i < peak_count; i++) {
+    float peak_x = -0.8 + (i / peak_count) * 1.6;
+    float peak_height = 0.3 + 0.25 * sin(t * 0.5 + i * 0.7) + u_mid * 0.15;
+
+    // Left slope
+    float dx = p.x - peak_x;
+    float left_y = peak_height + abs(dx) * 0.8 * (1.0 - abs(dx) * 2.0);
+
+    // Right slope from peak
+    float right_peak_x = peak_x + 0.3;
+    float right_dx = p.x - right_peak_x;
+    float right_y = peak_height - abs(right_dx) * 1.2;
+
+    // Draw left edge of mountain
+    float left_edge = abs(p.y - left_y);
+    float left_line = smoothstep(0.006, 0.001, left_edge);
+
+    // Draw right edge of mountain
+    float right_edge = abs(p.y - right_y);
+    float right_line = smoothstep(0.006, 0.001, right_edge);
+
+    // Synthwave magenta/pink for mountains
+    vec3 peak_color = mix(
+      vec3(1.0, 0.0, 0.5),    // Magenta
+      vec3(1.0, 0.2, 0.8),    // Hot pink
+      0.5 + 0.5 * sin(i * 1.3 + t)
+    );
+
+    col += (left_line + right_line) * peak_color * (0.8 + 0.2 * u_bass);
+
+    // Snow/peak caps
+    float peak_dot_d = length(vec2(p.x - peak_x, p.y - peak_height));
+    float peak_dot = exp(-peak_dot_d * peak_dot_d * 100.0);
+    col += peak_dot * vec3(0.9, 0.8, 1.0) * 0.6;
+  }
+
+  // Sun/moon glow
+  float sun_y = 0.6;
+  float sun_d = length(vec2(p.x + 0.3, p.y - sun_y));
+  float sun = exp(-sun_d * sun_d * 8.0);
+  col += sun * vec3(1.0, 0.2, 0.5) * 0.4;
+
   // Horizontal scan lines (CRT effect)
-  float scanline = smoothstep(0.005, 0.001, abs(mod(p.y * 40.0, 0.1) - 0.05));
-  col += vec3(0.1, 0.0, 0.15) * scanline * 0.3;
+  float scanline = 0.5 + 0.5 * sin(uv.y * res.y * 2.0);
+  col *= 0.95 + 0.05 * scanline;
 
-  // Glow effect - brighten on bass
-  col += vec3(0.4, 0.1, 0.6) * (0.2 + 0.3 * u_bass) * 0.15;
-
-  col *= 0.7 + 0.5 * u_level;
+  col *= 0.8 + 0.4 * u_level;
   return col;
 }`,
   },
