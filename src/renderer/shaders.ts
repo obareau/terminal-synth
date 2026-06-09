@@ -3657,90 +3657,101 @@ vec3 render(vec2 uv, vec2 res) {
   {
     name: "Nightcall Mountains",
     params: [
-      { label: "Fractal Detail", key: "u_p0", min: 1, max: 8, default: 3, step: 1 },
-      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1, step: 0.1 },
+      { label: "Grid Speed", key: "u_p0", min: 0.5, max: 3, default: 2, step: 0.1 },
+      { label: "Mountain Height", key: "u_p1", min: 0, max: 1, default: 0.6, step: 0.05 },
     ],
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = uv; // Keep 0-1 range for perspective effect
-  float t = u_time * u_p1 * 0.5;
+  vec2 p = uv - 0.5;
+  float t = u_time * u_p0; // Fast scroll
 
-  // Perspective: scroll depth toward camera
-  float depth = mod(t, 1.0);
+  // === BACKGROUND ===
+  // Black bottom, purple/blue top
+  vec3 col = mix(vec3(0.0), vec3(0.1, 0.0, 0.3), uv.y);
 
-  // Synthwave background gradient
-  vec3 col = mix(vec3(0.05, 0.01, 0.15), vec3(0.0, 0.1, 0.3), p.y);
+  // Stars
+  for(float i = 0.0; i < 30.0; i++) {
+    vec2 star_pos = vec2(
+      sin(i * 2.3) * 2.0,
+      0.3 + cos(i * 1.7) * 0.3
+    );
+    float d = length(p - star_pos);
+    float star = exp(-d * d * 500.0);
+    col += star * vec3(1.0) * 0.3;
+  }
 
-  // === GRID FLOOR ===
-  // Creates perspective grid moving toward camera
-  for(float i = 0.0; i < 50.0; i++) {
-    float grid_z = mod(i / 10.0 - depth, 2.0); // Grid lines coming toward camera
-    if(grid_z < 0.05) { // Only draw visible lines
-      float y = mix(0.5, 0.95, grid_z / 0.1); // Perspective: far to near
-      float thickness = mix(0.002, 0.01, grid_z / 0.1);
+  // === GRID PERSPECTIVE ===
+  // Horizontal grid lines approaching camera
+  for(float i = 0.0; i < 80.0; i++) {
+    float line_z = mod(i * 0.05 - t * 0.3, 1.0);
+    float y_pos = mix(1.0, 0.0, line_z);
 
-      float d = abs(p.y - y);
+    if(y_pos > 0.0 && y_pos < 1.0) {
+      float thickness = mix(0.001, 0.008, line_z);
+      float d = abs(uv.y - y_pos);
       float line = smoothstep(thickness, 0.0, d);
 
-      // Cyan grid
-      col += line * vec3(0.0, 0.8, 1.0) * (0.4 + 0.6 * grid_z);
+      // CYAN neon grid
+      col += line * vec3(0.0, 1.0, 1.0) * (0.3 + 0.7 * line_z) * (0.6 + 0.4 * u_level);
     }
   }
 
-  // Vertical grid lines (perspective distortion)
-  for(float j = 0.0; j < 50.0; j++) {
-    float grid_z = mod(j / 10.0 - depth * 0.5, 2.0);
-    if(grid_z < 0.05) {
-      float y_persp = mix(0.5, 0.95, grid_z / 0.1);
-      float x_center = p.x - 0.5;
-      float width_at_y = mix(0.15, 0.5, grid_z / 0.1); // Perspective spread
-      float x_distorted = (p.x - 0.5) / (width_at_y * 0.5) + 0.5;
+  // Vertical grid lines (perspective converge to center)
+  for(float i = 0.0; i < 80.0; i++) {
+    float line_z = mod(i * 0.05 - t * 0.2, 1.0);
+    float y_pos = mix(1.0, 0.0, line_z);
 
-      // Vertical lines with perspective
-      for(float k = -2.0; k <= 2.0; k++) {
-        float x_line = 0.5 + (k - x_center) * width_at_y;
-        float thickness = mix(0.002, 0.008, grid_z / 0.1);
-        float d = abs(p.x - x_line);
+    if(y_pos > 0.0 && y_pos < 1.0) {
+      float perspective_width = mix(0.8, 0.02, line_z);
+      float x_dist = abs(p.x) / perspective_width - 1.0;
+
+      if(x_dist > -0.5 && x_dist < 0.5) {
+        float thickness = mix(0.001, 0.006, line_z);
+        float d = abs(x_dist);
         float vline = smoothstep(thickness, 0.0, d);
-        col += vline * vec3(0.0, 0.5, 0.9) * (0.3 + 0.5 * grid_z);
+
+        col += vline * vec3(0.0, 1.0, 1.0) * (0.25 + 0.6 * line_z) * (0.5 + 0.3 * u_level);
       }
     }
   }
 
-  // === FRACTAL MOUNTAIN AT HORIZON ===
-  float mountain_y = mix(0.45, 0.5, sin(t * 0.3));
+  // === CYAN WIREFRAME MOUNTAINS ===
+  // Triangle peaks on both sides
+  for(float peak = 0.0; peak < 8.0; peak++) {
+    float z = mod(peak * 0.15 - t * 0.25, 1.5);
+    if(z > 0.1 && z < 1.2) {
+      float y_base = mix(0.5, 0.05, z);
+      float peak_height = u_p1 * mix(0.3, 0.1, z);
 
-  // Simple fractal-like mountain silhouette
-  float x_norm = p.x;
-  float mountain = 0.0;
+      // Left peak triangle
+      float x_left = -mix(0.3, 0.05, z);
+      float left_slope = abs(p.x - x_left) / (peak_height * 2.0);
+      float left_peak = abs(p.y - (y_base - peak_height)) - left_slope;
 
-  // Multi-level fractal oscillation
-  for(float level = 0.0; level < u_p0; level++) {
-    float freq = pow(2.0, level);
-    float amp = 1.0 / freq;
-    mountain += sin(x_norm * freq * 6.28 + t * 0.5) * amp * 0.15;
+      // Right peak triangle
+      float x_right = mix(0.3, 0.05, z);
+      float right_slope = abs(p.x - x_right) / (peak_height * 2.0);
+      float right_peak = abs(p.y - (y_base - peak_height)) - right_slope;
+
+      // Draw peaks CYAN
+      float edge = smoothstep(0.006, 0.001, min(left_peak, right_peak));
+      col += edge * vec3(0.0, 1.0, 1.0) * (0.5 + 0.5 * z) * (0.8 + 0.2 * u_bass);
+    }
   }
 
-  float fractal_height = mountain_y + mountain;
+  // === SUN/MOON MAGENTA ===
+  float sun_y = 0.65;
+  float sun_d = length(vec2(p.x, uv.y - sun_y));
+  float sun_glow = exp(-sun_d * sun_d * 3.0);
 
-  // Mountain silhouette (magenta glow)
-  float mountain_dist = abs(p.y - fractal_height);
-  float mountain_line = smoothstep(0.015, 0.001, mountain_dist);
-  vec3 magenta = mix(vec3(1.0, 0.0, 0.5), vec3(1.0, 0.3, 0.8), 0.5 + 0.5 * sin(t));
-  col += mountain_line * magenta * 0.9;
+  // Magenta + orange gradient sun
+  vec3 sun_color = mix(vec3(1.0, 0.0, 1.0), vec3(1.0, 0.5, 0.0), sun_d * 2.0);
+  col += sun_glow * sun_color * 0.8;
 
-  // Mountain glow (magenta halo)
-  float glow = exp(-mountain_dist * mountain_dist * 20.0);
-  col += glow * magenta * 0.3;
-
-  // ===  MOTION BLUR / SPEED EFFECT ===
-  float speed_intensity = (0.5 + 0.5 * u_bass) * u_level;
-  col *= 1.0 - (1.0 - p.y) * speed_intensity * 0.15; // Darken outer edges during speed
-
-  // CRT scan lines
-  float scan = 0.5 + 0.5 * sin(p.y * res.y * 1.5);
-  col *= 0.92 + 0.08 * scan;
+  // Sun bright core
+  float sun_core = exp(-sun_d * sun_d * 20.0);
+  col += sun_core * vec3(1.0, 0.2, 0.8);
 
   return col;
 }`,
