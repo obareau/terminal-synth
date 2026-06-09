@@ -3663,95 +3663,104 @@ vec3 render(vec2 uv, vec2 res) {
     category: "Geometry",
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  vec2 p = uv - 0.5;
-  float t = u_time * u_p0; // Fast scroll
+  float t = u_time * u_p0 * 2.0; // FAST scroll - multiply by 2
 
   // === BACKGROUND ===
-  // Black bottom, purple/blue top
-  vec3 col = mix(vec3(0.0), vec3(0.1, 0.0, 0.3), uv.y);
+  // Black bottom, blue/purple gradient top
+  vec3 col = mix(vec3(0.0, 0.0, 0.0), vec3(0.05, 0.0, 0.2), smoothstep(0.5, 1.0, uv.y));
 
-  // Stars
-  for(float i = 0.0; i < 30.0; i++) {
+  // Stars in upper sky
+  for(float i = 0.0; i < 20.0; i++) {
     vec2 star_pos = vec2(
-      sin(i * 2.3) * 2.0,
-      0.3 + cos(i * 1.7) * 0.3
+      fract(sin(i * 2.3) * 0.5) * 2.0 - 1.0,
+      0.5 + fract(cos(i * 1.7) * 0.5) * 0.3
     );
-    float d = length(p - star_pos);
-    float star = exp(-d * d * 500.0);
-    col += star * vec3(1.0) * 0.3;
+    float d = length(uv - star_pos);
+    float star = exp(-d * d * 200.0);
+    col += star * vec3(1.0) * 0.4;
   }
 
-  // === GRID PERSPECTIVE ===
-  // Horizontal grid lines approaching camera
-  for(float i = 0.0; i < 80.0; i++) {
-    float line_z = mod(i * 0.05 - t * 0.3, 1.0);
-    float y_pos = mix(1.0, 0.0, line_z);
+  // === LARGE MAGENTA SUN ===
+  float sun_y = 0.55;
+  float sun_d = length(uv - vec2(0.5, sun_y));
+
+  // Sun glow (large)
+  float sun_glow = exp(-sun_d * sun_d * 8.0);
+  vec3 sun_color = mix(vec3(1.0, 0.0, 1.0), vec3(1.0, 0.3, 0.0), sun_d * 3.0);
+  col += sun_glow * sun_color;
+
+  // Sun bright core magenta
+  float sun_core = exp(-sun_d * sun_d * 80.0);
+  col += sun_core * vec3(1.0, 0.2, 0.8) * 1.2;
+
+  // === GRID HORIZONTAL LINES ===
+  // Fast scrolling toward camera
+  for(float i = 0.0; i < 100.0; i++) {
+    float grid_z = mod(i * 0.02 - t, 1.0);
+    float y_pos = 1.0 - grid_z; // Far (y=1) to near (y=0)
 
     if(y_pos > 0.0 && y_pos < 1.0) {
-      float thickness = mix(0.001, 0.008, line_z);
+      float thickness = mix(0.002, 0.015, grid_z); // Thicker as comes closer
       float d = abs(uv.y - y_pos);
       float line = smoothstep(thickness, 0.0, d);
 
-      // CYAN neon grid
-      col += line * vec3(0.0, 1.0, 1.0) * (0.3 + 0.7 * line_z) * (0.6 + 0.4 * u_level);
+      // BRIGHT CYAN
+      col += line * vec3(0.0, 1.0, 1.0) * (0.4 + 0.6 * grid_z);
     }
   }
 
-  // Vertical grid lines (perspective converge to center)
-  for(float i = 0.0; i < 80.0; i++) {
-    float line_z = mod(i * 0.05 - t * 0.2, 1.0);
-    float y_pos = mix(1.0, 0.0, line_z);
+  // === GRID VERTICAL LINES (PERSPECTIVE) ===
+  // Lines converge to center
+  for(float i = 0.0; i < 100.0; i++) {
+    float grid_z = mod(i * 0.02 - t * 0.8, 1.0);
+    float y_pos = 1.0 - grid_z;
 
     if(y_pos > 0.0 && y_pos < 1.0) {
-      float perspective_width = mix(0.8, 0.02, line_z);
-      float x_dist = abs(p.x) / perspective_width - 1.0;
+      // Converge: far lines are wide, near lines are close to center
+      float line_spread = mix(1.0, 0.05, grid_z);
 
-      if(x_dist > -0.5 && x_dist < 0.5) {
-        float thickness = mix(0.001, 0.006, line_z);
-        float d = abs(x_dist);
+      // Check left and right vertical lines
+      for(float k = -3.0; k <= 3.0; k++) {
+        float x_line = 0.5 + (k * line_spread);
+        float thickness = mix(0.002, 0.012, grid_z);
+        float d = abs(uv.x - x_line);
         float vline = smoothstep(thickness, 0.0, d);
 
-        col += vline * vec3(0.0, 1.0, 1.0) * (0.25 + 0.6 * line_z) * (0.5 + 0.3 * u_level);
+        col += vline * vec3(0.0, 0.8, 0.9) * (0.3 + 0.5 * grid_z);
       }
     }
   }
 
   // === CYAN WIREFRAME MOUNTAINS ===
-  // Triangle peaks on both sides
-  for(float peak = 0.0; peak < 8.0; peak++) {
-    float z = mod(peak * 0.15 - t * 0.25, 1.5);
-    if(z > 0.1 && z < 1.2) {
-      float y_base = mix(0.5, 0.05, z);
-      float peak_height = u_p1 * mix(0.3, 0.1, z);
+  // Simple triangles on both sides
+  for(float peak = 0.0; peak < 10.0; peak++) {
+    float z = mod(peak * 0.1 - t * 0.6, 1.2);
+
+    if(z > 0.05 && z < 1.0) {
+      float y_base = mix(0.55, 0.0, z); // Base comes toward camera
+      float peak_width = mix(0.4, 0.02, z); // Peaks converge
+      float peak_top = y_base - u_p1 * mix(0.3, 0.05, z);
 
       // Left peak triangle
-      float x_left = -mix(0.3, 0.05, z);
-      float left_slope = abs(p.x - x_left) / (peak_height * 2.0);
-      float left_peak = abs(p.y - (y_base - peak_height)) - left_slope;
+      float x_left = 0.5 - peak_width;
+      float left_x_dist = abs(uv.x - x_left) / (peak_width + 0.01);
+      float left_y_dist = uv.y - mix(y_base, peak_top, left_x_dist * 0.5);
+      float left_edge = abs(left_y_dist) - left_x_dist * (y_base - peak_top);
 
       // Right peak triangle
-      float x_right = mix(0.3, 0.05, z);
-      float right_slope = abs(p.x - x_right) / (peak_height * 2.0);
-      float right_peak = abs(p.y - (y_base - peak_height)) - right_slope;
+      float x_right = 0.5 + peak_width;
+      float right_x_dist = abs(uv.x - x_right) / (peak_width + 0.01);
+      float right_y_dist = uv.y - mix(y_base, peak_top, right_x_dist * 0.5);
+      float right_edge = abs(right_y_dist) - right_x_dist * (y_base - peak_top);
 
-      // Draw peaks CYAN
-      float edge = smoothstep(0.006, 0.001, min(left_peak, right_peak));
-      col += edge * vec3(0.0, 1.0, 1.0) * (0.5 + 0.5 * z) * (0.8 + 0.2 * u_bass);
+      // Draw peaks BRIGHT CYAN
+      float left_line = smoothstep(0.008, 0.001, left_edge);
+      float right_line = smoothstep(0.008, 0.001, right_edge);
+      float peak_brightness = (0.5 + 0.5 * z);
+
+      col += (left_line + right_line) * vec3(0.0, 1.0, 1.0) * peak_brightness * (0.7 + 0.3 * u_bass);
     }
   }
-
-  // === SUN/MOON MAGENTA ===
-  float sun_y = 0.65;
-  float sun_d = length(vec2(p.x, uv.y - sun_y));
-  float sun_glow = exp(-sun_d * sun_d * 3.0);
-
-  // Magenta + orange gradient sun
-  vec3 sun_color = mix(vec3(1.0, 0.0, 1.0), vec3(1.0, 0.5, 0.0), sun_d * 2.0);
-  col += sun_glow * sun_color * 0.8;
-
-  // Sun bright core
-  float sun_core = exp(-sun_d * sun_d * 20.0);
-  col += sun_core * vec3(1.0, 0.2, 0.8);
 
   return col;
 }`,
