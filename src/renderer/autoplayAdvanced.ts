@@ -89,6 +89,16 @@ export const AUTOPLAY_PRESETS: Record<string, AutoplayPreset> = {
     driftSpeed: 0.5,
     crossfadeDuration: 150,
   },
+  minimal: {
+    name: "Minimal",
+    minMeasures: 30,
+    maxMeasures: 60,
+    bassReactivity: 0.1,
+    effectChangeProb: 0.15,
+    perturbatorChangeProb: 0.02,
+    driftSpeed: 0.05,
+    crossfadeDuration: 1500,
+  },
 };
 
 class AutoplayAdvanced {

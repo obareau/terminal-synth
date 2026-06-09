@@ -3514,4 +3514,143 @@ vec3 render(vec2 uv, vec2 res) {
   return col;
 }`,
   },
+
+  {
+    name: "Sine Wave Cascade",
+    params: [
+      { label: "Frequency", key: "u_p0", min: 1, max: 20, default: 8, step: 1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1, step: 0.1 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * u_p1;
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  vec3 col = vec3(0.0);
+
+  // Horizontal cascading sine waves
+  for(float i = 0.0; i < 12.0; i++) {
+    float y_offset = (i / 12.0) - 0.5;
+    float wave = sin(p.x * u_p0 + t + i * 0.3) * 0.08;
+    float d = abs(p.y - (y_offset + wave));
+    float line = smoothstep(0.008, 0.002, d);
+    col += vec3(line * (0.7 + 0.3 * u_bass));
+  }
+
+  col *= 0.5 + 0.5 * u_level;
+  col += u_mid * 0.1;
+  return col;
+}`,
+  },
+
+  {
+    name: "Triangle Oscillator",
+    params: [
+      { label: "Frequency", key: "u_p0", min: 2, max: 20, default: 6, step: 1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.8, step: 0.1 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * u_p1;
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  vec3 col = vec3(0.0);
+
+  // Triangle wave oscillators - create zigzag pattern
+  float wave_val = abs(mod(p.x * u_p0 + t, 2.0) - 1.0) * 2.0 - 1.0;
+  wave_val = wave_val * wave_val * 2.0 - 1.0; // Triangle approximation
+
+  float modulation = sin(p.y * 8.0 + t * 0.5) * 0.05;
+  float d = abs(p.y - (wave_val * 0.15 + modulation));
+
+  float line = smoothstep(0.01, 0.002, d);
+  col += vec3(line * (0.8 + 0.2 * u_bass));
+
+  // Verticals at peaks
+  for(float i = -2.0; i < 3.0; i++) {
+    float x_peak = i / u_p0 + t * 0.2;
+    float d_peak = abs(p.x - x_peak);
+    float vert = smoothstep(0.006, 0.001, d_peak) * (0.5 + 0.3 * u_mid);
+    col += vec3(vert);
+  }
+
+  col *= 0.5 + 0.6 * u_level;
+  return col;
+}`,
+  },
+
+  {
+    name: "Sawtooth Sweep",
+    params: [
+      { label: "Frequency", key: "u_p0", min: 3, max: 20, default: 10, step: 1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 1.2, step: 0.1 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * u_p1;
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  vec3 col = vec3(0.0);
+
+  // Sawtooth wave - linear rise and sharp fall
+  for(float band = 0.0; band < 8.0; band++) {
+    float y_center = (band / 8.0) - 0.5;
+
+    // Sawtooth: modulo creates the repeating ramp
+    float x_phase = p.x * u_p0 + t + band * 0.2;
+    float saw_wave = mod(x_phase, 1.0) - 0.5; // -0.5 to 0.5
+
+    float wave_y = saw_wave * 0.12;
+    float d = abs(p.y - (y_center + wave_y));
+    float line = smoothstep(0.007, 0.002, d);
+
+    col += vec3(line * (0.6 + 0.4 * u_bass));
+  }
+
+  col *= 0.5 + 0.7 * u_level;
+  col += u_treble * 0.15;
+  return col;
+}`,
+  },
+
+  {
+    name: "Orbital Harmonics",
+    params: [
+      { label: "Harmonics", key: "u_p0", min: 2, max: 8, default: 4, step: 1 },
+      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time * u_p1;
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  vec3 col = vec3(0.0);
+
+  // Multiple orbital harmonics - concentric sine waves
+  for(float harmonic = 1.0; harmonic <= u_p0; harmonic++) {
+    float r = length(p);
+
+    // Orbital pattern
+    float angle = atan(p.y, p.x);
+
+    // Harmonic sine wave in radial direction
+    float wave = sin(r * 20.0 * harmonic - t * 2.0 + angle * harmonic) * (0.5 + 0.5 * u_level);
+
+    // Ring radius for this harmonic
+    float ring_r = 0.1 + harmonic * 0.12;
+    float ring_width = 0.015;
+
+    // Modulate with sine wave
+    float modulated_r = ring_r + wave * 0.03;
+    float d = abs(r - modulated_r);
+
+    float ring = smoothstep(ring_width, 0.0, d);
+    col += vec3(ring * (0.5 + 0.3 * u_bass + 0.2 * sin(harmonic + t)));
+  }
+
+  col *= 0.6 + 0.4 * u_level;
+  col += u_mid * 0.08;
+  return col;
+}`,
+  },
 ];

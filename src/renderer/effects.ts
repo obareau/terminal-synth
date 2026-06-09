@@ -962,4 +962,99 @@ vec3 process(vec2 uv) {
 }`,
   },
 
+  {
+    name: "BW Orbital Ring",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 p = uv - 0.5;
+  float r = length(p);
+  vec3 col = prev(uv);
+
+  // Monochrome orbital rings
+  for(float i = 1.0; i < 5.0; i++) {
+    float orbit_r = i * 0.12;
+    float pulse = 0.5 + 0.5 * sin(t * 1.5 + i * 0.8);
+    float ring = smoothstep(0.02 * pulse, 0.005 * pulse, abs(r - orbit_r));
+    col += vec3(ring * (0.4 + 0.6 * pulse) * a);
+  }
+
+  // Center pulse
+  float center = exp(-r * r * 80.0) * (0.3 + 0.4 * sin(t * 2.0));
+  col += vec3(center * a);
+
+  return mix(prev(uv), col, a * 0.3);
+}`,
+  },
+
+  {
+    name: "BW Grid Lines",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 p = uv - 0.5;
+  vec3 col = prev(uv);
+
+  // Monochrome grid with rotation
+  float angle = atan(p.y, p.x) + t * 0.3;
+  float r = length(p);
+
+  // Radial lines
+  for(float i = 0.0; i < 8.0; i++) {
+    float line_angle = i * 0.785; // 8 lines
+    float angle_diff = mod(angle - line_angle + 3.14159, 6.28) - 3.14159;
+    float line_width = 0.01 * (1.0 + 0.5 * sin(t * 2.0 + i));
+    float line = smoothstep(line_width, 0.0, abs(angle_diff) * r);
+    col += vec3(line * a * (0.5 + 0.5 * cos(t + i)));
+  }
+
+  // Concentric circles
+  for(float i = 1.0; i < 6.0; i++) {
+    float circle_r = i * 0.15;
+    float circle = smoothstep(0.008, 0.001, abs(r - circle_r));
+    col += vec3(circle * a * (0.4 + 0.3 * sin(t * 1.5 + i)));
+  }
+
+  return mix(prev(uv), col, a * 0.25);
+}`,
+  },
+
+  {
+    name: "Starfield BW",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  float t = u_time;
+  vec2 p = uv - 0.5;
+  float r = length(p);
+  vec3 col = prev(uv);
+
+  // Monochrome starfield orbiting the center
+  float star_count = 20.0;
+  for(float i = 0.0; i < star_count; i++) {
+    // Star position on orbit
+    float angle = (i / star_count) * 6.28 + t * (0.5 + 0.3 * sin(i));
+    float orbit_r = 0.15 + 0.1 * sin(i * 0.7 + t * 0.3);
+    vec2 star_pos = vec2(cos(angle), sin(angle)) * orbit_r;
+
+    // Star brightness
+    float brightness = 0.5 + 0.5 * sin(t * 2.0 + i * 1.3);
+
+    // Render star
+    float d = length(p - star_pos);
+    float star = exp(-d * d * 150.0) * brightness;
+
+    col += vec3(star * a * (0.6 + 0.4 * brightness));
+  }
+
+  // Center pulse
+  float center = 0.3 * (1.0 + sin(t * 3.0)) * exp(-r * r * 120.0);
+  col += vec3(center * a);
+
+  return mix(prev(uv), col, a * 0.35);
+}`,
+  },
+
 ];
