@@ -109,9 +109,9 @@ const musicInfoElements = {
   styleDisplay: document.getElementById("style-display") as HTMLElement | null,
 };
 
-// Only analyze music every 60 frames (~1x per second at 60fps) - minimal CPU
+// Only update display every 6 frames (~10x per second at 60fps) - balance CPU and responsiveness
 let analyzeFrameCounter = 0;
-const ANALYZE_INTERVAL = 60;
+const ANALYZE_INTERVAL = 6;
 
 // --- Tab system for generators and controls ---
 function setupTabs(panelId: string) {
