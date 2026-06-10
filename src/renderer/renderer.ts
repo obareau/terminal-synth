@@ -62,6 +62,8 @@ const chain = $("chain");
 const masterBrightnessToggle = $<HTMLButtonElement>("master-brightness-toggle");
 const masterBrightnessSlider = $<HTMLInputElement>("master-brightness-slider");
 const themeToggle = $<HTMLButtonElement>("theme-toggle");
+const mireElement = $("mire-overlay");
+const mireTimeElement = $("mire-time");
 
 // === Light/Dark theme toggle (persisted in localStorage) ===
 function applyTheme(light: boolean): void {
@@ -266,6 +268,14 @@ function buildParamsPanel(shader: typeof SHADERS[0]): void {
 function loadShader(i: number): void {
   const shaderName = SHADERS[i]?.name ?? "unknown";
   console.log(`[Renderer] Loading shader[${i}]: ${shaderName}`);
+
+  // Hide mire when switching away from it
+  if (mireVisible && i !== 0) {
+    const mireEl = document.getElementById("mire-overlay");
+    if (mireEl) mireEl.style.opacity = "0";
+    mireVisible = false;
+  }
+
   const result = pipeline.setGenerator(SHADERS[i]!.src);
   if (!result.success) {
     console.error("[Renderer] Generator failed:", shaderName, "→", result.error);
@@ -898,6 +908,9 @@ function frame(now: number): void {
   const frameStart = performance.now();
   const time = now / 1000;
 
+  // Update mire visibility (auto-hide after 8s)
+  updateMireVisibility();
+
   // Update FPS counter
   frameCount++;
   const elapsed = frameStart - lastFpsTime;
@@ -1147,6 +1160,33 @@ vec3 process(vec2 uv) {
 
   requestAnimationFrame(frame);
 }
+
+// MIRE TV ORTF - Display at startup
+let mireStartTime = 0;
+let mireVisible = true;
+
+function updateMireTime(): void {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, "0");
+  const m = String(now.getMinutes()).padStart(2, "0");
+  const s = String(now.getSeconds()).padStart(2, "0");
+  mireTimeElement.textContent = `${h}:${m}:${s}`;
+}
+
+function updateMireVisibility(): void {
+  if (!mireVisible) return;
+  const elapsed = performance.now() - mireStartTime;
+  if (elapsed > 8000) { // Hide after 8 seconds
+    mireElement.style.opacity = "0";
+    mireVisible = false;
+  }
+}
+
+// Initialize mire at startup
+mireStartTime = performance.now();
+updateMireTime();
+setInterval(updateMireTime, 1000);
+
 requestAnimationFrame(frame);
 
 // Update CPU/GPU stats every 500ms

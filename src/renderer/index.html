@@ -613,6 +613,27 @@
       <pre id="ascii" hidden></pre>
       <pre id="ascii-glitch-permanent"></pre>
       <pre id="text" hidden></pre>
+      <div id="mire-overlay" style="
+        position: absolute; inset: 0; z-index: 10;
+        display: flex; flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        padding: 60px 40px;
+        font-family: 'Courier New', monospace;
+        color: #fff;
+        pointer-events: none;
+        opacity: 1;
+        transition: opacity 1s ease-out;
+        user-select: none;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      ">
+        <div style="font-size: 52px; font-weight: bold; letter-spacing: 6px; text-align: center;">
+          TERMINAL·SYNTH
+        </div>
+        <div style="font-size: 72px; font-weight: bold; text-align: center; letter-spacing: 3px; font-family: 'Courier New', monospace;" id="mire-time">
+          00:00:00
+        </div>
+      </div>
       <div id="vignette-overlay"></div>
     </div>
 
