@@ -13,7 +13,7 @@ export interface MusicAnalysis {
 export class MusicAnalyzer {
   private readonly BPM_MIN = 40;
   private readonly BPM_MAX = 240;
-  private readonly ONSET_THRESHOLD = 0.25;
+  private readonly ONSET_THRESHOLD = 0.12; // Lower threshold for lissed audio bands
 
   private lastOnsetTime = 0;
   private lastInterval = 0;
