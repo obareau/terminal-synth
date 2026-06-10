@@ -48,14 +48,6 @@ npm run package        # Build Windows .exe
 
 ## 🎬 Screenshots
 
-### v1.6.0 - Écran MIRE au Démarrage
-![MIRE ORTF - Écran de démarrage style test card TV vintage](assets/screenshots/v1.6.0-mire-startup.png)
-**Écran exclusif MIRE ORTF** — Black & white test card avec heure en direct, inspire par les mires TV anciennes
-
-### v1.6.0 - Indicateurs Musicaux
-![Music Analysis - BPM & Energy Display](assets/screenshots/v1.6.0-music-indicators.png)
-**Analyse musicale en temps réel** — BPM detection adaptative, Energy indicator avec couleurs (vert/jaune/rouge), Style classification
-
 ### Série Géométrique Minimaliste
 ![Geometric Patterns - Lignes diagonales et patterns élégants](assets/screenshots/01-geometric.png)
 **Générateur:** Geometric Shape Series — Patterns élégants en monochrome
