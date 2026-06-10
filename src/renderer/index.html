@@ -533,14 +533,19 @@
     <div class="sep"></div>
     <button id="theme-toggle" aria-label="Toggle Theme" title="Toggle light/dark theme [T]">☀</button>
     <div class="spacer"></div>
-    <span id="autoplay-status" style="font-size:10px;color:var(--text-dim);margin-right:10px;"></span>
-    <div class="sep"></div>
-    <!-- Music Analysis Display -->
-    <div id="music-info" style="display:flex;gap:12px;align-items:center;font-size:10px;margin-right:12px;">
-      <span id="bpm-display" style="color:var(--text-dim);">— BPM</span>
-      <span id="energy-display" style="color:var(--text-dim);">— %</span>
-      <span id="style-display" style="color:var(--text-dim);">—</span>
+    <!-- Music Analysis Display - Large and visible -->
+    <div id="music-info" style="display:flex;gap:16px;align-items:center;font-size:14px;font-weight:600;margin-right:16px;padding:0 12px;border-left:1px solid var(--border);border-right:1px solid var(--border);">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.05em;">ENERGY</span>
+        <span id="energy-display" style="font-size:18px;color:var(--accent);font-weight:700;">—%</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.05em;">BEAT</span>
+        <span id="bpm-display" style="font-size:18px;color:var(--orange);font-weight:700;">—</span>
+      </div>
     </div>
+    <div class="sep"></div>
+    <span id="autoplay-status" style="font-size:10px;color:var(--text-dim);margin-right:10px;"></span>
     <div class="sep"></div>
     <button id="full" aria-label="Fullscreen" title="Plein écran  [F]">⛶</button>
   </div>
