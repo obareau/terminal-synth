@@ -1,23 +1,26 @@
-// Ultra-lightweight BPM estimation from bass beat pattern
+// Adaptive beat detection for automatic BPM calculation
 export interface MusicAnalysis {
   bpm: number;
   bpmConfidence: number;
   energy: number;
   energyTrend: number;
   spectralChange: number;
-  isTransient: boolean;
   style: "calm" | "driving" | "chaotic" | "peak";
 }
 
 export class MusicAnalyzer {
   private readonly BPM_MIN = 60;
   private readonly BPM_MAX = 180;
+  private readonly WINDOW_SIZE = 120; // 2 seconds at 60fps
 
-  private bassPeakCount = 0;
-  private peakWindow: number[] = []; // Last 60 frames of bass levels
-  private lastBassLevel = 0;
+  // Adaptive peak detection
+  private bassHistory: number[] = [];
+  private peakTimes: number[] = []; // Timestamps of detected peaks
+  private bpmEstimates: number[] = []; // Recent BPM estimates
+  private lastPeakTime = 0;
   private lastBPM = 120;
   private tapTempoData = { taps: [] as number[], bpm: 120 };
+  private frameCount = 0;
 
   constructor(initialBpm: number = 120) {
     this.lastBPM = initialBpm;
@@ -25,48 +28,70 @@ export class MusicAnalyzer {
   }
 
   analyze(bands: { bass: number; mid: number; treble: number; level: number }): MusicAnalysis {
-    // Track bass peaks (upward crossings of 0.6 threshold)
-    const bassPeak = this.lastBassLevel <= 0.6 && bands.bass > 0.6;
-    if (bassPeak) {
-      this.bassPeakCount++;
-    }
-    this.lastBassLevel = bands.bass;
+    this.frameCount++;
 
-    // Keep window of last 60 frames
-    this.peakWindow.push(bands.bass);
-    if (this.peakWindow.length > 60) {
-      this.peakWindow.shift();
+    // Build history of bass levels
+    this.bassHistory.push(bands.bass);
+    if (this.bassHistory.length > this.WINDOW_SIZE) {
+      this.bassHistory.shift();
     }
 
-    // Estimate BPM from peak frequency (60 frames = 1 second at 60fps)
-    // Count peaks in last second
-    let peakCount = 0;
-    let lastPeakIdx = -1;
-    for (let i = 0; i < this.peakWindow.length; i++) {
-      const isPeak = i === 0 ? false : this.peakWindow[i - 1] <= 0.6 && this.peakWindow[i] > 0.6;
-      if (isPeak) {
-        peakCount++;
-        lastPeakIdx = i;
+    // Detect peaks using adaptive threshold
+    const avgBass = this.bassHistory.length > 0
+      ? this.bassHistory.reduce((a, b) => a + b) / this.bassHistory.length
+      : 0.3;
+    const threshold = avgBass + (0.3 * avgBass); // Peak = average + 30% of average
+
+    const now = this.frameCount;
+    const isPeak = bands.bass > threshold &&
+                   now - this.lastPeakTime > 10; // At least 10 frames (167ms) between peaks
+
+    if (isPeak) {
+      this.lastPeakTime = now;
+      this.peakTimes.push(now);
+
+      // Keep only recent peaks (last 5 seconds)
+      while (this.peakTimes.length > 0 && now - this.peakTimes[0] > 300) {
+        this.peakTimes.shift();
       }
-    }
 
-    // BPM = peaks per second * 60 (4 peaks/sec = 240 BPM, 2 peaks/sec = 120 BPM)
-    let bpm = this.lastBPM;
-    if (peakCount >= 2 && this.peakWindow.length >= 30) {
-      const estimatedBPM = Math.round(peakCount * 60);
-      if (estimatedBPM >= this.BPM_MIN && estimatedBPM <= this.BPM_MAX) {
-        bpm = estimatedBPM;
-        this.lastBPM = bpm;
+      // Calculate BPM from peak intervals
+      if (this.peakTimes.length >= 3) {
+        const intervals: number[] = [];
+        for (let i = 1; i < this.peakTimes.length; i++) {
+          intervals.push(this.peakTimes[i] - this.peakTimes[i - 1]);
+        }
+
+        // Average interval in frames, convert to BPM
+        const avgInterval = intervals.reduce((a, b) => a + b) / intervals.length;
+        const avgIntervalMs = (avgInterval / 60) * 1000; // 60fps to milliseconds
+        const estimatedBPM = Math.round(60000 / avgIntervalMs);
+
+        if (estimatedBPM >= this.BPM_MIN && estimatedBPM <= this.BPM_MAX) {
+          this.bpmEstimates.push(estimatedBPM);
+
+          // Keep smoothed BPM from last 10 estimates
+          if (this.bpmEstimates.length > 10) {
+            this.bpmEstimates.shift();
+          }
+
+          // Use median of recent estimates for stability
+          const sorted = [...this.bpmEstimates].sort((a, b) => a - b);
+          this.lastBPM = sorted[Math.floor(sorted.length / 2)];
+        }
       }
     }
 
     // Apply manual tap tempo if set
-    if (this.tapTempoData.bpm !== 120) {
-      bpm = this.tapTempoData.bpm;
-    }
+    let bpm = this.tapTempoData.bpm !== 120 ? this.tapTempoData.bpm : this.lastBPM;
+    const confidence = this.tapTempoData.bpm !== 120 ? 0.95 :
+                       this.peakTimes.length >= 3 ? 0.7 : 0.2;
 
-    // Simple energy trend
-    const energyTrend = bands.level > 0.5 ? 1 : bands.level < 0.3 ? -1 : 0;
+    // Energy trend
+    const prevBass = this.bassHistory.length > 1
+      ? this.bassHistory[this.bassHistory.length - 2]
+      : bands.bass;
+    const energyTrend = prevBass > 0 ? (bands.bass - prevBass) / prevBass : 0;
 
     // Classify style
     let style: "calm" | "driving" | "chaotic" | "peak" = "calm";
@@ -76,11 +101,10 @@ export class MusicAnalyzer {
 
     return {
       bpm,
-      bpmConfidence: peakCount >= 2 ? 0.8 : 0.3,
+      bpmConfidence: confidence,
       energy: bands.level,
-      energyTrend,
-      spectralChange: 0,
-      isTransient: bands.bass > 0.7,
+      energyTrend: Math.max(-1, Math.min(1, energyTrend)),
+      spectralChange: Math.abs(bands.bass - bands.treble) * 0.5,
       style,
     };
   }
@@ -88,7 +112,7 @@ export class MusicAnalyzer {
   tapTempo(): number {
     const now = performance.now();
     this.tapTempoData.taps.push(now);
-    this.tapTempoData.taps = this.tapTempoData.taps.filter((t) => now - t < 10000);
+    this.tapTempoData.taps = this.tapTempoData.taps.filter((t) => now - t < 30000);
 
     if (this.tapTempoData.taps.length >= 2) {
       let sum = 0;
@@ -99,7 +123,6 @@ export class MusicAnalyzer {
       const bpm = Math.round(60000 / avgInterval);
       if (bpm >= 40 && bpm <= 240) {
         this.tapTempoData.bpm = bpm;
-        this.lastBPM = bpm;
         return bpm;
       }
     }
