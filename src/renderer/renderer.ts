@@ -282,7 +282,11 @@ function loadShader(i: number): void {
   // Hide mire when switching away from it
   if (mireVisible && i !== 0) {
     const mireEl = document.getElementById("mire-overlay");
-    if (mireEl) mireEl.style.opacity = "0";
+    if (mireEl) {
+      mireEl.style.opacity = "0";
+      mireEl.style.visibility = "hidden";
+      mireEl.style.pointerEvents = "none";
+    }
     mireVisible = false;
   }
 
@@ -893,30 +897,28 @@ function frame(now: number): void {
   audio.fillTexData(audioData);
   pipeline.updateAudio(audioData);
 
-  // Music analysis (only every 16 frames ~4x per second to save CPU)
-  // Essential for autoplay adaptation
+  // Music analysis - check BPM on raw audio bands every frame (for onset detection)
+  // But only update display every 60 frames (~1x/sec) to minimize DOM overhead
+  const rawBands = audio.bands();
+  const analysis = musicAnalyzer.analyze(rawBands);
+
   analyzeFrameCounter++;
   if (analyzeFrameCounter >= ANALYZE_INTERVAL) {
     analyzeFrameCounter = 0;
-    try {
-      const analysis = musicAnalyzer.analyze(bands);
-      if (analysis) {
-        // Display BPM (large, visible)
-        if (musicInfoElements.bpmDisplay) {
-          musicInfoElements.bpmDisplay.textContent = `${analysis.bpm}`;
-          musicInfoElements.bpmDisplay.style.color =
-            analysis.bpmConfidence > 0.5 ? "var(--orange)" : "var(--text-dim)";
-        }
-        // Display Energy (large, visible)
-        if (musicInfoElements.energyDisplay) {
-          const percent = Math.round(analysis.energy * 100);
-          musicInfoElements.energyDisplay.textContent = `${percent}%`;
-          const color = percent > 70 ? "#ff6b6b" : percent > 40 ? "var(--accent)" : "#6dd5a3";
-          musicInfoElements.energyDisplay.style.color = color;
-        }
+    if (analysis) {
+      // Display BPM (large, visible)
+      if (musicInfoElements.bpmDisplay) {
+        musicInfoElements.bpmDisplay.textContent = `${analysis.bpm}`;
+        musicInfoElements.bpmDisplay.style.color =
+          analysis.bpmConfidence > 0.5 ? "var(--orange)" : "var(--text-dim)";
       }
-    } catch (err) {
-      console.error("[Frame] Music analysis error:", err);
+      // Display Energy (large, visible)
+      if (musicInfoElements.energyDisplay) {
+        const percent = Math.round(analysis.energy * 100);
+        musicInfoElements.energyDisplay.textContent = `${percent}%`;
+        const color = percent > 70 ? "#ff6b6b" : percent > 40 ? "var(--accent)" : "#6dd5a3";
+        musicInfoElements.energyDisplay.style.color = color;
+      }
     }
   }
 
