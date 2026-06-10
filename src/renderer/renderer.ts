@@ -109,6 +109,10 @@ const musicInfoElements = {
   styleDisplay: document.getElementById("style-display") as HTMLElement | null,
 };
 
+// Only analyze music every 16 frames (~4x per second at 60fps)
+let analyzeFrameCounter = 0;
+const ANALYZE_INTERVAL = 16;
+
 // --- Tab system for generators and controls ---
 function setupTabs(panelId: string) {
   const tabs = document.querySelectorAll(`#${panelId} .tab-btn`);
@@ -889,48 +893,50 @@ function frame(now: number): void {
   audio.fillTexData(audioData);
   pipeline.updateAudio(audioData);
 
-  // Music analysis (lightweight, throttled display updates)
-  let analysis = null;
-  try {
-    analysis = musicAnalyzer.analyze(bands);
-    // Only update display every 6 frames (~10Hz) to reduce DOM overhead
-    if (musicAnalyzer.shouldUpdateDisplay() && analysis) {
-      if (musicInfoElements.bpmDisplay) {
-        const bpmText = analysis.bpmConfidence > 0.5 ? "✓" : "·";
-        musicInfoElements.bpmDisplay.textContent = `${bpmText} ${analysis.bpm} BPM`;
-        musicInfoElements.bpmDisplay.style.color =
-          analysis.bpmConfidence > 0.5 ? "var(--cyan)" : "var(--text-dim)";
+  // Music analysis (only every 16 frames ~4x per second to save CPU)
+  analyzeFrameCounter++;
+  if (analyzeFrameCounter >= ANALYZE_INTERVAL) {
+    analyzeFrameCounter = 0;
+    try {
+      const analysis = musicAnalyzer.analyze(bands);
+      if (analysis) {
+        if (musicInfoElements.bpmDisplay) {
+          const bpmText = analysis.bpmConfidence > 0.5 ? "✓" : "·";
+          musicInfoElements.bpmDisplay.textContent = `${bpmText} ${analysis.bpm} BPM`;
+          musicInfoElements.bpmDisplay.style.color =
+            analysis.bpmConfidence > 0.5 ? "var(--cyan)" : "var(--text-dim)";
+        }
+        if (musicInfoElements.energyDisplay) {
+          const percent = Math.round(analysis.energy * 100);
+          const trend =
+            analysis.energyTrend > 0.2 ? "↗" : analysis.energyTrend < -0.2 ? "↘" : "→";
+          musicInfoElements.energyDisplay.textContent = `${percent}% ${trend}`;
+          const color = percent > 70 ? "#ff6b6b" : percent > 40 ? "#ffff00" : "#6dd5a3";
+          musicInfoElements.energyDisplay.style.color = color;
+        }
+        if (musicInfoElements.styleDisplay) {
+          const styleSymbols: Record<string, string> = {
+            calm: "◆",
+            driving: "⬡",
+            chaotic: "✦",
+            peak: "●",
+          };
+          musicInfoElements.styleDisplay.textContent = `${
+            styleSymbols[analysis.style] ?? "·"
+          } ${analysis.style}`;
+          const styleColors: Record<string, string> = {
+            calm: "#888",
+            driving: "#ffcc00",
+            chaotic: "#ff4444",
+            peak: "#ff0080",
+          };
+          musicInfoElements.styleDisplay.style.color =
+            styleColors[analysis.style] ?? "var(--text-dim)";
+        }
       }
-      if (musicInfoElements.energyDisplay) {
-        const percent = Math.round(analysis.energy * 100);
-        const trend =
-          analysis.energyTrend > 0.2 ? "↗" : analysis.energyTrend < -0.2 ? "↘" : "→";
-        musicInfoElements.energyDisplay.textContent = `${percent}% ${trend}`;
-        const color = percent > 70 ? "#ff6b6b" : percent > 40 ? "#ffff00" : "#6dd5a3";
-        musicInfoElements.energyDisplay.style.color = color;
-      }
-      if (musicInfoElements.styleDisplay) {
-        const styleSymbols: Record<string, string> = {
-          calm: "◆",
-          driving: "⬡",
-          chaotic: "✦",
-          peak: "●",
-        };
-        musicInfoElements.styleDisplay.textContent = `${
-          styleSymbols[analysis.style] ?? "·"
-        } ${analysis.style}`;
-        const styleColors: Record<string, string> = {
-          calm: "#888",
-          driving: "#ffcc00",
-          chaotic: "#ff4444",
-          peak: "#ff0080",
-        };
-        musicInfoElements.styleDisplay.style.color =
-          styleColors[analysis.style] ?? "var(--text-dim)";
-      }
+    } catch (err) {
+      console.error("[Frame] Music analysis error:", err);
     }
-  } catch (err) {
-    console.error("[Frame] Music analysis error:", err);
   }
 
   // MIDI = contrôle : on replie l'énergie/mod dans les canaux existants.
