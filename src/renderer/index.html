@@ -71,15 +71,10 @@
     body.light-theme .src-key { background: #d2cfc7; border-color: #c46e00; color: #1a1a1a; }
     body.light-theme .src-item.active .src-key { background: var(--orange); border-color: var(--orange); color: #fff; }
     body.light-theme #layer-section { background: #efece5; }
-    body.light-theme #seq-grid .sequencer-step { background: #dedcd5; border-color: #a59f93; }
-    body.light-theme #seq-grid .sequencer-step:hover { background: #d2cfc7; }
     body.light-theme .fx { border-bottom-color: #dedcd5; }
     body.light-theme .fx:hover { background: #dedcd5; }
     body.light-theme .fx.on { background: #c8e6d4; }
     body.light-theme #focus-hint { color: #6b6b6b; }
-    body.light-theme #seq-waveform { border-color: #a59f93; background: #dedcd5; }
-    body.light-theme #seq-editor-panel { border-color: #a59f93; background: #efece5; }
-    body.light-theme #midi-mappings-list { border-color: #a59f93; background: #efece5; color: #4a4a4a; }
     body.light-theme button.on { color: #fff; }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 13px; overflow: hidden; user-select: none; line-height: 1.6; letter-spacing: -0.3px; }
 
@@ -111,7 +106,6 @@
       border-radius: 0;
     }
     button.on  { color: #000; background: var(--orange); border-color: var(--orange); font-weight: 700; }
-    #seq-play.on { color: #000; background: var(--orange); border-color: var(--orange); text-shadow: none; box-shadow: none; }
     button.rec { color: var(--text-sec); border-color: var(--border); }
     button.rec.active { color: #fff; background: var(--orange); border-color: var(--orange); animation: blink 0.7s step-end infinite; box-shadow: inset 0 0 8px rgba(230, 25, 25, 0.2); }
     @keyframes blink { 50% { opacity: 0.5; } }
@@ -183,6 +177,7 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
+      overflow: visible;
     }
     /* Focus mode: collapse panels & bars */
     body.focus #topbar,
@@ -200,6 +195,16 @@
       height: 64px;
       flex-shrink: 0;
       z-index: 100;
+      overflow: visible;
+    }
+    #topbar select {
+      position: relative;
+      z-index: 9999;
+      min-width: 90px;
+      overflow: visible !important;
+      height: 32px;
+      padding: 6px 10px !important;
+      line-height: 1.4;
     }
 
     /* ── Main grid (3-column flex layout) ────────────────────────── */
@@ -328,35 +333,9 @@
     #blend-mode { font-size: 11px; height: 22px; width: 100%; }
     #layer-b-opacity { flex: 1; }
 
-    /* ── Sequencer ─────────────────────────────────────────────────── */
     @keyframes pulse-accent { 0%, 100% { box-shadow: 0 0 0 0 rgba(109, 213, 163, 0.7); } 50% { box-shadow: 0 0 0 4px rgba(109, 213, 163, 0); } }
     @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); } 50% { box-shadow: 0 0 0 4px rgba(255, 107, 107, 0); } }
 
-    #seq-grid .sequencer-step {
-      width: 100%;
-      aspect-ratio: 1;
-      background: var(--panel2);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      transition: all 100ms ease-out;
-      border-radius: 0;
-    }
-    #seq-grid .sequencer-step:hover { background: var(--ctrl); border-color: var(--border-io); }
-    #seq-grid .sequencer-step.active { background: var(--accent); border-color: var(--accent); }
-    #seq-grid .sequencer-step.current {
-      background: var(--accent);
-      border-color: var(--accent);
-      box-shadow: inset 0 0 8px rgba(109, 213, 163, 0.4);
-    }
-
-    /* MIDI Learn & Record button animations */
-    #midi-learn-btn.learning {
-      animation: pulse-accent 1.5s infinite;
-      border-color: var(--accent);
-    }
-    #seq-record-btn.rec.active {
-      animation: pulse-red 1.2s infinite;
-    }
 
     /* ── Stage ───────────────────────────────────────────────────── */
     #stage {
@@ -643,7 +622,6 @@
         <button class="tab-btn active" data-tab="ctrl-params" role="tab" aria-selected="true" aria-controls="ctrl-params">Params</button>
         <button class="tab-btn" data-tab="ctrl-controls" role="tab" aria-selected="false" aria-controls="ctrl-controls">Controls</button>
         <button class="tab-btn" data-tab="ctrl-layers" role="tab" aria-selected="false" aria-controls="ctrl-layers">Layers</button>
-        <button class="tab-btn" data-tab="ctrl-sequencer" role="tab" aria-selected="false" aria-controls="ctrl-sequencer">Seq</button>
       </div>
 
       <div id="ctrl-params" class="tab-content active">
@@ -681,99 +659,6 @@
         </div>
       </div>
 
-      <div id="ctrl-sequencer" class="tab-content">
-        <div style="padding:var(--spacing-lg);flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:var(--spacing-md)">
-          <div class="ph" style="margin:calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Transport</div>
-          <div style="display:flex;gap:var(--spacing-sm)">
-            <button id="seq-play" aria-label="Play Sequencer" style="flex:1;height:28px;font-size:11px;font-weight:600">▶ Play</button>
-            <button id="seq-stop" aria-label="Stop Sequencer" style="flex:1;height:28px;font-size:11px;font-weight:600">⏹ Stop</button>
-          </div>
-          <div style="font-size:10px;color:var(--text-dim);text-align:center;font-family:var(--font-mono)" id="seq-time">0:0:0</div>
-
-          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Settings</div>
-          <div style="display:flex;gap:var(--spacing-sm);align-items:center">
-            <label style="flex:1;font-size:10px;color:var(--text-dim);font-weight:600" for="seq-bpm">BPM:</label>
-            <input id="seq-bpm" type="number" min="60" max="240" value="120" aria-label="BPM" style="width:54px;height:26px;font-size:10px">
-          </div>
-          <div style="display:flex;gap:var(--spacing-sm);align-items:center">
-            <label style="flex:1;font-size:10px;color:var(--text-dim);font-weight:600" for="seq-step-count">Steps:</label>
-            <select id="seq-step-count" aria-label="Step Count" style="flex:1;height:26px;font-size:10px">
-              <option value="8">8</option>
-              <option value="16" selected>16</option>
-              <option value="32">32</option>
-            </select>
-          </div>
-
-          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Automation Target</div>
-          <select id="seq-param-select" aria-label="Automation Target Parameter" style="width:100%;height:26px;font-size:10px">
-            <option value="shader.u_p0">Shader Param 0</option>
-            <option value="shader.u_p1">Shader Param 1</option>
-            <option value="shader.u_p2">Shader Param 2</option>
-            <option value="shader.u_p3">Shader Param 3</option>
-            <option value="effect.0.amount">Effect 0 (Entropie)</option>
-            <option value="effect.1.amount">Effect 1 (Feedback)</option>
-            <option value="effect.2.amount">Effect 2 (Glitch)</option>
-            <option value="disruptor.0.sensitivity">Disruptor 0</option>
-            <option value="disruptor.1.sensitivity">Disruptor 1</option>
-            <option value="layer.b.opacity">Layer B Opacity</option>
-          </select>
-          <div style="font-size:9px;color:var(--text-dim);margin-top:var(--spacing-sm)">Click steps to add/remove keyframes</div>
-
-          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Step Grid</div>
-          <div id="seq-grid" style="display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin:var(--spacing-md) 0"></div>
-          <canvas id="seq-waveform" width="260" height="40" style="width:100%;height:40px;border:1px solid var(--border);border-radius:0;background:var(--ctrl-dark);margin-bottom:var(--spacing-md);display:none"></canvas>
-          <div style="font-size:9px;color:var(--text-dim);text-align:center;margin-bottom:var(--spacing-md);font-family:var(--font-mono)">
-            <span id="seq-keyframe-count">0 keyframes</span>
-          </div>
-
-          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Tools</div>
-          <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-sm)">
-            <button id="seq-copy-btn" aria-label="Copy Keyframes" style="flex:1;height:26px;font-size:10px;font-weight:600">📋 Copy</button>
-            <button id="seq-paste-btn" aria-label="Paste Keyframes" style="flex:1;height:26px;font-size:10px;font-weight:600" disabled>📌 Paste</button>
-          </div>
-          <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-sm)">
-            <button id="seq-randomize-btn" aria-label="Randomize Keyframes" style="flex:1;height:26px;font-size:10px;font-weight:600">🎲 Random</button>
-            <button id="seq-record-btn" aria-label="Record Automation" style="flex:1;height:26px;font-size:10px;font-weight:600">⏺ Record</button>
-          </div>
-          <div style="font-size:9px;color:var(--text-dim);text-align:center;font-family:var(--font-mono)">
-            <span id="seq-record-status">Not recording</span>
-          </div>
-
-          <div id="seq-editor-panel" style="display:none;border:1px solid var(--border);padding:var(--spacing-lg);background:var(--ctrl);border-radius:0;margin-top:var(--spacing-md)">
-            <div style="font-size:10px;color:var(--text-dim);margin-bottom:var(--spacing-lg);font-weight:600;letter-spacing:0.3px">EDIT KEYFRAME</div>
-
-            <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-md);align-items:center">
-              <label style="flex:1;font-size:10px;font-weight:600" for="seq-kf-value">Value:</label>
-              <input id="seq-kf-value" type="range" min="0" max="1" step="0.01" aria-label="Keyframe Value" style="flex:1">
-              <span id="seq-kf-value-display" style="font-size:10px;width:40px;text-align:right;font-family:var(--font-mono)">0.50</span>
-            </div>
-
-            <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-md);align-items:center">
-              <label style="flex:1;font-size:10px;font-weight:600" for="seq-kf-easing">Easing:</label>
-              <select id="seq-kf-easing" aria-label="Keyframe Easing" style="flex:1;height:26px;font-size:9px">
-                <option value="linear">Linear</option>
-                <option value="ease-in">Ease In</option>
-                <option value="ease-out">Ease Out</option>
-                <option value="ease-in-out">Ease In-Out</option>
-              </select>
-            </div>
-
-            <div style="display:flex;gap:var(--spacing-sm)">
-              <button id="seq-kf-delete" aria-label="Delete Keyframe" style="flex:1;height:26px;font-size:10px;font-weight:600;background:#1a0000;border-color:#663333;color:var(--red)">Delete</button>
-              <button id="seq-kf-close" aria-label="Close Keyframe Editor" style="flex:1;height:26px;font-size:10px;font-weight:600">Done</button>
-            </div>
-          </div>
-
-          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">MIDI Learn</div>
-          <div style="display:flex;gap:var(--spacing-sm)">
-            <button id="midi-learn-btn" aria-label="MIDI Learn Mode" style="flex:1;height:28px;font-size:11px;font-weight:600">🎹 Learn</button>
-            <div style="flex:1;font-size:10px;color:var(--text-dim);text-align:center;display:flex;align-items:center;justify-content:center" id="midi-learn-status">Idle</div>
-          </div>
-
-          <div style="font-size:10px;color:var(--text-dim);margin-top:var(--spacing-md);font-weight:600;letter-spacing:0.3px">MAPPINGS:</div>
-          <div id="midi-mappings-list" style="max-height:100px;overflow-y:auto;border:1px solid var(--border);padding:var(--spacing-md);background:var(--ctrl-dark);font-size:9px;font-family:var(--font-mono);color:var(--text-dim)"></div>
-        </div>
-      </div>
     </div>
 
   </div>

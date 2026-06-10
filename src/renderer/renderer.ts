@@ -14,8 +14,6 @@ import { BLEND_MODES } from "./gl";
 import { DISRUPTORS } from "./disruptors";
 import { autoplayAdvanced, AUTOPLAY_PRESETS } from "./autoplayAdvanced";
 import { textLayer } from "./textLayer";
-import { Sequencer, type SequencerState, type SequencerKeyframe } from "./sequencer";
-import { MidiLearner, type MidiCCMapping } from "./midiLearn";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -88,8 +86,6 @@ document.addEventListener("keydown", (e) => {
 const pipeline = new Pipeline(canvas);
 const audio = new AudioInput();
 const midi = new MidiInput();
-const sequencer = new Sequencer(120);
-const midiLearn = new MidiLearner();
 const text = new TextOverlay($("text"), TEXTS);
 const tactics = new TacticDisplay(TEXTS);
 const RECTA_INDEX = 0; // le générateur "RECTA (texte)" est en tête de SHADERS
@@ -534,26 +530,6 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Sequencer UI update ---
-function updateSequencerUI(): void {
-  const state = sequencer.getState();
-  const seqPlayBtn = $<HTMLButtonElement>("seq-play");
-  const seqStopBtn = $<HTMLButtonElement>("seq-stop");
-  const seqGrid = $("seq-grid");
-
-  if (seqPlayBtn && seqStopBtn) {
-    seqPlayBtn.textContent = state.isPlaying ? "⏸ Pause" : "▶ Play";
-    seqPlayBtn.classList.toggle("on", state.isPlaying);
-    seqStopBtn.classList.toggle("on", !state.isPlaying);
-  }
-
-  // Update current step highlight in grid
-  const steps = seqGrid?.querySelectorAll(".sequencer-step");
-  if (steps) {
-    steps.forEach((step, idx) => {
-      step.classList.toggle("current", idx === state.currentStep);
-    });
-  }
-}
 
 // --- Raccourcis clavier ---
 let focusMode = false;
@@ -601,35 +577,6 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  // Shift+Q = toggle sequencer enabled
-  if (e.shiftKey && (e.key === "q" || e.key === "Q")) {
-    e.preventDefault();
-    const state = sequencer.getState();
-    state.enabled = !state.enabled;
-    updateSequencerUI();
-    return;
-  }
-
-  // Shift+Space = play/stop sequencer
-  if (e.shiftKey && e.code === "Space") {
-    e.preventDefault();
-    const state = sequencer.getState();
-    if (state.isPlaying) {
-      sequencer.stop();
-    } else {
-      sequencer.play();
-    }
-    updateSequencerUI();
-    return;
-  }
-
-  // Sequencer shortcuts: C = copy, V = paste, Shift+R = randomize, Shift+L = MIDI learn
-  if (!inInput) {
-    if (e.key === "c" || e.key === "C") { e.preventDefault(); seqCopyBtn.click(); return; }
-    if (e.key === "v" || e.key === "V") { e.preventDefault(); seqPasteBtn.click(); return; }
-    if (e.shiftKey && (e.key === "r" || e.key === "R")) { e.preventDefault(); seqRandomizeBtn.click(); return; }
-    if (e.shiftKey && (e.key === "l" || e.key === "L")) { e.preventDefault(); midiLearnBtn.click(); return; }
-  }
 
   // H = toggle HUD visibility (in performance mode)
   if ((e.key === "h" || e.key === "H") && performanceMode) {
@@ -753,8 +700,6 @@ interface Preset {
   layerB: { enabled: boolean; shaderIndex: number; blendMode: number; opacity: number };
   effects: { enabled: boolean; amount: number }[];
   rectaHoldMs: number;
-  sequencer?: SequencerState;
-  midiLearn?: MidiCCMapping[];
 }
 const presetSaveBtn = $<HTMLButtonElement>("preset-save");
 const presetLoadBtn = $<HTMLButtonElement>("preset-load");
@@ -771,8 +716,6 @@ presetSaveBtn.addEventListener("click", async () => {
     },
     effects: fxState.map((s) => ({ enabled: s.enabled, amount: s.amount })),
     rectaHoldMs: tactics.holdMs,
-    sequencer: sequencer.toJSON(),
-    midiLearn: midiLearn.toJSON(),
   };
   await window.synth?.saveFile(
     JSON.stringify(preset, null, 2),
@@ -818,12 +761,6 @@ presetLoadBtn.addEventListener("click", async () => {
     });
     // recta
     if (p.rectaHoldMs) { tactics.holdMs = p.rectaHoldMs; rectaSpeedRng.value = String(p.rectaHoldMs); }
-    // sequencer
-    if (p.sequencer) { sequencer.fromJSON(p.sequencer); }
-    // midi learn
-    if (p.midiLearn) { midiLearn.fromJSON(p.midiLearn); }
-    // update UI
-    updateSequencerUI();
   } catch (err) { console.error("[Preset]", err); }
 });
 
@@ -908,9 +845,6 @@ function frame(now: number): void {
   const frameStart = performance.now();
   const time = now / 1000;
 
-  // Update mire visibility (auto-hide after 8s)
-  updateMireVisibility();
-
   // Update FPS counter
   frameCount++;
   const elapsed = frameStart - lastFpsTime;
@@ -938,8 +872,6 @@ function frame(now: number): void {
   const noise = midi.mode === "noise";
 
   // Sequencer update (BPM-synced automation)
-  sequencer.update(now);
-
   // Énergie globale + détection de hit (front montant) → pioche d'une nouvelle tactique.
   const energy = Math.max(bands.bass, e);
   const hit = energy > 0.55 && prevEnergy <= 0.55;
@@ -949,43 +881,6 @@ function frame(now: number): void {
   tactics.update(now);
   tactics.draw(now, energy);
   pipeline.updateText(tactics.canvas);
-
-  // Apply sequencer automation (if enabled)
-  if (sequencer.getState().enabled && sequencer.getState().isPlaying) {
-    for (let i = 0; i < 4; i++) {
-      const val = sequencer.getParameterValue(`shader.u_p${i}`);
-      if (val !== null) applyParameterValue(`shader.u_p${i}`, val);
-    }
-    for (let i = 0; i < fxState.length; i++) {
-      const val = sequencer.getParameterValue(`effect.${i}.amount`);
-      if (val !== null) applyParameterValue(`effect.${i}.amount`, val);
-    }
-    for (let i = 0; i < disruptorState.length; i++) {
-      const val = sequencer.getParameterValue(`disruptor.${i}.sensitivity`);
-      if (val !== null) applyParameterValue(`disruptor.${i}.sensitivity`, val);
-    }
-  }
-
-  // Apply MIDI CC mappings (if any)
-  const lastCC = midi.getAndClearLastCC();
-  if (lastCC && midi.enabled) {
-    // Handle record mode (capture MIDI CC into keyframes)
-    if (sequencer.isRecording()) {
-      sequencer.recordMidiCC(lastCC.value);
-    } else if (midiLearn.isLearning()) {
-      // Handle MIDI Learn
-      midiLearn.onMidiCC(lastCC.cc, lastCC.value);
-    } else {
-      // Apply mapped parameter values
-      const paramVal = midiLearn.getValue(lastCC.cc, lastCC.value);
-      if (paramVal !== null) {
-        const mapping = midiLearn.getMappingByCC(lastCC.cc);
-        if (mapping) {
-          applyParameterValue(mapping.paramId, paramVal);
-        }
-      }
-    }
-  }
 
   const u = {
     time,
@@ -1162,7 +1057,6 @@ vec3 process(vec2 uv) {
 }
 
 // MIRE TV ORTF - Display at startup
-let mireStartTime = 0;
 let mireVisible = true;
 
 function updateMireTime(): void {
@@ -1173,17 +1067,7 @@ function updateMireTime(): void {
   mireTimeElement.textContent = `${h}:${m}:${s}`;
 }
 
-function updateMireVisibility(): void {
-  if (!mireVisible) return;
-  const elapsed = performance.now() - mireStartTime;
-  if (elapsed > 8000) { // Hide after 8 seconds
-    mireElement.style.opacity = "0";
-    mireVisible = false;
-  }
-}
-
 // Initialize mire at startup
-mireStartTime = performance.now();
 updateMireTime();
 setInterval(updateMireTime, 1000);
 
@@ -1399,401 +1283,3 @@ setInterval(() => {
   textLayer.applyActiveEffects(activeEffects);
 }, 50);
 
-// --- Sequencer UI Setup ---
-const seqPlayBtn = $<HTMLButtonElement>("seq-play");
-const seqStopBtn = $<HTMLButtonElement>("seq-stop");
-const seqCopyBtn = $<HTMLButtonElement>("seq-copy-btn");
-const seqPasteBtn = $<HTMLButtonElement>("seq-paste-btn");
-const seqRandomizeBtn = $<HTMLButtonElement>("seq-randomize-btn");
-const seqRecordBtn = $<HTMLButtonElement>("seq-record-btn");
-const seqRecordStatus = $("seq-record-status");
-const seqBpmInput = $<HTMLInputElement>("seq-bpm");
-const seqStepCountSelect = $<HTMLSelectElement>("seq-step-count");
-const seqGrid = $("seq-grid");
-const seqParamSelect = $<HTMLSelectElement>("seq-param-select");
-const seqKeyframeCount = $("seq-keyframe-count");
-const midiLearnBtn = $<HTMLButtonElement>("midi-learn-btn");
-const midiLearnStatus = $("midi-learn-status");
-const midiMappingsList = $("midi-mappings-list");
-
-let selectedParam = "shader.u_p0";
-
-// Initialize step grid
-function initSequencerGrid(): void {
-  seqGrid.innerHTML = "";
-  const stepCount = sequencer.getState().stepCount;
-  for (let i = 0; i < stepCount; i++) {
-    const step = document.createElement("div");
-    step.className = "sequencer-step";
-    step.dataset["step"] = String(i);
-    step.dataset["index"] = String(i);
-    step.title = `Step ${i} (click to edit, shift+click to add)`;
-    seqGrid.appendChild(step);
-  }
-  updateGridDisplay();
-  makeGridClickable();
-}
-
-function toggleKeyframe(stepIndex: number, paramId: string): void {
-  const track = sequencer.getState().tracks[0]; // Use first track
-  if (!track) return;
-
-  const existing = track.keyframes.find(kf => kf.stepIndex === stepIndex && kf.parameter === paramId);
-
-  if (existing) {
-    // Remove keyframe
-    sequencer.removeKeyframe(0, stepIndex, paramId);
-  } else {
-    // Add keyframe with default value 0.5
-    sequencer.addKeyframe(0, {
-      stepIndex,
-      parameter: paramId,
-      value: 0.5,
-      easing: "linear",
-    });
-  }
-}
-
-function updateGridDisplay(): void {
-  const track = sequencer.getState().tracks[0];
-  const steps = seqGrid.querySelectorAll(".sequencer-step");
-  const keyframesForParam = track?.keyframes.filter(kf => kf.parameter === selectedParam) ?? [];
-
-  steps.forEach((step) => {
-    const stepEl = step as HTMLElement;
-    const stepIndex = parseInt(stepEl.dataset["step"] ?? "0");
-    const hasKeyframe = keyframesForParam.some(kf => kf.stepIndex === stepIndex);
-    stepEl.classList.toggle("active", hasKeyframe);
-  });
-
-  seqKeyframeCount.textContent = `${keyframesForParam.length} keyframes`;
-}
-
-initSequencerGrid();
-
-// Parameter select change
-seqParamSelect.addEventListener("change", () => {
-  selectedParam = seqParamSelect.value;
-  updateGridDisplay();
-  drawWaveform();
-});
-
-// Remove the old makeGridClickable call and instead do it from initSequencerGrid
-// Update toggleKeyframe to refresh waveform
-function toggleKeyframeWithRefresh(stepIndex: number, paramId: string): void {
-  toggleKeyframe(stepIndex, paramId);
-  updateGridDisplay();
-  drawWaveform();
-}
-
-// --- Keyframe Editor Setup ---
-const seqEditorPanel = $("seq-editor-panel");
-const seqKfValue = $<HTMLInputElement>("seq-kf-value");
-const seqKfValueDisplay = $("seq-kf-value-display");
-const seqKfEasing = $<HTMLSelectElement>("seq-kf-easing");
-const seqKfDelete = $<HTMLButtonElement>("seq-kf-delete");
-const seqKfClose = $<HTMLButtonElement>("seq-kf-close");
-const seqWaveformCanvas = $<HTMLCanvasElement>("seq-waveform");
-
-let editingKeyframe: { stepIndex: number; trackIndex: number } | null = null;
-
-// Make grid steps clickable for editing (shift+click adds, regular click edits)
-function makeGridClickable(): void {
-  const steps = seqGrid.querySelectorAll(".sequencer-step");
-  steps.forEach((step, idx) => {
-    const stepEl = step as HTMLElement;
-    const originalHandler = stepEl.onclick;
-
-    stepEl.removeEventListener("click", null as any);
-    stepEl.addEventListener("click", (e) => {
-      const track = sequencer.getState().tracks[0];
-      if (!track) return;
-
-      const existing = track.keyframes.find(kf => kf.stepIndex === idx && kf.parameter === selectedParam);
-
-      if (e.shiftKey) {
-        // Shift+click: add/remove
-        toggleKeyframeWithRefresh(idx, selectedParam);
-      } else if (existing) {
-        // Regular click on keyframe: edit
-        openKeyframeEditor(idx, 0);
-      }
-    });
-  });
-}
-
-function openKeyframeEditor(stepIndex: number, trackIndex: number): void {
-  const track = sequencer.getState().tracks[trackIndex];
-  const kf = track?.keyframes.find(k => k.stepIndex === stepIndex && k.parameter === selectedParam);
-
-  if (!kf) return;
-
-  editingKeyframe = { stepIndex, trackIndex };
-  seqKfValue.value = String(kf.value);
-  seqKfValueDisplay.textContent = kf.value.toFixed(2);
-  seqKfEasing.value = kf.easing ?? "linear";
-  seqEditorPanel.style.display = "block";
-}
-
-function closeKeyframeEditor(): void {
-  if (!editingKeyframe) return;
-
-  const track = sequencer.getState().tracks[editingKeyframe.trackIndex];
-  const kf = track?.keyframes.find(k => k.stepIndex === editingKeyframe!.stepIndex && k.parameter === selectedParam);
-
-  if (kf) {
-    kf.value = Number(seqKfValue.value);
-    kf.easing = seqKfEasing.value as any;
-  }
-
-  editingKeyframe = null;
-  seqEditorPanel.style.display = "none";
-  updateGridDisplay();
-  drawWaveform();
-}
-
-// Value slider feedback
-seqKfValue.addEventListener("input", () => {
-  seqKfValueDisplay.textContent = Number(seqKfValue.value).toFixed(2);
-});
-
-// Delete button
-seqKfDelete.addEventListener("click", () => {
-  if (!editingKeyframe) return;
-  sequencer.removeKeyframe(editingKeyframe.trackIndex, editingKeyframe.stepIndex, selectedParam);
-  closeKeyframeEditor();
-});
-
-// Close button
-seqKfClose.addEventListener("click", closeKeyframeEditor);
-
-// Draw waveform visualization
-function drawWaveform(): void {
-  if (!seqWaveformCanvas) return;
-
-  const track = sequencer.getState().tracks[0];
-  const keyframes = track?.keyframes.filter(kf => kf.parameter === selectedParam) ?? [];
-
-  if (keyframes.length === 0) {
-    seqWaveformCanvas.style.display = "none";
-    return;
-  }
-
-  seqWaveformCanvas.style.display = "block";
-
-  const ctx = seqWaveformCanvas.getContext("2d");
-  if (!ctx) return;
-
-  const w = seqWaveformCanvas.width;
-  const h = seqWaveformCanvas.height;
-  const stepCount = sequencer.getState().stepCount;
-
-  // Clear
-  ctx.fillStyle = "#0a0a0a";
-  ctx.fillRect(0, 0, w, h);
-
-  // Draw grid
-  ctx.strokeStyle = "#1a1a1a";
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= stepCount; i++) {
-    const x = (i / stepCount) * w;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-  }
-
-  // Sort keyframes by step
-  const sorted = [...keyframes].sort((a, b) => a.stepIndex - b.stepIndex);
-
-  // Draw waveform curve
-  ctx.strokeStyle = "#6dd5a3";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-
-  for (let step = 0; step < stepCount; step++) {
-    const x = (step / stepCount) * w;
-
-    // Find interpolated value at this step
-    let y = 0;
-    const current = sorted.find(kf => kf.stepIndex === step);
-
-    if (current) {
-      y = h - current.value * h;
-    } else {
-      // Interpolate between nearest keyframes
-      const before = sorted.filter(kf => kf.stepIndex < step).pop();
-      const after = sorted.find(kf => kf.stepIndex > step);
-
-      if (before && after) {
-        const t = (step - before.stepIndex) / (after.stepIndex - before.stepIndex);
-        y = h - (before.value + (after.value - before.value) * t) * h;
-      } else if (before) {
-        y = h - before.value * h;
-      } else if (after) {
-        y = h - after.value * h;
-      }
-    }
-
-    if (step === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-
-  ctx.stroke();
-
-  // Draw keyframe dots
-  sorted.forEach(kf => {
-    const x = (kf.stepIndex / stepCount) * w;
-    const y = h - kf.value * h;
-
-    ctx.fillStyle = "#ff9500";
-    ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "#6dd5a3";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  });
-}
-
-// Initialize grid with editor support
-initSequencerGrid();
-
-// Play button
-seqPlayBtn.addEventListener("click", () => {
-  const state = sequencer.getState();
-  if (state.isPlaying) {
-    sequencer.stop();
-  } else {
-    sequencer.play();
-  }
-  updateSequencerUI();
-});
-
-// Stop button
-seqStopBtn.addEventListener("click", () => {
-  sequencer.stop();
-  updateSequencerUI();
-});
-
-// BPM input
-seqBpmInput.addEventListener("input", () => {
-  sequencer.setBpm(Number(seqBpmInput.value));
-});
-
-// Step count select
-seqStepCountSelect.addEventListener("change", () => {
-  sequencer.setStepCount(Number(seqStepCountSelect.value));
-  initSequencerGrid();
-  drawWaveform();
-});
-
-// MIDI Learn button
-midiLearnBtn.addEventListener("click", () => {
-  const isLearning = midiLearn.isLearning();
-  if (isLearning) {
-    midiLearn.exitLearnMode();
-    midiLearnStatus.textContent = "Idle";
-    midiLearnStatus.classList.remove("learning");
-    midiLearnBtn.classList.remove("learning");
-    midiLearnBtn.textContent = "🎹 Learn";
-  } else {
-    midiLearn.enterLearnMode("shader.u_p0", (cc, paramId) => {
-      midiLearnStatus.textContent = `CC${cc} → ${paramId}`;
-      updateMidiMappingsList();
-    });
-    midiLearnStatus.textContent = "Listening...";
-    midiLearnStatus.classList.add("learning");
-    midiLearnBtn.classList.add("learning");
-    midiLearnBtn.textContent = "◼ Waiting...";
-  }
-});
-
-// Phase 4: Copy/Paste/Randomize/Record buttons
-seqCopyBtn.addEventListener("click", () => {
-  const paramId = seqParamSelect.value;
-  sequencer.copyKeyframes(0, paramId);
-  const size = sequencer.getClipboardSize();
-  seqCopyBtn.textContent = size > 0 ? `📋 Copy (${size})` : "📋 Copy";
-  seqPasteBtn.disabled = size === 0;
-});
-
-seqPasteBtn.addEventListener("click", () => {
-  const paramId = seqParamSelect.value;
-  const targetStep = sequencer.getState().currentStep;
-  sequencer.pasteKeyframes(0, targetStep);
-  drawWaveform();
-  updateSequencerUI();
-  seqCopyBtn.click(); // Refresh copy button label
-});
-
-seqRandomizeBtn.addEventListener("click", () => {
-  const paramId = seqParamSelect.value;
-  sequencer.randomizeKeyframes(0, paramId, 0, 1);
-  drawWaveform();
-  updateSequencerUI();
-  seqRandomizeBtn.style.background = "#4a2a2a";
-  setTimeout(() => {
-    seqRandomizeBtn.style.background = "#2a1a1a";
-  }, 200);
-});
-
-seqRecordBtn.addEventListener("click", () => {
-  const isRecording = sequencer.isRecording();
-  if (isRecording) {
-    sequencer.stopRecordMode();
-    seqRecordBtn.classList.remove("rec", "active");
-    seqRecordStatus.textContent = "Not recording";
-  } else {
-    const paramId = seqParamSelect.value;
-    sequencer.startRecordMode(0, paramId);
-    seqRecordBtn.classList.add("rec", "active");
-    seqRecordStatus.textContent = `Recording ${paramId}...`;
-  }
-});
-
-// Update MIDI mappings list
-function updateMidiMappingsList(): void {
-  midiMappingsList.innerHTML = "";
-  const mappings = midiLearn.getMappings();
-  if (mappings.length === 0) {
-    midiMappingsList.innerHTML = '<div style="padding:4px;color:#555">No mappings</div>';
-  } else {
-    mappings.forEach(m => {
-      const div = document.createElement("div");
-      div.style.cssText = "padding:2px 4px;border-bottom:1px solid #222;display:flex;justify-content:space-between";
-      div.innerHTML = `
-        <span>CC${m.cc} → ${m.paramId}</span>
-        <span style="cursor:pointer;color:#f00;margin-left:8px" onclick="midiLearn.unmap(${m.cc});updateMidiMappingsList()">✕</span>
-      `;
-      midiMappingsList.appendChild(div);
-    });
-  }
-}
-updateMidiMappingsList();
-
-// Update sequencer UI on every frame
-setInterval(() => {
-  if (sequencer.getState().isPlaying) {
-    const state = sequencer.getState();
-    const measures = state.loopMeasures;
-    const beatsPerMeasure = state.beatsPerMeasure;
-    const step = state.currentStep;
-    const measure = state.currentMeasure;
-    const beat = Math.floor((step / state.stepCount) * beatsPerMeasure);
-
-    const timeDisplay = $("seq-time");
-    timeDisplay.textContent = `${measure}:${beat}:${step}`;
-
-    // Highlight current playing step
-    const steps = seqGrid.querySelectorAll(".sequencer-step");
-    steps.forEach((s, idx) => {
-      s.classList.toggle("current", idx === step);
-    });
-  } else {
-    // Clear current step highlight when not playing
-    const steps = seqGrid.querySelectorAll(".sequencer-step.current");
-    steps.forEach(s => s.classList.remove("current"));
-  }
-}, 50);
