@@ -20,9 +20,10 @@
       --accent:     #6dd5a3;
       --accent-bg:  #0d2417;
       --accent-dim: #4a8a6a;
-      --orange:     #ff9500;
+      --orange:     #E61919;
       --red:        #ff6b6b;
       --cyan:       #4fc3f7;
+      --terminal-green: #4AF626;
       --font: "Cascadia Mono", Consolas, "Courier New", monospace;
     }
     body.light-theme {
@@ -97,6 +98,7 @@
       border-radius: 2px;
     }
     button.on  { color: #000; background: var(--orange); border-color: var(--orange); font-weight: 700; }
+    #seq-play.on { color: #000; background: var(--terminal-green); border-color: var(--terminal-green); text-shadow: 0 0 8px var(--terminal-green); }
     button.rec { color: var(--red); border-color: #663333; }
     button.rec.active { color: #fff; background: var(--red); border-color: var(--red); animation: blink .7s step-end infinite; }
     @keyframes blink { 50% { opacity: .45; } }
@@ -150,8 +152,8 @@
       z-index: 100;
     }
     .brand {
-      color: var(--accent); font-weight: 700; font-size: 12px;
-      letter-spacing: .1em; margin-right: 2px;
+      color: var(--orange); font-weight: 900; font-size: clamp(1.2rem, 3vw, 1.8rem);
+      letter-spacing: -0.04em; margin-right: 4px; text-transform: uppercase;
     }
     .sep { width: 1px; height: 16px; background: var(--border2); flex-shrink: 0; margin: 0 2px; }
     .spacer { flex: 1; }
@@ -163,25 +165,28 @@
       max-width: 280px;
       display: flex; flex-direction: column;
       background: var(--panel);
-      border-right: 1px solid var(--border);
+      border-right: 2px solid var(--border);
       overflow: hidden;
       flex-shrink: 0;
     }
     .ph {                                   /* panel header */
       padding: 10px 12px;
-      font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+      font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
       color: var(--text-dim);
       background: #0d0d0d;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 2px solid var(--orange);
       flex-shrink: 0;
+      position: relative;
     }
+    .ph::before { content: "[ "; color: var(--orange); margin-right: 2px; }
+    .ph::after { content: " ]"; color: var(--orange); margin-left: 2px; }
     .ph .hint { color: #888; font-size: 11px; text-transform: none; letter-spacing: 0; margin-left: 8px; }
 
     /* ── Tab system (onglets) ────────────────────────────────────── */
     .tabs-header {
       display: flex; gap: 0;
       background: #0d0d0d;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 2px solid var(--orange);
       flex-shrink: 0;
     }
     .tab-btn {
@@ -355,7 +360,7 @@
       max-width: 280px;
       display: flex; flex-direction: column;
       background: var(--panel);
-      border-left: 1px solid var(--border);
+      border-left: 2px solid var(--border);
       overflow: hidden;
       flex-shrink: 0;
     }
