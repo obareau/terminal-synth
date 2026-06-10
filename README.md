@@ -44,6 +44,14 @@ npm run package        # Build Windows .exe
 
 ## 🎬 Screenshots
 
+### v1.6.0 - Écran MIRE au Démarrage
+![MIRE ORTF - Écran de démarrage style test card TV vintage](assets/screenshots/v1.6.0-mire-startup.png)
+**Écran exclusif MIRE ORTF** — Black & white test card avec heure en direct, inspire par les mires TV anciennes
+
+### v1.6.0 - Indicateurs Musicaux
+![Music Analysis - BPM & Energy Display](assets/screenshots/v1.6.0-music-indicators.png)
+**Analyse musicale en temps réel** — BPM detection adaptative, Energy indicator avec couleurs (vert/jaune/rouge), Style classification
+
 ### Série Géométrique Minimaliste
 ![Geometric Patterns - Lignes diagonales et patterns élégants](assets/screenshots/01-geometric.png)
 **Générateur:** Geometric Shape Series — Patterns élégants en monochrome
@@ -82,6 +90,16 @@ npm run package        # Build Windows .exe
 | **Audio Reactive** | Effets + perturbateurs déclenchés par l'audio |
 | **MIDI Input** | Clavier MIDI + contrôleurs |
 | **System Audio** | Loopback + microphone |
+
+### 🎼 Music Analysis (v1.6.0)
+| Feature | Details |
+|---------|---------|
+| **Adaptive BPM Detection** | Détecte le tempo via pattern de bass avec seuil adaptatif |
+| **Energy Display** | Indicateur temps réel (0-100%) color-coded (vert/jaune/rouge) |
+| **Style Classification** | Détecte calm/driving/chaotic/peak patterns |
+| **Tap Tempo** | **Shift+T** pour taper le tempo manuellement |
+| **Adaptive Autoplay** | Paramètres autoplay scaled dynamiquement par énergie musicale |
+| **Lightweight** | ~0% CPU overhead, display updates 10Hz |
 
 ### 💡 Master Brightness (v1.2)
 | Feature | Details |
