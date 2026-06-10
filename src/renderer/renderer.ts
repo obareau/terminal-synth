@@ -14,6 +14,8 @@ import { BLEND_MODES } from "./gl";
 import { DISRUPTORS } from "./disruptors";
 import { autoplayAdvanced, AUTOPLAY_PRESETS } from "./autoplayAdvanced";
 import { textLayer } from "./textLayer";
+import { MusicAnalyzer } from "./musicAnalyzer";
+import { AutoplayAdapter } from "./autoplayAdapter";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -88,6 +90,7 @@ const audio = new AudioInput();
 const midi = new MidiInput();
 const text = new TextOverlay($("text"), TEXTS);
 const tactics = new TacticDisplay(TEXTS);
+const musicAnalyzer = new MusicAnalyzer(120);
 const RECTA_INDEX = 0; // le générateur "RECTA (texte)" est en tête de SHADERS
 let currentShader = 0;
 let prevEnergy = 0;
@@ -98,6 +101,13 @@ let masterBrightnessAmount = 0.5;
 let smoothedAudioLevel = 0; // Exponential moving average for smooth fading
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
+
+// Cache music info display elements (avoid DOM lookups every frame)
+const musicInfoElements = {
+  bpmDisplay: document.getElementById("bpm-display") as HTMLElement | null,
+  energyDisplay: document.getElementById("energy-display") as HTMLElement | null,
+  styleDisplay: document.getElementById("style-display") as HTMLElement | null,
+};
 
 // --- Tab system for generators and controls ---
 function setupTabs(panelId: string) {
@@ -577,6 +587,20 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
+  // Shift+T = tap tempo for BPM detection
+  if (e.shiftKey && (e.key === "t" || e.key === "T")) {
+    e.preventDefault();
+    const bpm = musicAnalyzer.tapTempo();
+    const bpmDisplay = document.getElementById("bpm-display");
+    if (bpmDisplay) {
+      bpmDisplay.style.background = "rgba(230, 25, 25, 0.3)";
+      bpmDisplay.textContent = `♪ ${bpm} BPM`;
+      setTimeout(() => {
+        bpmDisplay.style.background = "transparent";
+      }, 150);
+    }
+    return;
+  }
 
   // H = toggle HUD visibility (in performance mode)
   if ((e.key === "h" || e.key === "H") && performanceMode) {
@@ -864,6 +888,50 @@ function frame(now: number): void {
   }
   audio.fillTexData(audioData);
   pipeline.updateAudio(audioData);
+
+  // Music analysis (lightweight, throttled display updates)
+  let analysis = null;
+  try {
+    analysis = musicAnalyzer.analyze(bands);
+    // Only update display every 6 frames (~10Hz) to reduce DOM overhead
+    if (musicAnalyzer.shouldUpdateDisplay() && analysis) {
+      if (musicInfoElements.bpmDisplay) {
+        const bpmText = analysis.bpmConfidence > 0.5 ? "✓" : "·";
+        musicInfoElements.bpmDisplay.textContent = `${bpmText} ${analysis.bpm} BPM`;
+        musicInfoElements.bpmDisplay.style.color =
+          analysis.bpmConfidence > 0.5 ? "var(--cyan)" : "var(--text-dim)";
+      }
+      if (musicInfoElements.energyDisplay) {
+        const percent = Math.round(analysis.energy * 100);
+        const trend =
+          analysis.energyTrend > 0.2 ? "↗" : analysis.energyTrend < -0.2 ? "↘" : "→";
+        musicInfoElements.energyDisplay.textContent = `${percent}% ${trend}`;
+        const color = percent > 70 ? "#ff6b6b" : percent > 40 ? "#ffff00" : "#6dd5a3";
+        musicInfoElements.energyDisplay.style.color = color;
+      }
+      if (musicInfoElements.styleDisplay) {
+        const styleSymbols: Record<string, string> = {
+          calm: "◆",
+          driving: "⬡",
+          chaotic: "✦",
+          peak: "●",
+        };
+        musicInfoElements.styleDisplay.textContent = `${
+          styleSymbols[analysis.style] ?? "·"
+        } ${analysis.style}`;
+        const styleColors: Record<string, string> = {
+          calm: "#888",
+          driving: "#ffcc00",
+          chaotic: "#ff4444",
+          peak: "#ff0080",
+        };
+        musicInfoElements.styleDisplay.style.color =
+          styleColors[analysis.style] ?? "var(--text-dim)";
+      }
+    }
+  } catch (err) {
+    console.error("[Frame] Music analysis error:", err);
+  }
 
   // MIDI = contrôle : on replie l'énergie/mod dans les canaux existants.
   midi.update();
