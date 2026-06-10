@@ -2,6 +2,43 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.6.0] - 2026-06-10
+
+### Added
+- **Adaptive Autoplay System** ⭐ — Music-reactive parameter scaling:
+  - Real-time music analysis: BPM detection, energy trending, style classification
+  - Autoplay parameters scale dynamically based on music energy and style
+  - Energy-based multipliers: calm (0.6x) → driving (0.9x) → chaotic (1.3x) → peak (1.5x)
+  - BPM & Energy display prominently in topbar (live updates)
+  - Tap Tempo feature (Shift+T) for manual BPM setting
+
+- **Lightweight Music Analysis** — Minimal CPU overhead:
+  - Adaptive beat detection from bass pattern
+  - Threshold = average_bass + 30% (adapts to audio level)
+  - BPM smoothing via median of last 10 estimates (prevents jitter)
+  - Energy trend and style classification (calm/driving/chaotic/peak)
+  - Updates display 10x/sec for smooth real-time feedback
+
+### Improved
+- **Performance** — Ultra-lightweight music analyzer:
+  - Analyzes every frame but displays only when needed (10Hz DOM updates)
+  - No buffering overhead, simple adaptive threshold algorithm
+  - Peak detection with 167ms minimum interval (prevents false positives)
+  - Zero CPU impact on rendering pipeline
+
+### Fixed
+- **MIRE Overlay** — Now properly disappears after startup:
+  - Added visibility:hidden + pointer-events:none on opacity transition
+  - Text overlay no longer lingers after MIRE is hidden
+
+### Technical Details
+- **New Files**: `src/renderer/musicAnalyzer.ts`, `src/renderer/autoplayAdapter.ts`
+- **Modified Files**: `src/renderer/renderer.ts`, `src/renderer/index.html`
+- **Music Analysis**: Adaptive threshold peak detection with median BPM smoothing
+- **UI**: Large 20px BPM/Energy display in topbar with color-coded feedback
+
+---
+
 ## [1.5.0] - 2026-06-09
 
 ### Added

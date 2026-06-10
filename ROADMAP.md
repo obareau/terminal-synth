@@ -6,10 +6,19 @@
 
 ## ✅ Released
 
-### v1.2.0 (Current)
+### v1.6.0 (Current - 2026-06-10)
+- ✅ **Adaptive Autoplay**: Parameters scale dynamically based on music energy/style
+- ✅ **Music Analysis**: Real-time BPM detection + energy trending
+- ✅ **Adaptive Beat Detection**: Threshold-based peak detection on bass pattern
+- ✅ **BPM Display**: Large, live-updating BPM indicator in topbar
+- ✅ **Tap Tempo**: Manual BPM setting via Shift+T key
+- ✅ **Lightweight**: Music analysis runs every frame, display updates 10Hz (minimal CPU)
+- ✅ **MIRE ORTF**: Exclusive startup screen with time display
+
+### v1.5.0 (2026-06-09)
+- ✅ **Nightcall Mountains**: 32 procedural hexagonal pyramids with 3D projection
+- ✅ **Light/Dark Theme**: Persistent UI theme toggle with localStorage
 - ✅ **Master Brightness**: Audio-reactive fade to black with smooth transitions
-- ✅ **Sequencer**: 16-step Ableton Live-style automation grid with keyframes
-- ✅ **MIDI Learn**: CC-to-parameter mapping with curve types
 - ✅ **91 Generators**: Wireframe, geometry, fractals, noise, patterns
 - ✅ **31 Effects**: Distortion, color, texture, feedback chains
 - ✅ **23 Disruptors**: Audio-triggered glitches and visual effects
