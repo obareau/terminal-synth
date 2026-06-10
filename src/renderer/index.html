@@ -9,9 +9,15 @@
       --bg:         #0a0a0a;
       --panel:      #131313;
       --panel2:     #161616;
+      --panel-dark: #0d0d0d;
+      --panel-deeper: #0e0e0e;
       --ctrl:       #1a1a1a;
+      --ctrl-dark:  #0a0a0a;
       --border:     #2a2a2a;
       --border2:    #323232;
+      --border-subtle: #0d0d0d;
+      --border-io:  #333;
+      --ctrl-bg:    #2a2a2a;
       --dim:        #888;
       --text-dim:   #b8b8b8;
       --text-sec:   #d8d8d8;
@@ -61,13 +67,13 @@
     body.light-theme #layer-section { background: #efece5; }
     body.light-theme #seq-grid .sequencer-step { background: #dedcd5; border-color: #a59f93; }
     body.light-theme #seq-grid .sequencer-step:hover { background: #d2cfc7; }
-    body.light-theme .fx { border-bottom-color: #dedcd5 !important; }
-    body.light-theme .fx:hover { background: #dedcd5 !important; }
-    body.light-theme .fx.on { background: #c8e6d4 !important; }
+    body.light-theme .fx { border-bottom-color: #dedcd5; }
+    body.light-theme .fx:hover { background: #dedcd5; }
+    body.light-theme .fx.on { background: #c8e6d4; }
     body.light-theme #focus-hint { color: #6b6b6b; }
-    body.light-theme #seq-waveform { border-color: #a59f93 !important; background: #dedcd5 !important; }
-    body.light-theme #seq-editor-panel { border-color: #a59f93 !important; background: #efece5 !important; }
-    body.light-theme #midi-mappings-list { border-color: #a59f93 !important; background: #efece5 !important; color: #4a4a4a !important; }
+    body.light-theme #seq-waveform { border-color: #a59f93; background: #dedcd5; }
+    body.light-theme #seq-editor-panel { border-color: #a59f93; background: #efece5; }
+    body.light-theme #midi-mappings-list { border-color: #a59f93; background: #efece5; color: #4a4a4a; }
     body.light-theme button.on { color: #fff; }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; overflow: hidden; user-select: none; line-height: 1.5; }
 
@@ -173,25 +179,25 @@
       padding: 10px 12px;
       font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
       color: var(--text-dim);
-      background: #0d0d0d;
+      background: var(--panel-dark);
       border-bottom: 2px solid var(--orange);
       flex-shrink: 0;
       position: relative;
     }
     .ph::before { content: "[ "; color: var(--orange); margin-right: 2px; }
     .ph::after { content: " ]"; color: var(--orange); margin-left: 2px; }
-    .ph .hint { color: #888; font-size: 11px; text-transform: none; letter-spacing: 0; margin-left: 8px; }
+    .ph .hint { color: var(--text-dim); font-size: 11px; text-transform: none; letter-spacing: 0; margin-left: 8px; }
 
     /* ── Tab system (onglets) ────────────────────────────────────── */
     .tabs-header {
       display: flex; gap: 0;
-      background: #0d0d0d;
+      background: var(--panel-dark);
       border-bottom: 2px solid var(--orange);
       flex-shrink: 0;
     }
     .tab-btn {
       flex: 1;
-      background: #0d0d0d;
+      background: var(--panel-dark);
       border: none;
       border-bottom: 2px solid transparent;
       color: var(--text-sec);
@@ -203,12 +209,12 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .tab-btn:hover { color: var(--text); background: #0f0f0f; }
+    .tab-btn:hover { color: var(--text); background: var(--panel-deeper); }
     .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .tab-btn.active {
       color: var(--accent);
       border-bottom-color: var(--accent);
-      background: #0a0a0a;
+      background: var(--ctrl-dark);
     }
     .tab-content {
       flex: 1;
@@ -226,15 +232,15 @@
       display: flex; align-items: center; gap: 8px;
       padding: 8px 12px;
       cursor: pointer;
-      border-bottom: 1px solid #0d0d0d;
+      border-bottom: 1px solid var(--border-subtle);
     }
-    .src-item:hover { background: #161616; }
+    .src-item:hover { background: var(--panel2); }
     .src-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .src-item.active { background: var(--accent-bg); }
     .src-item.active .src-name { color: var(--accent); }
     .src-key {
       font-size: 11px; font-weight: 600; color: var(--text); min-width: 16px;
-      background: #2a2a2a; border: 1px solid var(--orange);
+      background: var(--ctrl-bg); border: 1px solid var(--orange);
       border-radius: 3px; text-align: center; line-height: 16px; padding: 0 3px;
       flex-shrink: 0;
     }
@@ -247,7 +253,7 @@
       border-top: 1px solid var(--border);
       padding: 12px;
       display: flex; flex-direction: column; gap: 8px;
-      background: #0e0e0e;
+      background: var(--panel-deeper);
     }
     .lrow { display: flex; align-items: center; gap: 8px; }
     .lbl { font-size: 11px; color: var(--text-dim); letter-spacing: .05em; min-width: 12px; }
@@ -263,13 +269,13 @@
     #seq-grid .sequencer-step {
       width: 100%;
       aspect-ratio: 1;
-      background: #0a0a0a;
-      border: 1px solid #333;
+      background: var(--ctrl-dark);
+      border: 1px solid var(--border-io);
       cursor: pointer;
       transition: background .1s, box-shadow .1s;
       border-radius: 2px;
     }
-    #seq-grid .sequencer-step:hover { background: #1a1a1a; }
+    #seq-grid .sequencer-step:hover { background: var(--ctrl); }
     #seq-grid .sequencer-step.active { background: var(--accent); }
     #seq-grid .sequencer-step.current {
       background: var(--accent);
@@ -376,13 +382,13 @@
       align-items: center !important;
       padding: 8px 12px !important;
       border: none !important;
-      border-bottom: 1px solid #0d0d0d !important;
+      border-bottom: 1px solid var(--border-subtle) !important;
       border-radius: 0 !important;
       background: transparent !important;
     }
-    .fx:hover { background: #141414 !important; }
+    .fx:hover { background: var(--panel2) !important; }
     .fx:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: -2px !important; }
-    .fx.on { background: #0b1a0b !important; }
+    .fx.on { background: var(--accent-bg) !important; }
     .fx input[type=checkbox] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); }
     .fx-name { font-size: 13px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .fx.on .fx-name { color: var(--text-hi); }
@@ -399,7 +405,7 @@
     #focus-hint {
       display: none;
       position: fixed; bottom: 6px; right: 8px; z-index: 200;
-      font-size: 9px; color: #888; letter-spacing: .05em;
+      font-size: 9px; color: var(--text-dim); letter-spacing: .05em;
       pointer-events: none;
     }
     body.focus #focus-hint { display: block; }
@@ -445,44 +451,44 @@
   <div id="topbar">
     <span class="brand">TERMINAL·SYNTH</span>
     <div class="sep"></div>
-    <button id="audio" title="Audio [A]">audio</button>
-    <select id="audio-src" title="Source">
+    <button id="audio" aria-label="Audio Toggle" title="Audio [A]">audio</button>
+    <select id="audio-src" aria-label="Audio Source" title="Source">
       <option value="system">sys</option>
       <option value="mic">mic</option>
     </select>
     <div class="sep"></div>
-    <button id="midi" title="MIDI [M]">MIDI</button>
-    <select id="midi-mode">
+    <button id="midi" aria-label="MIDI Toggle" title="MIDI [M]">MIDI</button>
+    <select id="midi-mode" aria-label="MIDI Mode">
       <option value="organ">organ</option>
       <option value="noise">noise</option>
     </select>
     <div class="sep"></div>
-    <button id="isf-load" title="Charger shader ISF">ISF</button>
-    <button id="spout" title="Spout output">SPOUT</button>
+    <button id="isf-load" aria-label="Load ISF Shader" title="Charger shader ISF">ISF</button>
+    <button id="spout" aria-label="Spout Output" title="Spout output">SPOUT</button>
     <div class="spacer"></div>
-    <button id="preset-load" title="Charger preset  [Ctrl+O]">⊞</button>
-    <button id="preset-save" title="Sauvegarder preset  [Ctrl+S]">⊙</button>
+    <button id="preset-load" aria-label="Load Preset" title="Charger preset  [Ctrl+O]">⊞</button>
+    <button id="preset-save" aria-label="Save Preset" title="Sauvegarder preset  [Ctrl+S]">⊙</button>
     <div class="sep"></div>
-    <button id="rec" title="Enregistrer vidéo  [Ctrl+R]">●</button>
-    <button id="export-mp4" title="Exporter MP4 haute qualité  [Ctrl+E]">⊳</button>
+    <button id="rec" aria-label="Record Video" title="Enregistrer vidéo  [Ctrl+R]">●</button>
+    <button id="export-mp4" aria-label="Export MP4" title="Exporter MP4 haute qualité  [Ctrl+E]">⊳</button>
     <div class="sep"></div>
-    <button id="autoplay-gentle" title="Gentle automation (slow)">◈ Gentle</button>
-    <button id="autoplay-chaotic" title="Chaotic automation (fast)">◈ Chaos</button>
-    <button id="autoplay-psycho" title="Psycho automation (ultra)">◈ Psycho</button>
-    <button id="autoplay-glitch" title="Glitch automation (effects)">◈ Glitch</button>
+    <button id="autoplay-gentle" aria-label="Gentle Automation" title="Gentle automation (slow)">◈ Gentle</button>
+    <button id="autoplay-chaotic" aria-label="Chaotic Automation" title="Chaotic automation (fast)">◈ Chaos</button>
+    <button id="autoplay-psycho" aria-label="Psycho Automation" title="Psycho automation (ultra)">◈ Psycho</button>
+    <button id="autoplay-glitch" aria-label="Glitch Automation" title="Glitch automation (effects)">◈ Glitch</button>
     <div class="sep"></div>
-    <button id="loop-record" title="Record generative loop">↻ Loop</button>
-    <button id="loop-freeze" title="Freeze/unfreeze evolution">✦</button>
+    <button id="loop-record" aria-label="Record Generative Loop" title="Record generative loop">↻ Loop</button>
+    <button id="loop-freeze" aria-label="Freeze Evolution" title="Freeze/unfreeze evolution">✦</button>
     <div class="sep"></div>
-    <button id="undo" title="Undo snapshot [Ctrl+Z]">↶</button>
-    <button id="redo" title="Redo snapshot [Ctrl+Y]">↷</button>
-    <button id="session-export" title="Export session">⊙ Session</button>
+    <button id="undo" aria-label="Undo" title="Undo snapshot [Ctrl+Z]">↶</button>
+    <button id="redo" aria-label="Redo" title="Redo snapshot [Ctrl+Y]">↷</button>
+    <button id="session-export" aria-label="Export Session" title="Export session">⊙ Session</button>
     <div class="sep"></div>
-    <button id="theme-toggle" title="Toggle light/dark theme [T]">☀</button>
+    <button id="theme-toggle" aria-label="Toggle Theme" title="Toggle light/dark theme [T]">☀</button>
     <div class="spacer"></div>
-    <span id="autoplay-status" style="font-size:10px;color:#666;margin-right:10px;"></span>
+    <span id="autoplay-status" style="font-size:10px;color:var(--text-dim);margin-right:10px;"></span>
     <div class="sep"></div>
-    <button id="full" title="Plein écran  [F]">⛶</button>
+    <button id="full" aria-label="Fullscreen" title="Plein écran  [F]">⛶</button>
   </div>
 
   <!-- ── Main grid: 3-column flex layout (left | center | right) ───── -->
@@ -490,13 +496,13 @@
 
     <!-- ── Left panel: generators with tabs ──────────────────── -->
     <div id="left-panel">
-      <div class="tabs-header">
-        <button class="tab-btn active" data-tab="gen-all">All</button>
-        <button class="tab-btn" data-tab="gen-text">Text</button>
-        <button class="tab-btn" data-tab="gen-plasma">Plasma</button>
-        <button class="tab-btn" data-tab="gen-geometry">Geometry</button>
-        <button class="tab-btn" data-tab="gen-noise">Noise</button>
-        <button class="tab-btn" data-tab="gen-interactive">Interactive</button>
+      <div class="tabs-header" role="tablist">
+        <button class="tab-btn active" data-tab="gen-all" role="tab" aria-selected="true" aria-controls="gen-all">All</button>
+        <button class="tab-btn" data-tab="gen-text" role="tab" aria-selected="false" aria-controls="gen-text">Text</button>
+        <button class="tab-btn" data-tab="gen-plasma" role="tab" aria-selected="false" aria-controls="gen-plasma">Plasma</button>
+        <button class="tab-btn" data-tab="gen-geometry" role="tab" aria-selected="false" aria-controls="gen-geometry">Geometry</button>
+        <button class="tab-btn" data-tab="gen-noise" role="tab" aria-selected="false" aria-controls="gen-noise">Noise</button>
+        <button class="tab-btn" data-tab="gen-interactive" role="tab" aria-selected="false" aria-controls="gen-interactive">Interactive</button>
       </div>
 
       <div id="gen-all" class="tab-content active">
@@ -544,11 +550,11 @@
 
     <!-- ── Right panel: controls with tabs ───────────────────── -->
     <div id="right-panel">
-      <div class="tabs-header">
-        <button class="tab-btn active" data-tab="ctrl-params">Params</button>
-        <button class="tab-btn" data-tab="ctrl-controls">Controls</button>
-        <button class="tab-btn" data-tab="ctrl-layers">Layers</button>
-        <button class="tab-btn" data-tab="ctrl-sequencer">Seq</button>
+      <div class="tabs-header" role="tablist">
+        <button class="tab-btn active" data-tab="ctrl-params" role="tab" aria-selected="true" aria-controls="ctrl-params">Params</button>
+        <button class="tab-btn" data-tab="ctrl-controls" role="tab" aria-selected="false" aria-controls="ctrl-controls">Controls</button>
+        <button class="tab-btn" data-tab="ctrl-layers" role="tab" aria-selected="false" aria-controls="ctrl-layers">Layers</button>
+        <button class="tab-btn" data-tab="ctrl-sequencer" role="tab" aria-selected="false" aria-controls="ctrl-sequencer">Seq</button>
       </div>
 
       <div id="ctrl-params" class="tab-content active">
@@ -572,16 +578,16 @@
 
           <div class="ph" style="margin:8px -9px 4px;padding:4px 9px">Layer B</div>
           <div class="lrow">
-            <select id="layer-b-shader" style="flex:1;font-size:10px;height:20px"></select>
-            <button id="layer-b-on" style="padding:0 5px;height:20px;font-size:10px;margin-left:4px">B</button>
+            <select id="layer-b-shader" aria-label="Layer B Generator" style="flex:1;font-size:10px;height:20px"></select>
+            <button id="layer-b-on" aria-label="Layer B Toggle" style="padding:0 5px;height:20px;font-size:10px;margin-left:4px">B</button>
           </div>
 
           <div class="ph" style="margin:8px -9px 4px;padding:4px 9px">Blend</div>
-          <select id="blend-mode" title="Blend mode" style="width:100%;margin-bottom:6px"></select>
+          <select id="blend-mode" aria-label="Blend Mode" title="Blend mode" style="width:100%;margin-bottom:6px"></select>
 
           <div class="lrow">
             <span class="lbl">α</span>
-            <input id="layer-b-opacity" type="range" min="0" max="1" step="0.01" value="1" style="flex:1">
+            <input id="layer-b-opacity" type="range" min="0" max="1" step="0.01" value="1" aria-label="Layer B Opacity" style="flex:1">
           </div>
         </div>
       </div>
@@ -590,19 +596,19 @@
         <div style="padding:6px 9px;flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px">
           <div class="ph" style="margin:-6px -9px 4px;padding:4px 9px">Transport</div>
           <div style="display:flex;gap:6px">
-            <button id="seq-play" style="flex:1;height:26px;font-size:11px">▶ Play</button>
-            <button id="seq-stop" style="flex:1;height:26px;font-size:11px">⏹ Stop</button>
+            <button id="seq-play" aria-label="Play Sequencer" style="flex:1;height:26px;font-size:11px">▶ Play</button>
+            <button id="seq-stop" aria-label="Stop Sequencer" style="flex:1;height:26px;font-size:11px">⏹ Stop</button>
           </div>
           <div style="font-size:10px;color:var(--text-dim);text-align:center" id="seq-time">0:0:0</div>
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Settings</div>
           <div style="display:flex;gap:6px;align-items:center">
-            <label style="flex:1;font-size:10px;color:var(--text-dim)">BPM:</label>
-            <input id="seq-bpm" type="number" min="60" max="240" value="120" style="width:50px;height:20px;font-size:10px">
+            <label style="flex:1;font-size:10px;color:var(--text-dim)" for="seq-bpm">BPM:</label>
+            <input id="seq-bpm" type="number" min="60" max="240" value="120" aria-label="BPM" style="width:50px;height:20px;font-size:10px">
           </div>
           <div style="display:flex;gap:6px;align-items:center">
-            <label style="flex:1;font-size:10px;color:var(--text-dim)">Steps:</label>
-            <select id="seq-step-count" style="flex:1;height:20px;font-size:10px">
+            <label style="flex:1;font-size:10px;color:var(--text-dim)" for="seq-step-count">Steps:</label>
+            <select id="seq-step-count" aria-label="Step Count" style="flex:1;height:20px;font-size:10px">
               <option value="8">8</option>
               <option value="16" selected>16</option>
               <option value="32">32</option>
@@ -610,7 +616,7 @@
           </div>
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Automation Target</div>
-          <select id="seq-param-select" style="width:100%;height:22px;font-size:10px">
+          <select id="seq-param-select" aria-label="Automation Target Parameter" style="width:100%;height:22px;font-size:10px">
             <option value="shader.u_p0">Shader Param 0</option>
             <option value="shader.u_p1">Shader Param 1</option>
             <option value="shader.u_p2">Shader Param 2</option>
@@ -622,25 +628,25 @@
             <option value="disruptor.1.sensitivity">Disruptor 1</option>
             <option value="layer.b.opacity">Layer B Opacity</option>
           </select>
-          <div style="font-size:9px;color:#888;margin-top:2px">Click steps to add/remove keyframes</div>
+          <div style="font-size:9px;color:var(--text-dim);margin-top:2px">Click steps to add/remove keyframes</div>
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Step Grid</div>
           <div id="seq-grid" style="display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin:4px 0"></div>
           <canvas id="seq-waveform" width="260" height="40" style="width:100%;height:40px;border:1px solid #333;border-radius:2px;background:#0a0a0a;margin-bottom:6px;display:none"></canvas>
-          <div style="font-size:9px;color:#666;text-align:center;margin-bottom:6px">
+          <div style="font-size:9px;color:var(--text-dim);text-align:center;margin-bottom:6px">
             <span id="seq-keyframe-count">0 keyframes</span>
           </div>
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Tools</div>
           <div style="display:flex;gap:4px;margin-bottom:4px">
-            <button id="seq-copy-btn" style="flex:1;height:20px;font-size:10px;background:#1a3a1a;border-color:#3a6a3a">📋 Copy</button>
-            <button id="seq-paste-btn" style="flex:1;height:20px;font-size:10px;background:#1a2a3a;border-color:#3a5a6a" disabled>📌 Paste</button>
+            <button id="seq-copy-btn" aria-label="Copy Keyframes" style="flex:1;height:20px;font-size:10px;background:#1a3a1a;border-color:#3a6a3a">📋 Copy</button>
+            <button id="seq-paste-btn" aria-label="Paste Keyframes" style="flex:1;height:20px;font-size:10px;background:#1a2a3a;border-color:#3a5a6a" disabled>📌 Paste</button>
           </div>
           <div style="display:flex;gap:4px;margin-bottom:4px">
-            <button id="seq-randomize-btn" style="flex:1;height:20px;font-size:10px;background:#2a1a1a;border-color:#6a3a3a">🎲 Random</button>
-            <button id="seq-record-btn" style="flex:1;height:20px;font-size:10px;background:#1a1a1a;border-color:#3a3a3a">⏺ Record</button>
+            <button id="seq-randomize-btn" aria-label="Randomize Keyframes" style="flex:1;height:20px;font-size:10px;background:#2a1a1a;border-color:#6a3a3a">🎲 Random</button>
+            <button id="seq-record-btn" aria-label="Record Automation" style="flex:1;height:20px;font-size:10px;background:#1a1a1a;border-color:#3a3a3a">⏺ Record</button>
           </div>
-          <div style="font-size:9px;color:#888;text-align:center">
+          <div style="font-size:9px;color:var(--text-dim);text-align:center">
             <span id="seq-record-status">Not recording</span>
           </div>
 
@@ -648,14 +654,14 @@
             <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px">Edit Keyframe</div>
 
             <div style="display:flex;gap:4px;margin-bottom:4px">
-              <label style="flex:1;font-size:10px">Value:</label>
-              <input id="seq-kf-value" type="range" min="0" max="1" step="0.01" style="flex:1">
+              <label style="flex:1;font-size:10px" for="seq-kf-value">Value:</label>
+              <input id="seq-kf-value" type="range" min="0" max="1" step="0.01" aria-label="Keyframe Value" style="flex:1">
               <span id="seq-kf-value-display" style="font-size:10px;width:30px;text-align:right">0.50</span>
             </div>
 
             <div style="display:flex;gap:4px;margin-bottom:4px">
-              <label style="flex:1;font-size:10px">Easing:</label>
-              <select id="seq-kf-easing" style="flex:1;height:20px;font-size:9px">
+              <label style="flex:1;font-size:10px" for="seq-kf-easing">Easing:</label>
+              <select id="seq-kf-easing" aria-label="Keyframe Easing" style="flex:1;height:20px;font-size:9px">
                 <option value="linear">Linear</option>
                 <option value="ease-in">Ease In</option>
                 <option value="ease-out">Ease Out</option>
@@ -664,19 +670,19 @@
             </div>
 
             <div style="display:flex;gap:4px">
-              <button id="seq-kf-delete" style="flex:1;height:20px;font-size:10px;background:#400;border-color:#600;color:#f88">Delete</button>
-              <button id="seq-kf-close" style="flex:1;height:20px;font-size:10px">Done</button>
+              <button id="seq-kf-delete" aria-label="Delete Keyframe" style="flex:1;height:20px;font-size:10px;background:#400;border-color:#600;color:#f88">Delete</button>
+              <button id="seq-kf-close" aria-label="Close Keyframe Editor" style="flex:1;height:20px;font-size:10px">Done</button>
             </div>
           </div>
 
           <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">MIDI Learn</div>
           <div style="display:flex;gap:6px">
-            <button id="midi-learn-btn" style="flex:1;height:26px;font-size:11px">🎹 Learn</button>
+            <button id="midi-learn-btn" aria-label="MIDI Learn Mode" style="flex:1;height:26px;font-size:11px">🎹 Learn</button>
             <div style="flex:1;font-size:10px;color:var(--text-dim);text-align:center;padding-top:8px" id="midi-learn-status">Idle</div>
           </div>
 
           <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Mappings:</div>
-          <div id="midi-mappings-list" style="max-height:80px;overflow-y:auto;border:1px solid #333;padding:4px;background:#0a0a0a;font-size:9px;font-family:monospace;color:#888"></div>
+          <div id="midi-mappings-list" style="max-height:80px;overflow-y:auto;border:1px solid var(--border-io);padding:4px;background:var(--ctrl-dark);font-size:9px;font-family:monospace;color:var(--text-dim)"></div>
         </div>
       </div>
     </div>
@@ -685,23 +691,23 @@
 
   <!-- ── Bottom bar ────────────────────────────────────── -->
   <div id="bottom-bar">
-    <button id="ascii-toggle" title="Mode ASCII  [X]">ASCII</button>
-    <input id="ascii-cols" type="range" min="20" max="200" step="5" title="Densité" style="width:52px">
+    <button id="ascii-toggle" aria-label="ASCII Mode Toggle" title="Mode ASCII  [X]">ASCII</button>
+    <input id="ascii-cols" type="range" min="20" max="200" step="5" aria-label="ASCII Columns" title="Densité" style="width:52px">
     <div class="sep"></div>
-    <button id="text-toggle" title="Overlay RECTA  [T]">TXT</button>
-    <input id="recta-speed" type="range" min="500" max="12000" step="250" value="4200" title="Durée RECTA" style="width:52px">
-    <input id="recta-font-size" type="range" min="8" max="24" step="1" value="14" title="RECTA Font Size" style="width:52px">
-    <button id="recta-mono" title="RECTA: Monochrome">◼ W</button>
-    <button id="recta-green" title="RECTA: Green terminal">◼ G</button>
-    <button id="recta-amber" title="RECTA: Amber terminal">◼ A</button>
+    <button id="text-toggle" aria-label="Text Overlay Toggle" title="Overlay RECTA  [T]">TXT</button>
+    <input id="recta-speed" type="range" min="500" max="12000" step="250" value="4200" aria-label="RECTA Speed" title="Durée RECTA" style="width:52px">
+    <input id="recta-font-size" type="range" min="8" max="24" step="1" value="14" aria-label="RECTA Font Size" title="RECTA Font Size" style="width:52px">
+    <button id="recta-mono" aria-label="RECTA Monochrome" title="RECTA: Monochrome">◼ W</button>
+    <button id="recta-green" aria-label="RECTA Green" title="RECTA: Green terminal">◼ G</button>
+    <button id="recta-amber" aria-label="RECTA Amber" title="RECTA: Amber terminal">◼ A</button>
     <div class="sep"></div>
-    <button id="text-layer-toggle" title="Text Layer (giant pixelated)">📝 TEXT</button>
-    <input id="text-pixelation" type="range" min="1" max="64" step="1" value="4" title="Pixelation" style="width:52px">
-    <input id="text-size" type="range" min="10" max="200" step="10" value="70" title="Size %" style="width:52px">
-    <button id="text-config" title="Configure words">⚙️</button>
+    <button id="text-layer-toggle" aria-label="Text Layer Toggle" title="Text Layer (giant pixelated)">📝 TEXT</button>
+    <input id="text-pixelation" type="range" min="1" max="64" step="1" value="4" aria-label="Text Pixelation" title="Pixelation" style="width:52px">
+    <input id="text-size" type="range" min="10" max="200" step="10" value="70" aria-label="Text Size" title="Size %" style="width:52px">
+    <button id="text-config" aria-label="Configure Text Layer" title="Configure words">⚙️</button>
     <div class="sep"></div>
-    <button id="master-brightness-toggle" title="Master Brightness (audio-driven) [B]">💡 Master</button>
-    <input id="master-brightness-slider" type="range" min="0" max="1" step="0.01" value="0.5" title="Master Brightness Amount" style="width:60px">
+    <button id="master-brightness-toggle" aria-label="Master Brightness Toggle" title="Master Brightness (audio-driven) [B]">💡 Master</button>
+    <input id="master-brightness-slider" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Master Brightness Amount" title="Master Brightness Amount" style="width:60px">
     <div class="spacer"></div>
     <span id="meter"></span>
   </div>
@@ -712,8 +718,8 @@
     bottom: 40px;
     right: 10px;
     width: 300px;
-    background: #1a1a1a;
-    border: 1px solid #333;
+    background: var(--ctrl);
+    border: 1px solid var(--border-io);
     border-radius: 4px;
     padding: 10px;
     display: none;
@@ -723,18 +729,18 @@
     overflow-y: auto;
   ">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <strong style="color:#9be29b">Text Layer</strong>
-      <button id="text-config-close" style="background:none;border:none;color:#666;cursor:pointer;font-size:16px">✕</button>
+      <strong style="color:var(--accent)">Text Layer</strong>
+      <button id="text-config-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px">✕</button>
     </div>
 
     <div style="margin-bottom:10px">
-      <label style="display:block;font-size:10px;color:#666;margin-bottom:4px">Word List (one per line)</label>
+      <label style="display:block;font-size:10px;color:var(--text-dim);margin-bottom:4px">Word List (one per line)</label>
       <textarea id="text-words" style="
         width:100%;
         height:100px;
-        background:#0a0a0a;
-        border:1px solid #222;
-        color:#9be29b;
+        background:var(--ctrl-dark);
+        border:1px solid var(--border-subtle);
+        color:var(--accent);
         font-family:monospace;
         font-size:10px;
         padding:4px;
@@ -743,29 +749,29 @@
     </div>
 
     <div style="margin-bottom:10px">
-      <label style="display:block;font-size:10px;color:#666;margin-bottom:4px">Color</label>
+      <label style="display:block;font-size:10px;color:var(--text-dim);margin-bottom:4px">Color</label>
       <input id="text-color" type="color" value="#00ff00" style="width:100%;height:24px;cursor:pointer">
     </div>
 
     <div style="margin-bottom:10px">
-      <label style="display:block;font-size:10px;color:#666;margin-bottom:4px">Opacity: <span id="text-opacity-val">80</span>%</label>
+      <label style="display:block;font-size:10px;color:var(--text-dim);margin-bottom:4px">Opacity: <span id="text-opacity-val">80</span>%</label>
       <input id="text-opacity" type="range" min="0" max="100" value="80" style="width:100%">
     </div>
 
     <div style="margin-bottom:10px">
-      <label style="display:block;font-size:10px;color:#666;margin-bottom:4px">Duration (ms)</label>
+      <label style="display:block;font-size:10px;color:var(--text-dim);margin-bottom:4px">Duration (ms)</label>
       <input id="text-duration" type="range" min="500" max="5000" step="100" value="2000" style="width:100%">
-      <span style="font-size:9px;color:#666" id="text-duration-val">2000</span>
+      <span style="font-size:9px;color:var(--text-dim)" id="text-duration-val">2000</span>
     </div>
 
     <label style="display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:10px">
-      <input id="text-audio-reactive" type="checkbox" checked>
+      <input id="text-audio-reactive" type="checkbox" checked aria-label="Audio Reactive">
       <span>Audio Reactive</span>
     </label>
 
     <button id="text-apply" style="
       width:100%;
-      background:#9be29b;
+      background:var(--accent);
       color:#000;
       border:none;
       padding:6px;
