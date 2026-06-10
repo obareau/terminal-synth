@@ -13,6 +13,10 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
 ---
 
+![Terminal-Synth in Live Performance](assets/screenshots/hero-performance.png)
+
+---
+
 ## 🚀 Quick Start
 
 ### Linux (Debian/Ubuntu)
