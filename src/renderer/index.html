@@ -30,10 +30,10 @@
       --panel:      #e8e6e0;
       --panel2:     #dedcd5;
       --ctrl:       #d2cfc7;
-      --border:     #b8b3a8;
-      --border2:    #a59f93;
-      --dim:        #888;
-      --text-dim:   #555;
+      --border:     #7a7470;
+      --border2:    #6a645b;
+      --dim:        #6b6b6b;
+      --text-dim:   #4a4a4a;
       --text-sec:   #333;
       --text:       #1a1a1a;
       --text-hi:    #000;
@@ -44,12 +44,29 @@
       --red:        #b83232;
       --cyan:       #1976b3;
     }
-    body.light-theme ::-webkit-scrollbar-thumb { background: #b8b3a8; }
-    body.light-theme .ph,
-    body.light-theme .tab-content,
-    body.light-theme .tab-btn.active { background: #efece5; }
-    body.light-theme .tab-btn:hover { background: #d8d4c9; }
-    body.light-theme .src-item:hover { background: #d8d4c9; }
+    body.light-theme ::-webkit-scrollbar-thumb { background: #8e8880; }
+    body.light-theme .ph { background: #efece5; color: #4a4a4a; }
+    body.light-theme .ph .hint { color: #6b6b6b; }
+    body.light-theme .tabs-header { background: #efece5; border-bottom-color: #7a7470; }
+    body.light-theme .tab-btn { background: #efece5; color: #4a4a4a; }
+    body.light-theme .tab-btn:hover { background: #dedcd5; color: #1a1a1a; }
+    body.light-theme .tab-btn.active { background: #dedcd5; color: var(--accent); border-bottom-color: var(--accent); }
+    body.light-theme .tab-content { background: #f5f3ef; }
+    body.light-theme .src-item { border-bottom-color: #dedcd5; }
+    body.light-theme .src-item:hover { background: #dedcd5; }
+    body.light-theme .src-item.active { background: #c8e6d4; }
+    body.light-theme .src-key { background: #d2cfc7; border-color: #c46e00; color: #1a1a1a; }
+    body.light-theme .src-item.active .src-key { background: var(--orange); border-color: var(--orange); color: #fff; }
+    body.light-theme #layer-section { background: #efece5; }
+    body.light-theme #seq-grid .sequencer-step { background: #dedcd5; border-color: #a59f93; }
+    body.light-theme #seq-grid .sequencer-step:hover { background: #d2cfc7; }
+    body.light-theme .fx { border-bottom-color: #dedcd5 !important; }
+    body.light-theme .fx:hover { background: #dedcd5 !important; }
+    body.light-theme .fx.on { background: #c8e6d4 !important; }
+    body.light-theme #focus-hint { color: #6b6b6b; }
+    body.light-theme #seq-waveform { border-color: #a59f93 !important; background: #dedcd5 !important; }
+    body.light-theme #seq-editor-panel { border-color: #a59f93 !important; background: #efece5 !important; }
+    body.light-theme #midi-mappings-list { border-color: #a59f93 !important; background: #efece5 !important; color: #4a4a4a !important; }
     body.light-theme button.on { color: #fff; }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; overflow: hidden; user-select: none; line-height: 1.5; }
 
