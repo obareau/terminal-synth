@@ -605,30 +605,30 @@
       </div>
 
       <div id="ctrl-sequencer" class="tab-content">
-        <div style="padding:6px 9px;flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px">
-          <div class="ph" style="margin:-6px -9px 4px;padding:4px 9px">Transport</div>
-          <div style="display:flex;gap:6px">
-            <button id="seq-play" aria-label="Play Sequencer" style="flex:1;height:26px;font-size:11px">▶ Play</button>
-            <button id="seq-stop" aria-label="Stop Sequencer" style="flex:1;height:26px;font-size:11px">⏹ Stop</button>
+        <div style="padding:var(--spacing-lg);flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:var(--spacing-md)">
+          <div class="ph" style="margin:calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Transport</div>
+          <div style="display:flex;gap:var(--spacing-sm)">
+            <button id="seq-play" aria-label="Play Sequencer" style="flex:1;height:28px;font-size:11px;font-weight:600">▶ Play</button>
+            <button id="seq-stop" aria-label="Stop Sequencer" style="flex:1;height:28px;font-size:11px;font-weight:600">⏹ Stop</button>
           </div>
-          <div style="font-size:10px;color:var(--text-dim);text-align:center" id="seq-time">0:0:0</div>
+          <div style="font-size:10px;color:var(--text-dim);text-align:center;font-family:var(--font-mono)" id="seq-time">0:0:0</div>
 
-          <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Settings</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <label style="flex:1;font-size:10px;color:var(--text-dim)" for="seq-bpm">BPM:</label>
-            <input id="seq-bpm" type="number" min="60" max="240" value="120" aria-label="BPM" style="width:50px;height:20px;font-size:10px">
+          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Settings</div>
+          <div style="display:flex;gap:var(--spacing-sm);align-items:center">
+            <label style="flex:1;font-size:10px;color:var(--text-dim);font-weight:600" for="seq-bpm">BPM:</label>
+            <input id="seq-bpm" type="number" min="60" max="240" value="120" aria-label="BPM" style="width:54px;height:26px;font-size:10px">
           </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <label style="flex:1;font-size:10px;color:var(--text-dim)" for="seq-step-count">Steps:</label>
-            <select id="seq-step-count" aria-label="Step Count" style="flex:1;height:20px;font-size:10px">
+          <div style="display:flex;gap:var(--spacing-sm);align-items:center">
+            <label style="flex:1;font-size:10px;color:var(--text-dim);font-weight:600" for="seq-step-count">Steps:</label>
+            <select id="seq-step-count" aria-label="Step Count" style="flex:1;height:26px;font-size:10px">
               <option value="8">8</option>
               <option value="16" selected>16</option>
               <option value="32">32</option>
             </select>
           </div>
 
-          <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Automation Target</div>
-          <select id="seq-param-select" aria-label="Automation Target Parameter" style="width:100%;height:22px;font-size:10px">
+          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Automation Target</div>
+          <select id="seq-param-select" aria-label="Automation Target Parameter" style="width:100%;height:26px;font-size:10px">
             <option value="shader.u_p0">Shader Param 0</option>
             <option value="shader.u_p1">Shader Param 1</option>
             <option value="shader.u_p2">Shader Param 2</option>
@@ -640,40 +640,40 @@
             <option value="disruptor.1.sensitivity">Disruptor 1</option>
             <option value="layer.b.opacity">Layer B Opacity</option>
           </select>
-          <div style="font-size:9px;color:var(--text-dim);margin-top:2px">Click steps to add/remove keyframes</div>
+          <div style="font-size:9px;color:var(--text-dim);margin-top:var(--spacing-sm)">Click steps to add/remove keyframes</div>
 
-          <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Step Grid</div>
-          <div id="seq-grid" style="display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin:4px 0"></div>
-          <canvas id="seq-waveform" width="260" height="40" style="width:100%;height:40px;border:1px solid #333;border-radius:2px;background:#0a0a0a;margin-bottom:6px;display:none"></canvas>
-          <div style="font-size:9px;color:var(--text-dim);text-align:center;margin-bottom:6px">
+          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Step Grid</div>
+          <div id="seq-grid" style="display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin:var(--spacing-md) 0"></div>
+          <canvas id="seq-waveform" width="260" height="40" style="width:100%;height:40px;border:1px solid var(--border);border-radius:0;background:var(--ctrl-dark);margin-bottom:var(--spacing-md);display:none"></canvas>
+          <div style="font-size:9px;color:var(--text-dim);text-align:center;margin-bottom:var(--spacing-md);font-family:var(--font-mono)">
             <span id="seq-keyframe-count">0 keyframes</span>
           </div>
 
-          <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">Tools</div>
-          <div style="display:flex;gap:4px;margin-bottom:4px">
-            <button id="seq-copy-btn" aria-label="Copy Keyframes" style="flex:1;height:20px;font-size:10px;background:#1a3a1a;border-color:#3a6a3a">📋 Copy</button>
-            <button id="seq-paste-btn" aria-label="Paste Keyframes" style="flex:1;height:20px;font-size:10px;background:#1a2a3a;border-color:#3a5a6a" disabled>📌 Paste</button>
+          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">Tools</div>
+          <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-sm)">
+            <button id="seq-copy-btn" aria-label="Copy Keyframes" style="flex:1;height:26px;font-size:10px;font-weight:600">📋 Copy</button>
+            <button id="seq-paste-btn" aria-label="Paste Keyframes" style="flex:1;height:26px;font-size:10px;font-weight:600" disabled>📌 Paste</button>
           </div>
-          <div style="display:flex;gap:4px;margin-bottom:4px">
-            <button id="seq-randomize-btn" aria-label="Randomize Keyframes" style="flex:1;height:20px;font-size:10px;background:#2a1a1a;border-color:#6a3a3a">🎲 Random</button>
-            <button id="seq-record-btn" aria-label="Record Automation" style="flex:1;height:20px;font-size:10px;background:#1a1a1a;border-color:#3a3a3a">⏺ Record</button>
+          <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-sm)">
+            <button id="seq-randomize-btn" aria-label="Randomize Keyframes" style="flex:1;height:26px;font-size:10px;font-weight:600">🎲 Random</button>
+            <button id="seq-record-btn" aria-label="Record Automation" style="flex:1;height:26px;font-size:10px;font-weight:600">⏺ Record</button>
           </div>
-          <div style="font-size:9px;color:var(--text-dim);text-align:center">
+          <div style="font-size:9px;color:var(--text-dim);text-align:center;font-family:var(--font-mono)">
             <span id="seq-record-status">Not recording</span>
           </div>
 
-          <div id="seq-editor-panel" style="display:none;border:1px solid #333;padding:6px;background:#0a0a0a;border-radius:2px">
-            <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px">Edit Keyframe</div>
+          <div id="seq-editor-panel" style="display:none;border:1px solid var(--border);padding:var(--spacing-lg);background:var(--ctrl);border-radius:0;margin-top:var(--spacing-md)">
+            <div style="font-size:10px;color:var(--text-dim);margin-bottom:var(--spacing-lg);font-weight:600;letter-spacing:0.3px">EDIT KEYFRAME</div>
 
-            <div style="display:flex;gap:4px;margin-bottom:4px">
-              <label style="flex:1;font-size:10px" for="seq-kf-value">Value:</label>
+            <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-md);align-items:center">
+              <label style="flex:1;font-size:10px;font-weight:600" for="seq-kf-value">Value:</label>
               <input id="seq-kf-value" type="range" min="0" max="1" step="0.01" aria-label="Keyframe Value" style="flex:1">
-              <span id="seq-kf-value-display" style="font-size:10px;width:30px;text-align:right">0.50</span>
+              <span id="seq-kf-value-display" style="font-size:10px;width:40px;text-align:right;font-family:var(--font-mono)">0.50</span>
             </div>
 
-            <div style="display:flex;gap:4px;margin-bottom:4px">
-              <label style="flex:1;font-size:10px" for="seq-kf-easing">Easing:</label>
-              <select id="seq-kf-easing" aria-label="Keyframe Easing" style="flex:1;height:20px;font-size:9px">
+            <div style="display:flex;gap:var(--spacing-sm);margin-bottom:var(--spacing-md);align-items:center">
+              <label style="flex:1;font-size:10px;font-weight:600" for="seq-kf-easing">Easing:</label>
+              <select id="seq-kf-easing" aria-label="Keyframe Easing" style="flex:1;height:26px;font-size:9px">
                 <option value="linear">Linear</option>
                 <option value="ease-in">Ease In</option>
                 <option value="ease-out">Ease Out</option>
@@ -681,20 +681,20 @@
               </select>
             </div>
 
-            <div style="display:flex;gap:4px">
-              <button id="seq-kf-delete" aria-label="Delete Keyframe" style="flex:1;height:20px;font-size:10px;background:#400;border-color:#600;color:#f88">Delete</button>
-              <button id="seq-kf-close" aria-label="Close Keyframe Editor" style="flex:1;height:20px;font-size:10px">Done</button>
+            <div style="display:flex;gap:var(--spacing-sm)">
+              <button id="seq-kf-delete" aria-label="Delete Keyframe" style="flex:1;height:26px;font-size:10px;font-weight:600;background:#1a0000;border-color:#663333;color:var(--red)">Delete</button>
+              <button id="seq-kf-close" aria-label="Close Keyframe Editor" style="flex:1;height:26px;font-size:10px;font-weight:600">Done</button>
             </div>
           </div>
 
-          <div class="ph" style="margin:4px -9px 4px;padding:4px 9px">MIDI Learn</div>
-          <div style="display:flex;gap:6px">
-            <button id="midi-learn-btn" aria-label="MIDI Learn Mode" style="flex:1;height:26px;font-size:11px">🎹 Learn</button>
-            <div style="flex:1;font-size:10px;color:var(--text-dim);text-align:center;padding-top:8px" id="midi-learn-status">Idle</div>
+          <div class="ph" style="margin:var(--spacing-md) calc(-1 * var(--spacing-lg)) var(--spacing-md);padding:var(--spacing-md) var(--spacing-lg)">MIDI Learn</div>
+          <div style="display:flex;gap:var(--spacing-sm)">
+            <button id="midi-learn-btn" aria-label="MIDI Learn Mode" style="flex:1;height:28px;font-size:11px;font-weight:600">🎹 Learn</button>
+            <div style="flex:1;font-size:10px;color:var(--text-dim);text-align:center;display:flex;align-items:center;justify-content:center" id="midi-learn-status">Idle</div>
           </div>
 
-          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Mappings:</div>
-          <div id="midi-mappings-list" style="max-height:80px;overflow-y:auto;border:1px solid var(--border-io);padding:4px;background:var(--ctrl-dark);font-size:9px;font-family:monospace;color:var(--text-dim)"></div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:var(--spacing-md);font-weight:600;letter-spacing:0.3px">MAPPINGS:</div>
+          <div id="midi-mappings-list" style="max-height:100px;overflow-y:auto;border:1px solid var(--border);padding:var(--spacing-md);background:var(--ctrl-dark);font-size:9px;font-family:var(--font-mono);color:var(--text-dim)"></div>
         </div>
       </div>
     </div>
