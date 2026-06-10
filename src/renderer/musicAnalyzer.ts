@@ -1,24 +1,22 @@
-// Ultra-lightweight music analysis - minimal CPU overhead
-// Only calculates BPM on detected onsets, everything else is instant lookups
+// Ultra-lightweight BPM estimation from bass beat pattern
 export interface MusicAnalysis {
   bpm: number;
-  bpmConfidence: number; // 0-1
-  energy: number; // 0-1
-  energyTrend: number; // -1 to 1
-  spectralChange: number; // 0-1
+  bpmConfidence: number;
+  energy: number;
+  energyTrend: number;
+  spectralChange: number;
   isTransient: boolean;
   style: "calm" | "driving" | "chaotic" | "peak";
 }
 
 export class MusicAnalyzer {
-  private readonly BPM_MIN = 40;
-  private readonly BPM_MAX = 240;
-  private readonly ONSET_THRESHOLD = 0.12; // Lower threshold for lissed audio bands
+  private readonly BPM_MIN = 60;
+  private readonly BPM_MAX = 180;
 
-  private lastOnsetTime = 0;
-  private lastInterval = 0;
+  private bassPeakCount = 0;
+  private peakWindow: number[] = []; // Last 60 frames of bass levels
+  private lastBassLevel = 0;
   private lastBPM = 120;
-  private lastEnergy = 0;
   private tapTempoData = { taps: [] as number[], bpm: 120 };
 
   constructor(initialBpm: number = 120) {
@@ -27,43 +25,62 @@ export class MusicAnalyzer {
   }
 
   analyze(bands: { bass: number; mid: number; treble: number; level: number }): MusicAnalysis {
-    // Onset detection
-    const energyDelta = bands.level - this.lastEnergy;
-    const isOnset = energyDelta > this.ONSET_THRESHOLD;
-    let bpm = this.tapTempoData.bpm !== 120 ? this.tapTempoData.bpm : this.lastBPM;
-    let confidence = this.tapTempoData.bpm !== 120 ? 0.95 : 0.3;
+    // Track bass peaks (upward crossings of 0.6 threshold)
+    const bassPeak = this.lastBassLevel <= 0.6 && bands.bass > 0.6;
+    if (bassPeak) {
+      this.bassPeakCount++;
+    }
+    this.lastBassLevel = bands.bass;
 
-    if (isOnset && performance.now() - this.lastOnsetTime > 250) {
-      const now = performance.now();
-      const interval = now - this.lastOnsetTime;
-      this.lastOnsetTime = now;
+    // Keep window of last 60 frames
+    this.peakWindow.push(bands.bass);
+    if (this.peakWindow.length > 60) {
+      this.peakWindow.shift();
+    }
 
-      if (interval > 200) {
-        const calcBPM = Math.round(60000 / interval);
-        if (calcBPM >= this.BPM_MIN && calcBPM <= this.BPM_MAX) {
-          this.lastBPM = calcBPM;
-          this.lastInterval = interval;
-          bpm = calcBPM;
-          confidence = 0.7;
-        }
+    // Estimate BPM from peak frequency (60 frames = 1 second at 60fps)
+    // Count peaks in last second
+    let peakCount = 0;
+    let lastPeakIdx = -1;
+    for (let i = 0; i < this.peakWindow.length; i++) {
+      const isPeak = i === 0 ? false : this.peakWindow[i - 1] <= 0.6 && this.peakWindow[i] > 0.6;
+      if (isPeak) {
+        peakCount++;
+        lastPeakIdx = i;
       }
     }
 
-    // Simple style classification (no calculations)
+    // BPM = peaks per second * 60 (4 peaks/sec = 240 BPM, 2 peaks/sec = 120 BPM)
+    let bpm = this.lastBPM;
+    if (peakCount >= 2 && this.peakWindow.length >= 30) {
+      const estimatedBPM = Math.round(peakCount * 60);
+      if (estimatedBPM >= this.BPM_MIN && estimatedBPM <= this.BPM_MAX) {
+        bpm = estimatedBPM;
+        this.lastBPM = bpm;
+      }
+    }
+
+    // Apply manual tap tempo if set
+    if (this.tapTempoData.bpm !== 120) {
+      bpm = this.tapTempoData.bpm;
+    }
+
+    // Simple energy trend
+    const energyTrend = bands.level > 0.5 ? 1 : bands.level < 0.3 ? -1 : 0;
+
+    // Classify style
     let style: "calm" | "driving" | "chaotic" | "peak" = "calm";
-    if (bands.level > 0.8 && energyDelta > 0.2) style = "peak";
+    if (bands.level > 0.8) style = "peak";
     else if (bands.level > 0.6) style = "chaotic";
     else if (bands.level > 0.4) style = "driving";
 
-    this.lastEnergy = bands.level;
-
     return {
       bpm,
-      bpmConfidence: confidence,
+      bpmConfidence: peakCount >= 2 ? 0.8 : 0.3,
       energy: bands.level,
-      energyTrend: energyDelta > 0.05 ? 1 : energyDelta < -0.05 ? -1 : 0,
-      spectralChange: 0, // Skip entirely
-      isTransient: energyDelta > 0.3,
+      energyTrend,
+      spectralChange: 0,
+      isTransient: bands.bass > 0.7,
       style,
     };
   }
@@ -80,8 +97,9 @@ export class MusicAnalyzer {
       }
       const avgInterval = sum / (this.tapTempoData.taps.length - 1);
       const bpm = Math.round(60000 / avgInterval);
-      if (bpm >= this.BPM_MIN && bpm <= this.BPM_MAX) {
+      if (bpm >= 40 && bpm <= 240) {
         this.tapTempoData.bpm = bpm;
+        this.lastBPM = bpm;
         return bpm;
       }
     }
@@ -97,13 +115,8 @@ export class MusicAnalyzer {
   }
 
   setBPM(bpm: number): void {
-    if (bpm >= this.BPM_MIN && bpm <= this.BPM_MAX) {
+    if (bpm >= 40 && bpm <= 240) {
       this.lastBPM = bpm;
     }
-  }
-
-  shouldUpdateDisplay(): boolean {
-    // Update display rarely - helps with CPU
-    return Math.random() < 0.15; // ~15% chance = ~10fps at 60fps
   }
 }
