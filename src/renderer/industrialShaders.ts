@@ -190,13 +190,12 @@ vec3 render(vec2 uv, vec2 res) {
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
   float v = 0.0;
-  for (int i=0; i<24; i++) {
+  // shared cheap modulation, computed once
+  float mod1 = sin(uv.x*9.0 + u_time*0.8)*0.005;
+  for (int i=0; i<14; i++) {
     float fi = float(i);
-    float y = fi/24.0
-              + sin(uv.x*4.0 + u_time*0.5 + fi*0.3)*0.015
-              + sin(uv.x*9.0 + u_time*0.8)*0.005;
-    float d = abs(uv.y - y);
-    v = max(v, smoothstep(0.005, 0.0, d));
+    float y = fi/14.0 + sin(uv.x*4.0 + u_time*0.5 + fi*0.3)*0.015 + mod1;
+    v = max(v, smoothstep(0.005, 0.0, abs(uv.y - y)));
   }
   return vec3(v);
 }`,
@@ -311,11 +310,11 @@ vec3 render(vec2 uv, vec2 res) {
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = uv - 0.5; p.x *= res.x/res.y;
   float v = 0.0;
-  for (int i=0; i<14; i++) {
-    float ti = u_time - float(i)*0.04;
+  for (int i=0; i<8; i++) {
+    float ti = u_time - float(i)*0.07;
     vec2 lp = vec2(sin(ti*1.7), sin(ti*2.3 + 1.3))*0.4;
     float d = length(p - lp);
-    v += exp(-d*40.0) * (1.0 - float(i)/14.0);
+    v += exp(-d*40.0) * (1.0 - float(i)/8.0);
   }
   return vec3(clamp(v, 0.0, 1.0));
 }`,
@@ -426,11 +425,11 @@ float n2(vec2 p){
 vec3 render(vec2 uv, vec2 res) {
   vec2 p = floor(uv*vec2(160.0, 90.0)) / vec2(160.0, 90.0);
   float v = 0.0;
-  for (int i=0; i<6; i++) {
-    vec2 q = p; q.x -= float(i)*0.008;
-    v += n2(q*20.0 + vec2(u_time*0.3, u_time*0.1)) * (1.0 - float(i)/6.0);
+  for (int i=0; i<3; i++) {
+    vec2 q = p; q.x -= float(i)*0.016;
+    v += n2(q*20.0 + vec2(u_time*0.3, u_time*0.1)) * (1.0 - float(i)/3.0);
   }
-  v /= 3.0; v = smoothstep(0.45, 0.7, v);
+  v /= 1.8; v = smoothstep(0.45, 0.7, v);
   return vec3(v);
 }`,
   },

@@ -595,14 +595,21 @@ document.addEventListener("keydown", (e) => {
 // Industrial Mode: UI buttons (no keyboard shortcut — `i` is reserved for shader selection)
 const industrialModeToggle = $<HTMLButtonElement>("industrial-mode-toggle");
 const industrialPaletteBtn = $<HTMLButtonElement>("industrial-palette-btn");
+const industrialHudBadge = $<HTMLSpanElement>("industrial-hud-badge");
+function refreshIndustrialBadge() {
+  industrialHudBadge.style.display = industrialModeEnabled ? "inline-block" : "none";
+  industrialHudBadge.textContent = `⬛ INDUSTRIAL · ${PALETTE_NAMES[industrialPalette]}`;
+}
 industrialModeToggle.addEventListener("click", () => {
   industrialModeEnabled = !industrialModeEnabled;
   industrialModeToggle.classList.toggle("on", industrialModeEnabled);
   autoplayAdvanced.setIndustrialOnly(industrialModeEnabled);
+  refreshIndustrialBadge();
 });
 industrialPaletteBtn.addEventListener("click", () => {
   industrialPalette = (industrialPalette + 1) % 4;
   industrialPaletteBtn.textContent = PALETTE_NAMES[industrialPalette]!;
+  refreshIndustrialBadge();
 });
 
 // --- Sequencer UI update ---

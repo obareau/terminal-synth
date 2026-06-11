@@ -12,7 +12,9 @@ export interface Disruptor {
   defaultCooldownMs: number;  // temps minimal entre deux bursts
 }
 
-export const DISRUPTORS: Disruptor[] = [
+import { INDUSTRIAL_DISRUPTORS } from "./industrialDisruptors";
+
+const BUILTIN_DISRUPTORS: Disruptor[] = [
   {
     name: "Déchirure",
     defaultSensitivity: 0.65,
@@ -496,3 +498,5 @@ vec3 process(vec2 uv) {
 }`,
   },
 ];
+
+export const DISRUPTORS: Disruptor[] = [...BUILTIN_DISRUPTORS, ...INDUSTRIAL_DISRUPTORS];
