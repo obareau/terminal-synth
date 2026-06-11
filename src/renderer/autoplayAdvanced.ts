@@ -12,6 +12,7 @@
  */
 
 import { textLayer } from "./textLayer";
+import { SHADERS } from "./shaders";
 
 // Global functions from renderer.ts
 declare function applyRenderFilter(mode: "none" | "monochrome" | "green" | "amber"): void;
@@ -105,6 +106,7 @@ class AutoplayAdvanced {
   private preset: AutoplayPreset = AUTOPLAY_PRESETS.chaotic;
   private enabled: boolean = false;
   private running: boolean = false;
+  private industrialOnly: boolean = false; // v1.7: bias source randomization to Industrial shaders
   private bpm: number = 120;
   private measureDurationMs: number = 2000;
 
@@ -409,15 +411,27 @@ class AutoplayAdvanced {
     }
   }
 
+  setIndustrialOnly(v: boolean) {
+    this.industrialOnly = v;
+  }
+
   /**
-   * Helper: randomize source
+   * Helper: randomize source.
+   * When industrialOnly is set, restrict picks to shaders with category === "Industrial".
    */
   private randomizeSource() {
-    const sources = document.querySelectorAll(".src-item");
-    if (sources.length > 0) {
-      const randomSource = sources[Math.floor(Math.random() * sources.length)] as HTMLElement;
-      randomSource.click();
+    const all = Array.from(document.querySelectorAll(".src-item")) as HTMLElement[];
+    if (all.length === 0) return;
+    let pool = all;
+    if (this.industrialOnly) {
+      pool = all.filter((el) => {
+        const idx = Number(el.dataset["idx"]);
+        return SHADERS[idx]?.category === "Industrial";
+      });
+      if (pool.length === 0) pool = all; // fallback if no Industrial shaders
     }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    pick?.click();
   }
 
   /**

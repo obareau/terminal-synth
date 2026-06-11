@@ -324,6 +324,51 @@ const fxProg = EFFECTS.map((e) => {
   return result.program!;
 });
 
+// --- Industrial Mode (v1.7) -------------------------------------------------
+// Global N&B post-process: luminance + gamma + contrast + blue-noise dither +
+// quantize + palette. Toggled with key `I`; palette cycled with Shift+I.
+// Palette is packed into u_amount as a quarter-range:
+//   0.0..0.25 = B&W  | 0.25..0.50 = Phosphor
+//   0.50..0.75 = Blueprint | 0.75..1.00 = Sepia
+const INDUSTRIAL_MODE_BODY = /* glsl */ `
+// Interleaved Gradient Noise (Jiménez) — blue-noise-like dither
+float ign_(vec2 p) {
+  return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+}
+vec3 indPalette_(float lum, int pal) {
+  if (pal == 0) return vec3(lum);
+  if (pal == 1) return vec3(lum * 0.15, lum, lum * 0.25);              // phosphor
+  if (pal == 2) return vec3(lum * 0.25, lum * 0.55, lum);              // blueprint
+  return vec3(lum, lum * 0.78, lum * 0.55);                            // sepia
+}
+vec3 process(vec2 uv) {
+  vec3 col = prev(uv);
+  // Luminance (Rec. 709)
+  float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  // Contrast + gamma (hardcoded sensible defaults for v1.7.0)
+  lum = pow(clamp(lum, 0.0, 1.0), 0.85);
+  lum = clamp((lum - 0.5) * 1.4 + 0.5, 0.0, 1.0);
+  // Blue-noise dither in quantization space (2 levels = pure 1-bit B&W)
+  float steps = 2.0;
+  float n = ign_(gl_FragCoord.xy) - 0.5;
+  lum = floor(lum * steps + n * 1.0 + 0.5) / steps;
+  // Palette unpacked from u_amount
+  int pal = int(floor(u_amount * 4.0));
+  pal = clamp(pal, 0, 3);
+  return indPalette_(lum, pal);
+}`;
+const industrialModeProg = (() => {
+  const r = pipeline.compileEffect(INDUSTRIAL_MODE_BODY);
+  if (!r.success) {
+    console.error("[GL] Industrial Mode compile error:", r.error);
+    return null;
+  }
+  return r.program!;
+})();
+let industrialModeEnabled = false;
+let industrialPalette = 0; // 0=B&W, 1=Phosphor, 2=Blueprint, 3=Sepia
+const PALETTE_NAMES = ["B&W", "PHOSPHOR", "BLUEPRINT", "SEPIA"] as const;
+
 EFFECTS.forEach((e, i) => {
   const st = fxState[i]!;
   const wrap = document.createElement("label");
@@ -545,6 +590,19 @@ document.addEventListener("keydown", (e) => {
       masterBrightnessToggle.click();
     }
   }
+});
+
+// Industrial Mode: UI buttons (no keyboard shortcut — `i` is reserved for shader selection)
+const industrialModeToggle = $<HTMLButtonElement>("industrial-mode-toggle");
+const industrialPaletteBtn = $<HTMLButtonElement>("industrial-palette-btn");
+industrialModeToggle.addEventListener("click", () => {
+  industrialModeEnabled = !industrialModeEnabled;
+  industrialModeToggle.classList.toggle("on", industrialModeEnabled);
+  autoplayAdvanced.setIndustrialOnly(industrialModeEnabled);
+});
+industrialPaletteBtn.addEventListener("click", () => {
+  industrialPalette = (industrialPalette + 1) % 4;
+  industrialPaletteBtn.textContent = PALETTE_NAMES[industrialPalette]!;
 });
 
 // --- Sequencer UI update ---
@@ -978,6 +1036,13 @@ function frame(now: number): void {
     }
   }
 
+  // Industrial Mode: append as final GL post-process before output.
+  // Palette is packed into the amount value (quarter-range encoding).
+  if (industrialModeEnabled && industrialModeProg) {
+    const paletteAmount = (industrialPalette + 0.5) / 4.0; // midpoint of quarter
+    stages.push({ fx: industrialModeProg, amount: paletteAmount });
+  }
+
   // Master Brightness: add as final stage if enabled (independent of effects)
   if (masterBrightnessEnabled) {
     const masterBrightnessShader = `
@@ -999,21 +1064,20 @@ vec3 process(vec2 uv) {
 
     // Apply Master Brightness post-process via CSS filter on canvas
     if (masterBrightnessEnabled) {
-      // Smooth the audio level for gradual fading (exponential moving average)
-      // Lower alpha = smoother/slower transitions, higher = more responsive
+      // Smooth audio level (exponential moving average) — slower alpha = smoother.
       smoothedAudioLevel = smoothedAudioLevel * 0.85 + u.level * 0.15;
 
-      // Fade to black with smoothed audio level
-      // Use exponential curve to be more dramatic at low levels
-      const normalizedLevel = Math.pow(smoothedAudioLevel, 0.55); // Power curve for dramatic fade from silence
-      const minBrightness = 1; // Nearly black when silent (1% brightness)
-      const baseBrightness = minBrightness + (normalizedLevel * (100 - minBrightness));
+      // Power curve: dramatic response at low levels, gentler at high.
+      const normalizedLevel = Math.pow(smoothedAudioLevel, 0.55);
 
-      // Slider dramatically amplifies the effect: 0 = 100% at peak, 1 = 200% at peak
-      const amplification = 1 + (masterBrightnessAmount * 1.0);
-      const brightnessPercent = baseBrightness * amplification;
+      // Slider = audio-reactivity strength.
+      //   amount = 0   -> floor 100% (no effect, identity)
+      //   amount = 0.5 -> floor 50%  (fades between 50% and 100%)
+      //   amount = 1   -> floor 1%   (full fade-to-black)
+      const floor = 100 - masterBrightnessAmount * 99;
+      const brightnessPercent = floor + normalizedLevel * (100 - floor);
 
-      canvas.style.filter = `brightness(${Math.max(1, Math.min(200, brightnessPercent))}%)`;
+      canvas.style.filter = `brightness(${Math.max(1, Math.min(100, brightnessPercent))}%)`;
 
       // Auto-switch safety: read average luminance via WebGL
       try {

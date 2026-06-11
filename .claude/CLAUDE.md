@@ -12,9 +12,11 @@
 - **Web Audio API** for FFT analysis
 - **esbuild** for bundling
 
-**Current Version**: v1.2.0  
-**Status**: Active development  
+**Current Version**: v1.6.0  
+**Status**: Active development — solo live performer tool (autoplay-focused)  
 **License**: MIT
+
+**Core philosophy**: Single performer, music-reactive, no sequencer / no MIDI Learn. Adaptive Autoplay drives the show; the user supervises and biases.
 
 ---
 
@@ -49,13 +51,22 @@ npm run test:watch     # Watch mode for TDD
 | File | Purpose | Key Classes |
 |------|---------|-------------|
 | `src/renderer/gl.ts` | WebGL2 pipeline | `Pipeline` (rendering engine) |
-| `src/renderer/shaders.ts` | Generator definitions | 91 GLSL ES 3.00 generators |
-| `src/renderer/effects.ts` | Post-process effects | 31 effect definitions |
-| `src/renderer/disruptors.ts` | Audio-triggered glitches | 23 disruptor effects |
-| `src/renderer/sequencer.ts` | Automation system | `Sequencer` (16-step grid) |
-| `src/renderer/midiLearn.ts` | CC mapping | `MidiLearner` (learn mode) |
+| `src/renderer/shaders.ts` | Generator definitions | GLSL ES 3.00 generators |
+| `src/renderer/effects.ts` | Post-process effects | Effect chain definitions |
+| `src/renderer/disruptors.ts` | Audio-triggered glitches | Disruptor effects |
 | `src/renderer/audio.ts` | FFT analysis | `AudioInput` (Web Audio API) |
+| `src/renderer/musicAnalyzer.ts` | BPM/energy/onset detection | `MusicAnalyzer` |
+| `src/renderer/autoplay.ts` | Base autoplay logic | `Autoplay` |
+| `src/renderer/autoplayAdapter.ts` | Music-reactive bridge | Adapts autoplay to live audio |
+| `src/renderer/autoplayAdvanced.ts` | Advanced evolution rules | Energy/BPM-driven changes |
+| `src/renderer/isf.ts` | ISF shader support | ISF format loader |
+| `src/renderer/text.ts` / `textLayer.ts` / `textsource.ts` / `texts.ts` | Text overlays | Live text rendering |
+| `src/renderer/ascii.ts` | ASCII layer | ASCII art post-process |
+| `src/renderer/videoExport.ts` | Recording | Frame capture / video export |
+| `src/renderer/midi.ts` | MIDI input | Raw MIDI handling (NOT MIDI Learn) |
 | `src/renderer/renderer.ts` | Main event loop | Frame loop + UI glue |
+
+**Note**: Sequencer and MIDI Learn were removed — TS is autoplay-focused now.
 
 ### Data Flow
 ```
@@ -78,22 +89,21 @@ Audio Input → FFT Analysis → Audio Bands {bass, mid, treble, level}
 
 ## Key Features & Shortcuts
 
-### Master Brightness (v1.2.0) ⭐
-- **Toggle**: `B` key
-- **Slider**: Adjust amplitude (100% → 200% at peak)
-- **Effect**: Fade to black with audio level (smooth transitions)
-- **Files**: `renderer.ts` (lines 1014-1048)
+### Adaptive Autoplay (v1.6.0) ⭐
+- **Music-reactive evolution** — generators/effects/disruptors change in sync with the music
+- **BPM detection** — bass-peak counting algorithm (`musicAnalyzer.ts`)
+- **Energy analysis** — drives intensity of changes
+- **Tap tempo** — manual override
+- **Files**: `autoplay.ts`, `autoplayAdapter.ts`, `autoplayAdvanced.ts`, `musicAnalyzer.ts`
 
-### Sequencer (v1.0.1)
-- **Toggle**: `Shift+Q`
-- **Play/Stop**: `Shift+Space`
-- **Copy/Paste**: `C` / `V`
-- **Randomize**: `Shift+R`
-- **MIDI Learn**: `Shift+L`
-- **Files**: `sequencer.ts`, `midiLearn.ts`, `renderer.ts` (handlers)
+### Master Brightness
+- **Toggle**: `B` key
+- **Slider**: 100% → 200% amplification at peak
+- **Effect**: Audio-level fade-to-black via CSS filter
+- **Files**: `renderer.ts`
 
 ### Generator Selection
-- Keys: `1-9`, `q-p`, `a-k` (91 total generators)
+- Keys: `1-9`, `q-p`, `a-k`
 - **Files**: `shaders.ts` (generator definitions), `renderer.ts` (selection logic)
 
 ### Audio Controls
@@ -108,12 +118,15 @@ Audio Input → FFT Analysis → Audio Bands {bass, mid, treble, level}
 
 ### When Adding Features
 
-1. **Sequencer/Automation**: Edit `src/renderer/sequencer.ts` + `renderer.ts` frame loop
-2. **MIDI Mapping**: Edit `src/renderer/midiLearn.ts` + `renderer.ts` CC handlers
+1. **Autoplay logic**: Edit `autoplay.ts` / `autoplayAdapter.ts` / `autoplayAdvanced.ts`
+2. **Music analysis (BPM/energy/onsets)**: Edit `musicAnalyzer.ts`
 3. **Generators**: Add to `src/renderer/shaders.ts` (GLSL code block)
 4. **Effects**: Add to `src/renderer/effects.ts` (post-process shader)
-5. **UI Elements**: Add to `src/renderer/index.html` + `renderer.ts` event listeners
-6. **Styling**: Add to `src/renderer/index.html` `<style>` or separate CSS
+5. **Disruptors**: Add to `src/renderer/disruptors.ts` (audio-triggered glitches)
+6. **UI Elements**: Add to `src/renderer/index.html` + `renderer.ts` event listeners
+7. **Styling**: Add to `src/renderer/index.html` `<style>` or separate CSS
+
+**Reminder**: No sequencer, no MIDI Learn — these were deliberately removed. Don't reintroduce them.
 
 ### Code Style
 
@@ -169,12 +182,10 @@ if (e.key === "your-key" && !inInput) {
 }
 ```
 
-### Update a Parameter
+### Drive a Parameter from Autoplay
 ```typescript
-// In renderer.ts frame loop:
-// Parameters are applied via sequencer or MIDI Learn
-const value = sequencer.getParameterValue("shader.u_p0");
-if (value !== null) currentParamValues[0] = value;
+// In renderer.ts frame loop, autoplay/musicAnalyzer set values from audio analysis.
+// Parameters update through autoplayAdapter based on energy/BPM/onsets — not via sequencer.
 ```
 
 ---
@@ -238,9 +249,9 @@ if (value !== null) currentParamValues[0] = value;
 |-------|----------|
 | UI elements vanish | `rm -rf dist node_modules && npm install && npm run build` |
 | MIDI not working | Check browser audio permissions, restart app |
-| Memory leak in long sessions | Check sequencer snapshot history (50 max) |
 | WebGL errors on startup | Ensure WebGL2 device, check GPU drivers |
-| Sequencer not syncing | Verify BPM setting, check audio.sample() timing |
+| BPM detection unstable | Check `musicAnalyzer.ts` thresholds, ensure bass content in audio |
+| Autoplay too erratic | Tune evolution rules in `autoplayAdvanced.ts` |
 | Master Brightness too subtle | Increase slider to max, check audio level |
 
 ---
@@ -302,6 +313,14 @@ git tag -a vX.Y.Z      # Create release tag
 
 ---
 
-**Last Updated**: June 2026  
+## Upcoming (Roadmap)
+
+- **v1.7**: Industrial Mode — monochrome/glitch aesthetic, N&B post-process, new Industrial generators (see `ROADMAP_v1.7.md`)
+- **v1.8**: Remote Control — WebSocket + PWA tablet UI with Performance / Director / Spectator modes (see `ROADMAP_v1.8.md`)
+- **v2.0**: Desktop UI refresh aligned with Industrial direction + mature remote
+
+---
+
+**Last Updated**: 2026-06-11  
 **Maintainer**: Olivier Bareau  
-**For**: Claude Code (Claude Haiku 4.5)
+**For**: Claude Code

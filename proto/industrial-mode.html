@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Terminal-Synth — Industrial Mode Proto (20 generators)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; color: #ddd;
+               font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+               overflow: hidden; }
+  #stage { position: absolute; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  #hud { position: absolute; top: 0; left: 0; right: 0; padding: 10px 14px;
+         display: flex; gap: 10px; align-items: center; font-size: 11px;
+         background: linear-gradient(to bottom, rgba(0,0,0,.85), rgba(0,0,0,0));
+         pointer-events: none; letter-spacing: 0.08em; text-transform: uppercase;
+         flex-wrap: wrap; }
+  #hud .tag { padding: 3px 8px; border: 1px solid #555; color: #aaa; }
+  #hud .active { border-color: #fff; color: #fff; background: #111; }
+  #panel { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 14px;
+           display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px;
+           background: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,0));
+           font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .ctrl label { display:block; color:#888; margin-bottom: 4px; }
+  .ctrl input[type=range] { width: 100%; accent-color: #fff; }
+  .ctrl select { width: 100%; background:#111; color:#ddd; border:1px solid #444;
+                 padding:4px; font-family: inherit; font-size: 10px; }
+  .hint { position: absolute; right: 14px; top: 38px; font-size: 10px;
+          color: #666; letter-spacing: 0.08em; text-transform: uppercase;
+          text-align: right; line-height: 1.6; }
+  #genlist { position: absolute; left: 14px; top: 56px; font-size: 10px;
+             color: #666; line-height: 1.5; max-width: 320px;
+             letter-spacing: 0.04em; }
+  #genlist b { color: #fff; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+
+<div id="hud">
+  <span class="tag active">INDUSTRIAL MODE</span>
+  <span id="genTag" class="tag active">01 — GRID PULSE</span>
+  <span id="palTag" class="tag">PAL: B&amp;W</span>
+  <span id="bpmTag" class="tag">BPM: 128</span>
+  <span id="energyTag" class="tag">E: 0.50</span>
+  <span class="tag">20 GEN</span>
+</div>
+
+<div class="hint">
+  KEYS<br>
+  [1-9 0] gen 1-10<br>
+  [Q W E R T Y U I O A] gen 11-20<br>
+  [P] palette &nbsp; [SPACE] beat<br>
+  [← →] prev/next gen
+</div>
+
+<div id="genlist"></div>
+
+<div id="panel">
+  <div class="ctrl">
+    <label>Gamma <span id="vGamma">0.85</span></label>
+    <input id="gamma" type="range" min="0.4" max="1.6" step="0.01" value="0.85">
+  </div>
+  <div class="ctrl">
+    <label>Contrast <span id="vContrast">1.4</span></label>
+    <input id="contrast" type="range" min="0.5" max="2.5" step="0.01" value="1.4">
+  </div>
+  <div class="ctrl">
+    <label>Dither <span id="vDither">1.00</span></label>
+    <input id="dither" type="range" min="0" max="2.0" step="0.01" value="1.00">
+  </div>
+  <div class="ctrl">
+    <label>Bits <span id="vBits">2</span></label>
+    <input id="bits" type="range" min="2" max="16" step="1" value="2">
+  </div>
+  <div class="ctrl">
+    <label>Scanlines <span id="vScan">0.25</span></label>
+    <input id="scan" type="range" min="0" max="1" step="0.01" value="0.25">
+  </div>
+  <div class="ctrl">
+    <label>Glitch <span id="vGlitch">0.10</span></label>
+    <input id="glitch" type="range" min="0" max="1" step="0.01" value="0.10">
+  </div>
+  <div class="ctrl">
+    <label>Palette</label>
+    <select id="palette">
+      <option value="0">B&amp;W</option>
+      <option value="1">Phosphor Green</option>
+      <option value="2">Blueprint Cyan</option>
+      <option value="3">Sepia Cold</option>
+    </select>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
+if (!gl) { document.body.innerHTML = '<p style="color:red;padding:20px">WebGL2 required</p>'; throw 0; }
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+}
+resize(); window.addEventListener('resize', resize);
+
+const VS = `#version 300 es
+in vec2 aPos;
+out vec2 vUv;
+void main() { vUv = aPos*0.5+0.5; gl_Position = vec4(aPos,0.0,1.0); }`;
+
+const FS = `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 fragColor;
+
+uniform vec2  u_res;
+uniform float u_time;
+uniform int   u_gen;
+uniform int   u_palette;
+uniform float u_gamma;
+uniform float u_contrast;
+uniform float u_dither;
+uniform float u_bits;
+uniform float u_scan;
+uniform float u_glitch;
+uniform float u_beat;
+uniform float u_energy;
+
+float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float hash11(float p){ return fract(sin(p*78.233)*43758.5453); }
+float noise(vec2 p){
+  vec2 i=floor(p), f=fract(p);
+  float a=hash(i), b=hash(i+vec2(1,0)), c=hash(i+vec2(0,1)), d=hash(i+vec2(1,1));
+  vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);
+}
+float fbm(vec2 p){ float v=0., a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p*=2.0; a*=0.5; } return v; }
+mat2 rot(float a){ return mat2(cos(a),-sin(a),sin(a),cos(a)); }
+
+// Interleaved Gradient Noise (Jorge Jiménez) — blue-noise-like distribution,
+// the standard cheap approximation for Floyd-Steinberg-style dithering.
+float ign(vec2 p){
+  return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+}
+
+float bayer8(vec2 p){
+  int x=int(mod(p.x,8.0)), y=int(mod(p.y,8.0));
+  int m[64]=int[64](
+     0,32, 8,40, 2,34,10,42,
+    48,16,56,24,50,18,58,26,
+    12,44, 4,36,14,46, 6,38,
+    60,28,52,20,62,30,54,22,
+     3,35,11,43, 1,33, 9,41,
+    51,19,59,27,49,17,57,25,
+    15,47, 7,39,13,45, 5,37,
+    63,31,55,23,61,29,53,21);
+  return float(m[y*8+x])/64.0;
+}
+
+// =========================================================
+// 20 GENERATORS — each returns intensity 0..1
+// =========================================================
+
+// 01 GRID PULSE
+float g01(vec2 uv){
+  vec2 p=uv*vec2(u_res.x/u_res.y,1.)*20.+vec2(u_time*.3,0.);
+  vec2 g=abs(fract(p)-.5);
+  float line=smoothstep(.48,.50,max(g.x,g.y));
+  float thick=1.-smoothstep(.40-u_beat*.15,.50,max(g.x,g.y));
+  return max(line*.3, thick*(.6+u_beat*.4));
+}
+// 02 DATAMATRIX RAIN
+float g02(vec2 uv){
+  vec2 p=uv; float cols=80., rows=45.;
+  vec2 cell=vec2(floor(p.x*cols),floor(p.y*rows));
+  float speed=mix(2.,6.,hash(vec2(cell.x,7.)));
+  float row=cell.y+u_time*speed;
+  float bit=step(.5,hash(vec2(cell.x,floor(row))));
+  float head=exp(-fract(row)*4.);
+  vec2 cuv=fract(p*vec2(cols,rows));
+  vec2 d=abs(cuv-.5);
+  float glyph = bit>.5 ? (1.-smoothstep(.20,.22,max(d.x,d.y))) : (1.-smoothstep(.10,.12,max(d.x,d.y)));
+  return glyph*(.3+head*.7);
+}
+// 03 CONTOUR MAP
+float g03(vec2 uv){
+  vec2 p=uv*3.+vec2(u_time*.1,u_time*.05);
+  float n=fbm(p);
+  float bands=abs(fract(n*12.)-.5);
+  float line=smoothstep(.10,.0,bands);
+  float bold=abs(fract(n*12./5.)-.5);
+  line+=smoothstep(.05,.0,bold)*.6;
+  return line;
+}
+// 04 TUNNEL SCHEMATIC
+float g04(vec2 uv){
+  vec2 p=uv-.5; p.x*=u_res.x/u_res.y;
+  float a=atan(p.y,p.x), r=length(p);
+  float z=.2/r+u_time*.5;
+  float ang=abs(fract(a/6.2831*16.)-.5);
+  float radial=smoothstep(.48,.50,ang);
+  float depth=abs(fract(z)-.5);
+  float rings=smoothstep(.45,.48,depth);
+  return max(radial,rings)*smoothstep(.0,.4,r);
+}
+// 05 GLYPH FIELD
+float g05(vec2 uv){
+  vec2 p=uv*vec2(60.,40.);
+  vec2 cell=floor(p), cuv=fract(p);
+  float seed=hash(cell+floor(u_time*2.));
+  if(seed<.55+u_energy*.3) return 0.;
+  vec2 d=cuv-.5; float glyph;
+  if(seed<.7){
+    glyph=1.-smoothstep(.05,.08,abs(d.y));
+    glyph*=1.-smoothstep(.30,.35,abs(d.x));
+  } else if(seed<.85){
+    float h=1.-smoothstep(.05,.08,abs(d.y));
+    float v=1.-smoothstep(.05,.08,abs(d.x));
+    glyph=max(h,v)*(1.-smoothstep(.30,.35,max(abs(d.x),abs(d.y))));
+  } else {
+    float outer=1.-smoothstep(.30,.32,max(abs(d.x),abs(d.y)));
+    float inner=1.-smoothstep(.22,.24,max(abs(d.x),abs(d.y)));
+    glyph=outer-inner;
+  }
+  return glyph;
+}
+// 06 HALFTONE SPHERE — dot-pattern sphere
+float g06(vec2 uv){
+  vec2 p=(uv-.5); p.x*=u_res.x/u_res.y;
+  float r=length(p);
+  float sphere=smoothstep(.45,.44,r);
+  // dot grid in screen space
+  vec2 g=p*60.;
+  vec2 cell=floor(g), cuv=fract(g)-.5;
+  // dot size driven by sphere lighting (fake)
+  vec2 lp=p*2.; float light=clamp(.5+lp.x*.6-lp.y*.4 - r*1.2 + u_beat*.2, 0., 1.);
+  float dotR=mix(.05,.42,light)*sphere;
+  float dot=1.-smoothstep(dotR,dotR+.02,length(cuv));
+  return dot*sphere;
+}
+// 07 SCAN BARS — horizontal scan with phase noise
+float g07(vec2 uv){
+  float bars=abs(fract(uv.y*40.+u_time*1.5)-.5);
+  float v=smoothstep(.22,.18,bars);
+  float wob=sin(uv.y*220.+u_time*8.)*.5+.5;
+  v*=mix(.5,1., wob);
+  float head=smoothstep(.0,.04,fract(uv.y*40.+u_time*1.5));
+  v=max(v, head*.6);
+  // vertical sweep
+  float sweep=smoothstep(.0,.02,fract(uv.x-u_time*.2))*.3;
+  return clamp(v+sweep*u_energy,0.,1.);
+}
+// 08 WIRE CUBE ARRAY — pseudo-3D cubes grid
+float g08(vec2 uv){
+  vec2 p=uv*vec2(u_res.x/u_res.y,1.)*6.;
+  vec2 cell=floor(p), cuv=fract(p)-.5;
+  // each cell rotates a wire square + offset for fake depth
+  float a=u_time*.6+hash(cell)*6.28;
+  cuv=rot(a)*cuv;
+  vec2 ad=abs(cuv);
+  float sq=max(ad.x,ad.y);
+  float outer=smoothstep(.32,.30,sq);
+  float inner=smoothstep(.28,.26,sq);
+  float face=outer-inner;
+  // back face offset
+  vec2 cuv2=cuv+vec2(.08,-.08);
+  vec2 ad2=abs(cuv2);
+  float sq2=max(ad2.x,ad2.y);
+  float back=smoothstep(.32,.30,sq2)-smoothstep(.28,.26,sq2);
+  return max(face, back*.5);
+}
+// 09 PLOTTER LINES — parallel sine-modulated lines
+float g09(vec2 uv){
+  float v=0.;
+  for(int i=0;i<24;i++){
+    float fi=float(i);
+    float y= fi/24. + sin(uv.x*4.+u_time*.5+fi*.3)*.015 + sin(uv.x*9.+u_time*.8)*.005;
+    float d=abs(uv.y-y);
+    v=max(v, smoothstep(.005,.0,d));
+  }
+  return v;
+}
+// 10 SIGNAL SPECTRUM — FFT-like vertical bars
+float g10(vec2 uv){
+  float bars=64.;
+  float idx=floor(uv.x*bars);
+  // pseudo-FFT shape: rolloff + peaks driven by noise+beat
+  float base=pow(1.-idx/bars,1.5);
+  float jitter=noise(vec2(idx*.3,u_time*4.))*.6;
+  float h=clamp(base*.6 + jitter*.7 + u_energy*.3 + u_beat*.2, 0.,1.);
+  float colSpace=fract(uv.x*bars);
+  float gap=smoothstep(.0,.08,colSpace)*smoothstep(1.,.92,colSpace);
+  float bar=step(1.-h, uv.y) * gap;
+  // mirror at bottom
+  float bar2=step(1.-h, 1.-uv.y) * gap;
+  return max(bar*.9, bar2*.4);
+}
+// 11 BINARY STATIC — field of 0/1 with random flips
+float g11(vec2 uv){
+  vec2 p=uv*vec2(120.,70.);
+  vec2 cell=floor(p), cuv=fract(p)-.5;
+  float flicker=floor(u_time*6.+hash(cell)*10.);
+  float bit=step(.5, hash(cell+flicker*.1));
+  // draw "1" as vertical bar, "0" as ring
+  float v;
+  if(bit>.5){
+    v = (1.-smoothstep(.05,.08,abs(cuv.x))) * (1.-smoothstep(.34,.38,abs(cuv.y)));
+  } else {
+    float r=length(cuv);
+    v = smoothstep(.32,.30,r) - smoothstep(.24,.22,r);
+  }
+  return v;
+}
+// 12 ISO MOUNTAINS — fbm contour as mountain ranges
+float g12(vec2 uv){
+  vec2 p=uv*vec2(3.,1.)+vec2(u_time*.05,0.);
+  float h=fbm(p)*.6+fbm(p*2.+5.)*.2;
+  float bands=abs(fract(h*20.)-.5);
+  float line=smoothstep(.08,.0,bands);
+  // horizon
+  float horiz=smoothstep(.0,.04,abs(uv.y - (.3+h*.4)));
+  return max(line, 1.-horiz);
+}
+// 13 CIRCUIT TRACE — orthogonal lines with junctions
+float g13(vec2 uv){
+  vec2 p=uv*vec2(u_res.x/u_res.y,1.)*16.;
+  vec2 cell=floor(p), cuv=fract(p)-.5;
+  float seed=hash(cell);
+  // route: 0 horizontal, 1 vertical, 2 corner
+  float v=0.;
+  if(seed<.4){
+    v=1.-smoothstep(.04,.06,abs(cuv.y));
+  } else if(seed<.8){
+    v=1.-smoothstep(.04,.06,abs(cuv.x));
+  } else {
+    float h=1.-smoothstep(.04,.06,abs(cuv.y));
+    float vv=1.-smoothstep(.04,.06,abs(cuv.x));
+    v=max(h,vv);
+    // pad at junction
+    v=max(v, 1.-smoothstep(.12,.14,length(cuv)));
+  }
+  // pulse traveling
+  float pulse=hash11(floor(cell.x+cell.y*7.));
+  float t=fract(u_time*.7 + pulse);
+  v *= mix(.35, 1., step(abs(t-.5), .15));
+  return v;
+}
+// 14 PHOSPHOR TRAILS — Lissajous with motion blur look
+float g14(vec2 uv){
+  vec2 p=uv-.5; p.x*=u_res.x/u_res.y;
+  float v=0.;
+  // multiple time-offset samples = trail
+  for(int i=0;i<14;i++){
+    float ti=u_time - float(i)*.04;
+    vec2 lp=vec2(sin(ti*1.7), sin(ti*2.3+1.3))*.4;
+    float d=length(p-lp);
+    v += exp(-d*40.)*(1.-float(i)/14.);
+  }
+  return clamp(v,0.,1.);
+}
+// 15 ASCII TUNNEL — log-polar tunnel quantized to ASCII-like blocks
+float g15(vec2 uv){
+  vec2 p=uv-.5; p.x*=u_res.x/u_res.y;
+  float r=length(p), a=atan(p.y,p.x);
+  float z=.4/r + u_time*.8;
+  vec2 tp=vec2(a/6.2831*40., z*4.);
+  vec2 cell=floor(tp), cuv=fract(tp)-.5;
+  float seed=hash(cell);
+  float v;
+  if(seed<.5){
+    v=(1.-smoothstep(.06,.10,abs(cuv.x))) * (1.-smoothstep(.34,.40,abs(cuv.y)));
+  } else if(seed<.8){
+    v=(1.-smoothstep(.06,.10,abs(cuv.y))) * (1.-smoothstep(.34,.40,abs(cuv.x)));
+  } else {
+    v=1.-smoothstep(.22,.26,length(cuv));
+  }
+  return v*smoothstep(.0,.4,r);
+}
+// 16 GLYPH TUNNEL — glyph cells radiating outward
+float g16(vec2 uv){
+  vec2 p=uv-.5; p.x*=u_res.x/u_res.y;
+  float r=length(p), a=atan(p.y,p.x);
+  float z=log(r+.05)+u_time*.4;
+  vec2 tp=vec2(a/6.2831*24., z*3.);
+  vec2 cell=floor(tp), cuv=fract(tp)-.5;
+  float seed=hash(cell+floor(u_time));
+  if(seed<.35) return 0.;
+  vec2 d=abs(cuv);
+  float glyph=smoothstep(.36,.30,max(d.x,d.y))-smoothstep(.22,.18,max(d.x,d.y));
+  return glyph*smoothstep(.0,.5,r);
+}
+// 17 STROBE GRID — flashing grid cells on beat
+float g17(vec2 uv){
+  vec2 p=uv*vec2(u_res.x/u_res.y,1.)*10.;
+  vec2 cell=floor(p), cuv=fract(p)-.5;
+  float seed=hash(cell+floor(u_time*2.));
+  vec2 d=abs(cuv);
+  float box=smoothstep(.46,.44,max(d.x,d.y));
+  // cell flashes if seed below threshold modulated by beat
+  float on=step(seed, .2+u_beat*.5);
+  float outline=smoothstep(.46,.44,max(d.x,d.y))-smoothstep(.40,.38,max(d.x,d.y));
+  return max(on*box, outline*.4);
+}
+// 18 NOISE BANDS — horizontal bands of evolving noise
+float g18(vec2 uv){
+  float band=floor(uv.y*14.);
+  float speed=mix(.5,3., hash11(band));
+  float n=fbm(vec2(uv.x*8. + u_time*speed, band));
+  float gap=smoothstep(.05,.0, abs(fract(uv.y*14.)-.5)-.45);
+  return n * (1.-gap);
+}
+// 19 BITMAP SMEAR — pixelated noise with horizontal motion smear
+float g19(vec2 uv){
+  vec2 p=floor(uv*vec2(160.,90.))/vec2(160.,90.);
+  float v=0.;
+  for(int i=0;i<6;i++){
+    vec2 q=p; q.x -= float(i)*.008;
+    v += noise(q*20.+vec2(u_time*.3, u_time*.1))*(1.-float(i)/6.);
+  }
+  v/=3.; v=smoothstep(.45,.7,v);
+  return v;
+}
+// 20 CODE CASCADE — scrolling monospace pseudo-code
+float g20(vec2 uv){
+  vec2 p=uv*vec2(100.,50.);
+  p.y += u_time*8.;
+  vec2 cell=floor(p), cuv=fract(p)-.5;
+  // per-row line length
+  float lineLen=hash11(floor(cell.y))*.8+.1;
+  if(uv.x > lineLen) return 0.;
+  // indent variation
+  float indent=floor(hash11(floor(cell.y)+3.)*4.);
+  if(cell.x < indent) return 0.;
+  float seed=hash(cell);
+  // draw a tiny char (vary shapes)
+  vec2 d=abs(cuv);
+  float v;
+  if(seed<.35) v=(1.-smoothstep(.06,.10,d.y))*(1.-smoothstep(.30,.36,d.x));
+  else if(seed<.6) v=(1.-smoothstep(.06,.10,d.x))*(1.-smoothstep(.30,.36,d.y));
+  else if(seed<.85){ float h=1.-smoothstep(.06,.10,d.y); float vv=1.-smoothstep(.06,.10,d.x); v=max(h,vv)*(1.-smoothstep(.30,.36,max(d.x,d.y))); }
+  else v=smoothstep(.32,.28,max(d.x,d.y))-smoothstep(.20,.16,max(d.x,d.y));
+  return v;
+}
+
+// =========================================================
+vec3 applyPalette(float lum){
+  if(u_palette==0) return vec3(lum);
+  if(u_palette==1) return vec3(lum*.15, lum, lum*.25);
+  if(u_palette==2) return vec3(lum*.25, lum*.55, lum);
+  return vec3(lum, lum*.78, lum*.55);
+}
+
+float pickGen(int g, vec2 uv){
+  if(g==0)  return g01(uv);
+  if(g==1)  return g02(uv);
+  if(g==2)  return g03(uv);
+  if(g==3)  return g04(uv);
+  if(g==4)  return g05(uv);
+  if(g==5)  return g06(uv);
+  if(g==6)  return g07(uv);
+  if(g==7)  return g08(uv);
+  if(g==8)  return g09(uv);
+  if(g==9)  return g10(uv);
+  if(g==10) return g11(uv);
+  if(g==11) return g12(uv);
+  if(g==12) return g13(uv);
+  if(g==13) return g14(uv);
+  if(g==14) return g15(uv);
+  if(g==15) return g16(uv);
+  if(g==16) return g17(uv);
+  if(g==17) return g18(uv);
+  if(g==18) return g19(uv);
+  return g20(uv);
+}
+
+void main(){
+  vec2 uv=vUv;
+  if(u_glitch>.001){
+    float band=floor(uv.y*80.);
+    float seed=hash(vec2(band, floor(u_time*8.)));
+    if(seed>1.-u_glitch*.6){ uv.x += (seed-.5)*.15*u_glitch; }
+  }
+  float v = pickGen(u_gen, uv);
+  v = pow(clamp(v,0.,1.), u_gamma);
+  v = clamp((v-.5)*u_contrast+.5, 0., 1.);
+
+  // Floyd-Steinberg-style dither approximation:
+  // - Blue-noise (IGN) threshold is more "organic" than Bayer's grid
+  // - Quantize to N levels — u_bits=2 means 1-bit B&W (dither everywhere)
+  // - Applied BEFORE scanlines/vignette so it stays crisp
+  float steps = max(1.0, u_bits - 1.0);
+  float n = ign(gl_FragCoord.xy) - 0.5;
+  v = floor(v * steps + n * u_dither + 0.5) / steps;
+
+  float scan=.5+.5*sin(gl_FragCoord.y*3.14159);
+  v *= mix(1., scan, u_scan*.6);
+  vec2 c=vUv-.5;
+  v *= smoothstep(.85,.3,length(c));
+  v += u_beat*.08;
+  fragColor=vec4(applyPalette(clamp(v,0.,1.)),1.);
+}`;
+
+function compile(t,s){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(sh));throw 0;}return sh;}
+const prog=gl.createProgram();
+gl.attachShader(prog,compile(gl.VERTEX_SHADER,VS));
+gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,FS));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(prog));throw 0;}
+gl.useProgram(prog);
+
+const vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+const loc=gl.getAttribLocation(prog,'aPos');
+gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+
+const U={};
+['u_res','u_time','u_gen','u_palette','u_gamma','u_contrast','u_dither','u_bits','u_scan','u_glitch','u_beat','u_energy']
+  .forEach(n => U[n]=gl.getUniformLocation(prog,n));
+
+const genNames = [
+  'GRID PULSE','DATAMATRIX RAIN','CONTOUR MAP','TUNNEL SCHEMATIC','GLYPH FIELD',
+  'HALFTONE SPHERE','SCAN BARS','WIRE CUBE ARRAY','PLOTTER LINES','SIGNAL SPECTRUM',
+  'BINARY STATIC','ISO MOUNTAINS','CIRCUIT TRACE','PHOSPHOR TRAILS','ASCII TUNNEL',
+  'GLYPH TUNNEL','STROBE GRID','NOISE BANDS','BITMAP SMEAR','CODE CASCADE'
+];
+const palNames=['B&W','PHOSPHOR','BLUEPRINT','SEPIA'];
+const keys = ['1','2','3','4','5','6','7','8','9','0',
+              'q','w','e','r','t','y','u','i','o','a'];
+
+const state={ gen:0, palette:0, gamma:.85, contrast:1.4, dither:1.0, bits:2,
+              scan:.25, glitch:.10, beat:0, energy:.5 };
+
+// genlist
+const gl_div=document.getElementById('genlist');
+gl_div.innerHTML = genNames.map((n,i)=>{
+  const k = keys[i].toUpperCase();
+  return `<span data-i="${i}"><b>[${k}]</b> ${(i+1).toString().padStart(2,'0')} ${n}</span>`;
+}).join('<br>');
+
+function setGen(i){
+  state.gen = i;
+  const k = keys[i].toUpperCase();
+  document.getElementById('genTag').textContent = `${(i+1).toString().padStart(2,'0')} — ${genNames[i]}`;
+  // highlight in genlist
+  gl_div.querySelectorAll('span').forEach((s,idx)=>{
+    s.style.color = idx===i ? '#fff' : '#666';
+  });
+}
+setGen(0);
+
+function bind(id,key,fmt=v=>v.toFixed(2)){
+  const el=document.getElementById(id);
+  const lbl=document.getElementById('v'+id[0].toUpperCase()+id.slice(1));
+  el.addEventListener('input',()=>{ state[key]=parseFloat(el.value); if(lbl) lbl.textContent=fmt(state[key]); });
+}
+bind('gamma','gamma'); bind('contrast','contrast'); bind('dither','dither');
+bind('bits','bits',v=>v.toFixed(0));
+bind('scan','scan'); bind('glitch','glitch');
+document.getElementById('palette').addEventListener('change',e=>{
+  state.palette=parseInt(e.target.value);
+  document.getElementById('palTag').textContent='PAL: '+palNames[state.palette];
+});
+
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  const idx = keys.indexOf(k);
+  if(idx>=0){ setGen(idx); return; }
+  if(k==='p'){
+    state.palette=(state.palette+1)%4;
+    document.getElementById('palette').value=state.palette;
+    document.getElementById('palTag').textContent='PAL: '+palNames[state.palette];
+  }
+  if(e.code==='Space'){ state.beat=1; e.preventDefault(); }
+  if(e.key==='ArrowRight'){ setGen((state.gen+1)%20); }
+  if(e.key==='ArrowLeft'){ setGen((state.gen+19)%20); }
+});
+
+const bpm=128; let lastBeat=0;
+function autoBeat(t){
+  const T=60/bpm;
+  if(t-lastBeat>=T){ state.beat=1; lastBeat=t; }
+  state.beat*=.92;
+  state.energy=.5+.3*Math.sin(t*.4);
+}
+
+const t0=performance.now();
+function frame(){
+  const t=(performance.now()-t0)/1000;
+  autoBeat(t);
+  gl.viewport(0,0,canvas.width,canvas.height);
+  gl.uniform2f(U.u_res,canvas.width,canvas.height);
+  gl.uniform1f(U.u_time,t);
+  gl.uniform1i(U.u_gen,state.gen);
+  gl.uniform1i(U.u_palette,state.palette);
+  gl.uniform1f(U.u_gamma,state.gamma);
+  gl.uniform1f(U.u_contrast,state.contrast);
+  gl.uniform1f(U.u_dither,state.dither);
+  gl.uniform1f(U.u_bits,state.bits);
+  gl.uniform1f(U.u_scan,state.scan);
+  gl.uniform1f(U.u_glitch,state.glitch);
+  gl.uniform1f(U.u_beat,state.beat);
+  gl.uniform1f(U.u_energy,state.energy);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  document.getElementById('energyTag').textContent='E: '+state.energy.toFixed(2);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

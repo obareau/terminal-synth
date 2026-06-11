@@ -17,10 +17,12 @@ export interface Shader {
   name: string;
   src: string;
   params?: ShaderParam[];
-  category?: "Text" | "Plasma" | "Geometry" | "Noise" | "Interactive" | "Real-world";
+  category?: "Text" | "Plasma" | "Geometry" | "Noise" | "Interactive" | "Real-world" | "Industrial";
 }
 
-export const SHADERS: Shader[] = [
+import { INDUSTRIAL_SHADERS } from "./industrialShaders";
+
+const BUILTIN_SHADERS: Shader[] = [
   {
     name: "MIRE ORTF",
     category: "Real-world",
@@ -3981,3 +3983,5 @@ vec3 render(vec2 uv, vec2 res) {
 }`,
   },
 ];
+
+export const SHADERS: Shader[] = [...BUILTIN_SHADERS, ...INDUSTRIAL_SHADERS];
