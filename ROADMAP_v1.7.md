@@ -173,8 +173,34 @@ Update `autoplayAdapter.ts`:
 | **v1.7.1** | First 10 Industrial generators | ~1 week |
 | **v1.7.2** | Remaining 10 generators + refinement | ~1 week |
 | **v1.7.3** | Legacy/Industrial categorization + autoplay biasing | ~3 days |
+| **v1.7.4** | **Performance pass** (required before v1.8) — see §6.1 below | ~3-5 days |
 
 ---
+
+## 6.1 Performance pass (v1.7.4 — gating v1.8)
+
+The Industrial generators tend toward long inner loops (multi-octave fbm,
+sample-stack trails). After v1.7.0 shipping with a first round of trims
+(PHOSPHOR TRAILS 14→8, PLOTTER LINES 24→14, BITMAP SMEAR 6→3), the full
+pass owes the codebase a systematic audit.
+
+**Audit checklist**
+
+- [ ] **Per-shader frame budget** — instrument `gl.getQueryParameter` (EXT_disjoint_timer_query) or wall-clock around `pipeline.render` and log per-shader cost. Tag shaders >2ms at 1080p.
+- [ ] **Hot offenders** to review next pass:
+  - `CONTOUR MAP`, `ISO MOUNTAINS`, `NOISE BANDS` — 5-octave fbm × 4 hashes per octave = 20 hashes/px. Consider precomputed noise texture.
+  - `WIRE CUBE ARRAY`, `STROBE GRID` — per-cell `hash()` × time-keyed re-evaluation. Cache via texture lookup.
+  - `Datamosh`, `Frame Hold` disruptors — `fb()` reads cost a full extra texture sample; chain them = bandwidth.
+- [ ] **FBO size audit** — confirm framebuffer matches canvas size only, not DPR-doubled when unnecessary. Cap DPR at 1.5 for 4K monitors when fps drops.
+- [ ] **Stage chain length** — limit simultaneous active disruptors when chain > N stages (autoplay can pick fewer when energy is high).
+- [ ] **ASCII layer cost** — pixel readback on every frame is expensive; throttle to 30Hz max instead of full fps.
+- [ ] **Industrial Mode pass** — currently appended as one stage. Consider folding into final composite when only B&W palette is active (no separate pass).
+- [ ] **Auto-degrade** — if measured fps < 50 for 5s, drop one of: dither bits, FBO scale, active disruptors. Surfaces as a single "Perf mode" toggle to the user.
+
+**Done criteria**
+
+- 60 fps sustained at 1080p with: Industrial Mode ON + autoplay + 3 effects + 3 disruptors firing, on the reference machine (GTX 1060 equivalent).
+- No single shader >3ms/frame at 1080p.
 
 ## 6. Risks & Open Questions
 
