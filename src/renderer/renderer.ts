@@ -22,6 +22,10 @@ const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) 
 // Mode variables (output window / performance overlay)
 const isOutputMode = new URLSearchParams(window.location.search).get("mode") === "output";
 const isControlMode = !isOutputMode;
+// Bump on each release. Falls back here when package.json isn't bundled.
+// In sync with package.json "version" — keep both updated together.
+const APP_VERSION = "1.9.0";
+
 let performanceMode = false;
 let hudVisible = true;
 let cpuUsage = 0;
@@ -612,6 +616,32 @@ industrialPaletteBtn.addEventListener("click", () => {
   refreshIndustrialBadge();
 });
 
+// Perf mode: cap render DPR to 1 (massive pixel-count cut on HiDPI)
+const perfModeToggleBtn = $<HTMLButtonElement>("perf-mode-toggle");
+perfModeToggleBtn.addEventListener("click", () => {
+  perfModeCapDpr = !perfModeCapDpr;
+  perfModeToggleBtn.classList.toggle("on", perfModeCapDpr);
+  resizeCanvas();
+});
+
+// Stage cap: bound concurrent effects+disruptors. Default 6 = generous but
+// avoids the "everything is on" mush. Post-process stages are excluded.
+let maxStages = 6;
+const maxStagesInput = document.getElementById("max-stages") as HTMLInputElement | null;
+const maxStagesLabel = document.getElementById("max-stages-label");
+function refreshMaxStagesLabel(): void {
+  if (maxStagesLabel) maxStagesLabel.textContent = `STAGES ${maxStages}`;
+}
+if (maxStagesInput) {
+  maxStagesInput.value = String(maxStages);
+  maxStagesInput.addEventListener("input", () => {
+    const v = parseInt(maxStagesInput.value, 10);
+    if (Number.isFinite(v)) maxStages = Math.max(1, Math.min(12, v));
+    refreshMaxStagesLabel();
+  });
+}
+refreshMaxStagesLabel();
+
 // --- Sequencer UI update ---
 
 // --- Raccourcis clavier ---
@@ -716,8 +746,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Tailles ---
+let perfModeCapDpr = false; // when true, render at DPR=1 (4× fewer pixels on a 4K HiDPI screen)
 function resizeCanvas(): void {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const maxDpr = perfModeCapDpr ? 1 : 2;
+  const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   canvas.width = Math.max(1, Math.floor(canvas.clientWidth * dpr));
   canvas.height = Math.max(1, Math.floor(canvas.clientHeight * dpr));
 }
@@ -1043,6 +1075,11 @@ function frame(now: number): void {
     }
   }
 
+  // Cap the effects+disruptors stage budget (post-process passes added below
+  // don't count). Drops the most recently pushed entries first — disruptors
+  // get trimmed before steady effects.
+  if (stages.length > maxStages) stages.length = maxStages;
+
   // Industrial Mode: append as final GL post-process before output.
   // Palette is packed into the amount value (quarter-range encoding).
   if (industrialModeEnabled && industrialModeProg) {
@@ -1143,7 +1180,10 @@ vec3 process(vec2 uv) {
   text.update(now);
 
   const pct = (v: number) => String(Math.round(v * 100)).padStart(3, " ");
-  let line = `bass${pct(bands.bass)} mid${pct(bands.mid)} hi${pct(bands.treble)}`;
+  // FPS / frame-time / resolution always visible — diagnostic during perf work.
+  const ftMs = frameTimeMs.toFixed(1);
+  const fpsTag = fps >= 55 ? "fps" : fps >= 45 ? "FPS" : "FPS!";
+  let line = `${fps} ${fpsTag} ${ftMs}ms ${canvas.width}×${canvas.height}  ·  bass${pct(bands.bass)} mid${pct(bands.mid)} hi${pct(bands.treble)}`;
   if (midi.enabled) line += `  · midi ${midi.mode} e${pct(e)} poly${midi.polyphony}`;
   meter.textContent = line;
 
@@ -1164,7 +1204,7 @@ vec3 process(vec2 uv) {
     const frameTimeColor = frameTimeMs <= 16.7 ? "#0f0" : frameTimeMs <= 22 ? "#ff0" : "#f44";
 
     hud.innerHTML = `
-      <div style="font-weight:700;margin-bottom:4px">TERMINAL·SYNTH v0.9.9</div>
+      <div style="font-weight:700;margin-bottom:4px">TERMINAL·SYNTH v${APP_VERSION}</div>
       <div style="font-size:11px;margin-bottom:6px;line-height:1.5;color:${fpsColor};font-weight:600">
         ${fps} fps · ${frameTimeMs.toFixed(2)}ms
       </div>

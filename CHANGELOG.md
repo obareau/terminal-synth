@@ -2,6 +2,32 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.0] - 2026-06-12
+
+### Added
+- **Industrial Mode** ⬛ — Post-process N&B avec dither IGN (Interleaved Gradient Noise, Jiménez), gamma 0.85, contraste 1.4, quantification 2 steps :
+  - 4 palettes : **B&W**, **Phosphor** (vert CRT), **Blueprint** (cyan), **Sepia**
+  - Bouton toggle + cycle palette dans la barre du bas, badge HUD dans le topbar
+  - Quand actif, l'autoplay est biaisé sur les générateurs de catégorie Industrial uniquement
+- **20 générateurs Industrial** — GRID PULSE, DATAMATRIX RAIN, CONTOUR MAP, TUNNEL SCHEMATIC, GLYPH FIELD, HALFTONE SPHERE, SCAN BARS, WIRE CUBE ARRAY, PLOTTER LINES, SIGNAL SPECTRUM, BINARY STATIC, ISO MOUNTAINS, CIRCUIT TRACE, PHOSPHOR TRAILS, ASCII TUNNEL, GLYPH TUNNEL, STROBE GRID, NOISE BANDS, BITMAP SMEAR, CODE CASCADE
+- **12 disruptors glitch industriels** — Block Displace, Scan Tear, Frame Hold, Datamosh, Signal Loss, Sync Lost, Bit Crush, Glyph Storm, Halftone Pulse, Scanline Density, Contour Shock, Negative Flash
+- **Stage Cap** — slider STAGES 1–12 (default 6) : limite les effects+disruptors simultanés. Gain visuel (moins de mush) + gain de perf. Post-process (Industrial Mode, Master Brightness) exclus du cap.
+- **HUD** — FPS, frame time (ms), résolution canvas + bands bass/mid/hi affichés en continu dans le meter ; version du programme dans l'overlay TERMINAL·SYNTH.
+
+### Fixed
+- **Master Brightness algorithm** — Refonte : le slider contrôle maintenant le **plancher** (0 = identité, 1 = fade-to-black agressif original). Auparavant l'image partait au noir complet quel que soit le preset.
+- **Conflit raccourci `I`** — Industrial Mode déplacé sur bouton UI (cohérent avec Master Brightness), suppression de la collision avec la sélection de shader.
+
+### Performance
+- Trim d'itérations : PHOSPHOR TRAILS 14→8, PLOTTER LINES 24→14, BITMAP SMEAR 6→3
+- Stage cap réduit la longueur du chain de rendu en live
+
+### Technical
+- **New Files** : `industrialShaders.ts`, `industrialDisruptors.ts`, `ROADMAP_v1.7.md`, `ROADMAP_v1.8.md`
+- **Modified** : `shaders.ts`, `disruptors.ts`, `renderer.ts`, `autoplayAdvanced.ts`, `index.html`
+
+---
+
 ## [1.6.0] - 2026-06-10
 
 ### Added

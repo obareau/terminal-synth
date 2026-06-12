@@ -12,7 +12,7 @@
 - **Web Audio API** for FFT analysis
 - **esbuild** for bundling
 
-**Current Version**: v1.6.0  
+**Current Version**: v1.9.0  
 **Status**: Active development — solo live performer tool (autoplay-focused)  
 **License**: MIT
 

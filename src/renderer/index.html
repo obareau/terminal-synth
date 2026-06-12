@@ -722,6 +722,11 @@
     <div class="sep"></div>
     <button id="industrial-mode-toggle" aria-label="Industrial Mode Toggle" title="Industrial Mode: monochrome 1-bit + dither + Industrial-only autoplay">⬛ Industrial</button>
     <button id="industrial-palette-btn" aria-label="Industrial Palette" title="Cycle palette: B&amp;W / Phosphor / Blueprint / Sepia" style="min-width:90px">B&amp;W</button>
+    <div class="sep"></div>
+    <button id="perf-mode-toggle" aria-label="Performance Mode (cap DPR=1)" title="Cap render DPR to 1 — divides pixel count by 4× on HiDPI screens">⚡ Perf</button>
+    <div class="sep"></div>
+    <span id="max-stages-label" title="Max simultaneous effects+disruptors" style="font-size:11px;opacity:0.7;min-width:64px">STAGES 6</span>
+    <input id="max-stages" type="range" min="1" max="12" step="1" value="6" title="Cap concurrent effects+disruptors (post-process excluded)" style="width:80px">
     <div class="spacer"></div>
     <span id="meter"></span>
   </div>

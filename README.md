@@ -3,11 +3,11 @@
 > **Synthétiseur visuel dark/industriel** avec génération automatique de compositions, audio-réactivité temps réel, et rendu WebGL2 haute-performance.
 
 ![Status](https://img.shields.io/badge/status-Release-brightgreen)
-![Version](https://img.shields.io/badge/version-1.6.0-blue)
+![Version](https://img.shields.io/badge/version-1.9.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
-Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **~90 générateurs minimalistes**, **23 perturbateurs audio-réactifs**, **autoplay adaptatif** basé sur la musique, **analyse musicale légère** (BPM, énergie), **Master Brightness** audio-réactif, automation générative avec 4 presets, couche texte pixellisée, et système d'enregistrement vidéo.
+Terminal-Synth est un visualiseur audio conçu pour les performances visuelles en temps réel. Intègre **~117 générateurs** (dont 20 Industrial monochrome), **35 perturbateurs audio-réactifs** (dont 12 glitch industriels), **Industrial Mode** (post-process N&B + dither IGN, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **autoplay adaptatif** music-reactive, **analyse musicale légère** (BPM, énergie), **Master Brightness** audio-réactif, **cap de stages** simultanés réglable en live, couche texte pixellisée, et système d'enregistrement vidéo.
 
 Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
@@ -22,12 +22,12 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 ### Linux (Debian/Ubuntu)
 ```bash
 # Download and install .deb package
-sudo dpkg -i terminal-synth_1.6.0_amd64.deb
+sudo dpkg -i terminal-synth_1.9.0_amd64.deb
 terminal-synth
 ```
 
 ### Windows (Executable)
-1. Download `terminal-synth_1.6.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+1. Download `terminal-synth_1.9.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
 2. Run directly (no installation needed)
 3. Grant audio access when prompted
 
@@ -87,7 +87,7 @@ npm run package        # Build Windows .exe
 | **MIDI Input** | Clavier MIDI + contrôleurs |
 | **System Audio** | Loopback + microphone |
 
-### 🎼 Music Analysis (v1.6.0)
+### 🎼 Music Analysis (v1.9.0)
 | Feature | Details |
 |---------|---------|
 | **Adaptive BPM Detection** | Détecte le tempo via pattern de bass avec seuil adaptatif |
