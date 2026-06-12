@@ -33,15 +33,18 @@ describe('Shaders', () => {
     });
   });
 
-  describe('RECTA shader', () => {
-    it('should be the first shader', () => {
-      expect(SHADERS[0].name).toBe('RECTA (texte)');
+  describe('MIRE ORTF shader', () => {
+    it('should be the first shader (startup screen)', () => {
+      expect(SHADERS[0].name).toBe('MIRE ORTF');
     });
+  });
 
+  describe('RECTA shader', () => {
     it('should have holdMs parameter', () => {
-      const recta = SHADERS[0];
-      expect(recta.params).toBeDefined();
-      const holdMs = recta.params?.find((p) => p.key === 'holdMs');
+      const recta = SHADERS.find((s) => s.name === 'RECTA (texte)');
+      expect(recta).toBeDefined();
+      expect(recta?.params).toBeDefined();
+      const holdMs = recta?.params?.find((p) => p.key === 'holdMs');
       expect(holdMs).toBeDefined();
     });
   });
