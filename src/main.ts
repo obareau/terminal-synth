@@ -58,6 +58,16 @@ function createWindow(): void {
     cb(permission === "media" || permission === "midi" || permission === "midiSysex");
   });
 
+  // getDisplayMedia sans picker : premier écran + audio loopback
+  // (fallback Windows/macOS uniquement — le renderer ne l'appelle pas sous
+  // Linux). Le catch est vital : sous Wayland getSources passe par le portal
+  // screencast et son refus laissait une promesse non gérée qui tuait l'app.
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    desktopCapturer.getSources({ types: ["screen"] })
+      .then((sources) => { callback({ video: sources[0], audio: "loopback" }); })
+      .catch((err) => { console.error("[Main] getDisplayMedia refusé:", err); callback({}); });
+  });
+
 
   win.loadFile(path.join(__dirname, "index.html"));
 

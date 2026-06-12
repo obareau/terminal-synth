@@ -32,9 +32,7 @@ export class AudioInput {
 
     let stream: MediaStream;
     if (source === "system") {
-      // sortie système (loopback) ; on demande la vidéo (requise) puis on la jette.
-      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      stream.getVideoTracks().forEach((t) => t.stop());
+      stream = await this.captureSystem();
     } else {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     }
@@ -52,6 +50,45 @@ export class AudioInput {
   }
 
   get mediaStream(): MediaStream | undefined { return this.stream; }
+
+  /**
+   * Capture de la sortie système.
+   * Linux/PipeWire expose la sortie comme entrée "Monitor of …" — on la
+   * cherche en priorité. Les labels ne sont lisibles qu'après un premier
+   * getUserMedia, d'où le stream mic temporaire (c'est la manip manuelle
+   * mic→sys, automatisée).
+   * Sous Linux on ne tente JAMAIS getDisplayMedia : ça ouvre le portal
+   * screencast KDE/GNOME (popup) et son refus plantait l'app.
+   * Windows/macOS : fallback getDisplayMedia loopback.
+   */
+  private async captureSystem(): Promise<MediaStream> {
+    const probe = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const monitor = devices.find(
+        (d) => d.kind === "audioinput" && /monitor/i.test(d.label),
+      );
+      if (monitor) {
+        const monStream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: monitor.deviceId } },
+          video: false,
+        });
+        console.log(`[Audio] System capture via monitor device: ${monitor.label}`);
+        return monStream;
+      }
+    } finally {
+      probe.getTracks().forEach((t) => t.stop());
+    }
+    if (navigator.platform.toLowerCase().includes("linux")) {
+      throw new Error(
+        "Aucune source 'Monitor of …' trouvée — vérifier que PipeWire/PulseAudio expose le monitor de la sortie",
+      );
+    }
+    // loopback via getDisplayMedia ; on demande la vidéo (requise) puis on la jette.
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    stream.getVideoTracks().forEach((t) => t.stop());
+    return stream;
+  }
 
   async stop(): Promise<void> {
     this.stream?.getTracks().forEach((t) => t.stop());

@@ -33,9 +33,12 @@ out vec4 fragColor;
 ${COMMON_UNIFORMS}
 uniform sampler2D u_audio;
 uniform sampler2D u_text;
+uniform sampler2D u_fbmTex;
 float fftAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float waveAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
 vec3 textCol(vec2 uv) { return texture(u_text, uv).rgb; }
+// 5-octave value-noise fbm baked at startup (tiles every 64 units).
+float fbmTex(vec2 p) { return texture(u_fbmTex, p * (1.0 / 64.0)).r; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 #define PI      3.14159265358979323846
 #define TWO_PI  6.28318530717958647692
@@ -103,8 +106,30 @@ void main() {
 const UNIFORM_NAMES = [
   "u_resolution","u_time","u_bass","u_mid","u_treble","u_level","u_amount",
   "u_p0","u_p1","u_p2","u_p3",
-  "u_prev","u_feedback","u_audio","u_text",
+  "u_prev","u_feedback","u_audio","u_text","u_fbmTex",
 ];
+
+// Bakes the same fbm the Industrial shaders used to compute per-pixel
+// (h21 hash, smoothstep value noise, 5 octaves) into a tileable texture.
+// mod() per octave keeps the tile seamless at period 64.
+const FBM_BAKE_SIZE = 1024;
+const FBM_BAKE_FRAG = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float n2p(vec2 p, float per){
+  vec2 i=floor(p), f=fract(p);
+  vec2 u=f*f*(3.0-2.0*f);
+  float a=h21(mod(i,per)), b=h21(mod(i+vec2(1,0),per));
+  float c=h21(mod(i+vec2(0,1),per)), d=h21(mod(i+vec2(1,1),per));
+  return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+}
+void main(){
+  vec2 p = gl_FragCoord.xy * (64.0 / ${FBM_BAKE_SIZE}.0);
+  float v=0.0, a=0.5, per=64.0;
+  for(int i=0;i<5;i++){ v+=a*n2p(p,per); p*=2.0; per*=2.0; a*=0.5; }
+  fragColor = vec4(v, v, v, 1.0);
+}`;
 
 export interface Uniforms { time: number; bass: number; mid: number; treble: number; level: number; }
 export interface Program  { program: WebGLProgram; loc: Partial<Record<string, WebGLUniformLocation | null>>; }
@@ -144,6 +169,7 @@ export class Pipeline {
   private fbo: (WebGLFramebuffer | null)[] = [null, null, null, null];
   private audioTex: WebGLTexture;
   private textTex:  WebGLTexture;
+  private fbmTex:   WebGLTexture;
   private w = 0;
   private h = 0;
   private blendMode    = 0;
@@ -167,6 +193,43 @@ export class Pipeline {
     this.compositeProg = compositeResult.program;
     this.audioTex = this.makeAudioTex();
     this.textTex  = this.makeTextTex();
+    this.fbmTex   = this.bakeFbmTex();
+  }
+
+  // One-shot GPU bake of the fbm noise texture. R16F when float render
+  // targets are available (precision matters: CONTOUR MAP slices the value
+  // into 12 bands), RGBA8 fallback otherwise.
+  private bakeFbmTex(): WebGLTexture {
+    const gl = this.gl;
+    const hasFloat = !!gl.getExtension("EXT_color_buffer_float");
+    const t = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    if (hasFloat) {
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.R16F,FBM_BAKE_SIZE,FBM_BAKE_SIZE,0,gl.RED,gl.HALF_FLOAT,null);
+    } else {
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,FBM_BAKE_SIZE,FBM_BAKE_SIZE,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    }
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+    const bake = this.linkRaw(FBM_BAKE_FRAG, []);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE
+        && bake.success && bake.program) {
+      gl.viewport(0, 0, FBM_BAKE_SIZE, FBM_BAKE_SIZE);
+      gl.useProgram(bake.program.program);
+      this.drawTri();
+      gl.deleteProgram(bake.program.program);
+      console.log(`[Pipeline] fbm texture baked (${hasFloat ? "R16F" : "RGBA8"} ${FBM_BAKE_SIZE}px)`);
+    } else {
+      console.error("[Pipeline] fbm bake failed:", bake.error ?? "incomplete framebuffer");
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.deleteFramebuffer(fbo);
+    return t;
   }
 
   // ── Textures utilitaires ────────────────────────────────────────────────────
@@ -344,6 +407,7 @@ export class Pipeline {
     this.bindUniforms(p, u, amount);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.audioTex); gl.uniform1i(p.loc["u_audio"]??null, 2);
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, this.textTex);  gl.uniform1i(p.loc["u_text"]??null,  3);
+    gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, this.fbmTex);   gl.uniform1i(p.loc["u_fbmTex"]??null, 4);
     if (srcTex !== undefined) {
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTex);       gl.uniform1i(p.loc["u_prev"]??null, 0);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tex[2]);  gl.uniform1i(p.loc["u_feedback"]??null, 1);

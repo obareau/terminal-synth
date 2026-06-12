@@ -36,6 +36,18 @@ let frameCount = 0;
 let lastFpsTime = performance.now();
 let fps = 0;
 let frameTimeMs = 0;
+
+// Auto-Perf: graduated degrade when fps stays low. Level 0 = full quality.
+// L1 squeezes the stage cap, L2/L3 also lower the render scale.
+const AUTO_PERF_SCALE = [1, 1, 0.75, 0.6];
+let autoPerfEnabled = true;
+let autoPerfLevel = 0;
+let lowFpsSeconds = 0;
+let highFpsSeconds = 0;
+
+// GPU readback throttles (readPixels = pipeline sync stall)
+let lastAsciiReadMs = 0;
+let lastLumProbeMs = 0;
 let peakFrameTimeMs = 0;
 
 // Initialize mode
@@ -284,15 +296,7 @@ function loadShader(i: number): void {
   console.log(`[Renderer] Loading shader[${i}]: ${shaderName}`);
 
   // Hide mire when switching away from it
-  if (mireVisible && i !== 0) {
-    const mireEl = document.getElementById("mire-overlay");
-    if (mireEl) {
-      mireEl.style.opacity = "0";
-      mireEl.style.visibility = "hidden";
-      mireEl.style.pointerEvents = "none";
-    }
-    mireVisible = false;
-  }
+  if (mireVisible && i !== 0) hideMire();
 
   const result = pipeline.setGenerator(SHADERS[i]!.src);
   if (!result.success) {
@@ -463,22 +467,32 @@ DISRUPTORS.forEach((d, i) => {
 });
 
 // --- Contrôles ---
+async function enableAudio(): Promise<void> {
+  try {
+    await audio.start(srcSel.value as AudioSource);
+    audioBtn.textContent = "🔊 on";
+    audioBtn.classList.add("on");
+  } catch (e) {
+    console.error(e);
+    audioBtn.textContent = "audio ✗";
+    audioBtn.classList.remove("on");
+  }
+}
+
 audioBtn.addEventListener("click", async () => {
   if (audio.enabled) {
     await audio.stop();
     audioBtn.textContent = "audio";
     audioBtn.classList.remove("on");
   } else {
-    try {
-      await audio.start(srcSel.value as AudioSource);
-      audioBtn.textContent = "🔊 on";
-      audioBtn.classList.add("on");
-    } catch (e) {
-      console.error(e);
-      audioBtn.textContent = "audio ✗";
-      audioBtn.classList.remove("on");
-    }
+    await enableAudio();
   }
+});
+
+// Changer la source pendant que l'audio tourne = restart immédiat sur
+// la nouvelle source (avant : le select n'était lu qu'au clic sur audio).
+srcSel.addEventListener("change", async () => {
+  if (audio.enabled) await enableAudio();
 });
 
 asciiBtn.addEventListener("click", () => {
@@ -616,12 +630,18 @@ industrialPaletteBtn.addEventListener("click", () => {
   refreshIndustrialBadge();
 });
 
-// Perf mode: cap render DPR to 1 (massive pixel-count cut on HiDPI)
+// Auto-Perf toggle: enables the fps-driven graduated degrade (on by default).
 const perfModeToggleBtn = $<HTMLButtonElement>("perf-mode-toggle");
+perfModeToggleBtn.classList.toggle("on", autoPerfEnabled);
 perfModeToggleBtn.addEventListener("click", () => {
-  perfModeCapDpr = !perfModeCapDpr;
-  perfModeToggleBtn.classList.toggle("on", perfModeCapDpr);
-  resizeCanvas();
+  autoPerfEnabled = !autoPerfEnabled;
+  perfModeToggleBtn.classList.toggle("on", autoPerfEnabled);
+  if (!autoPerfEnabled && autoPerfLevel > 0) {
+    autoPerfLevel = 0;
+    lowFpsSeconds = 0;
+    highFpsSeconds = 0;
+    resizeCanvas();
+  }
 });
 
 // Stage cap: bound concurrent effects+disruptors. Default 6 = generous but
@@ -746,10 +766,9 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Tailles ---
-let perfModeCapDpr = false; // when true, render at DPR=1 (4× fewer pixels on a 4K HiDPI screen)
 function resizeCanvas(): void {
-  const maxDpr = perfModeCapDpr ? 1 : 2;
-  const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+  const scale = AUTO_PERF_SCALE[autoPerfLevel] ?? 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2) * scale;
   canvas.width = Math.max(1, Math.floor(canvas.clientWidth * dpr));
   canvas.height = Math.max(1, Math.floor(canvas.clientHeight * dpr));
 }
@@ -981,6 +1000,23 @@ function frame(now: number): void {
     fps = Math.round((frameCount * 1000) / elapsed);
     lastFpsTime = frameStart;
     frameCount = 0;
+
+    // Auto-Perf controller (1Hz): degrade after 5s under 50fps,
+    // recover after 10s above 58fps. Hysteresis avoids oscillation.
+    if (autoPerfEnabled) {
+      if (fps < 50) { lowFpsSeconds++; highFpsSeconds = 0; }
+      else if (fps >= 58) { highFpsSeconds++; lowFpsSeconds = 0; }
+      else { lowFpsSeconds = 0; highFpsSeconds = 0; }
+      if (lowFpsSeconds >= 5 && autoPerfLevel < 3) {
+        autoPerfLevel++;
+        lowFpsSeconds = 0;
+        resizeCanvas();
+      } else if (highFpsSeconds >= 10 && autoPerfLevel > 0) {
+        autoPerfLevel--;
+        highFpsSeconds = 0;
+        resizeCanvas();
+      }
+    }
   }
 
   if (audio.enabled) {
@@ -1077,8 +1113,9 @@ function frame(now: number): void {
 
   // Cap the effects+disruptors stage budget (post-process passes added below
   // don't count). Drops the most recently pushed entries first — disruptors
-  // get trimmed before steady effects.
-  if (stages.length > maxStages) stages.length = maxStages;
+  // get trimmed before steady effects. Auto-Perf squeezes the cap further.
+  const effectiveMaxStages = Math.max(2, maxStages - autoPerfLevel * 2);
+  if (stages.length > effectiveMaxStages) stages.length = effectiveMaxStages;
 
   // Industrial Mode: append as final GL post-process before output.
   // Palette is packed into the amount value (quarter-range encoding).
@@ -1100,9 +1137,15 @@ vec3 process(vec2 uv) {
   }
 
   if (asciiMode) {
-    const { cols, rows } = asciiGrid();
-    const px = pipeline.render(stages, cols, rows, u, true);
-    if (px) pre.innerHTML = pixelsToAsciiColorGlitch(px, cols, rows);
+    // Pixel readback stalls the GPU pipeline — 30Hz is indistinguishable
+    // for ASCII text and halves the sync cost. Canvas is hidden in this
+    // mode, so skipped frames lose nothing.
+    if (frameStart - lastAsciiReadMs >= 33) {
+      lastAsciiReadMs = frameStart;
+      const { cols, rows } = asciiGrid();
+      const px = pipeline.render(stages, cols, rows, u, true);
+      if (px) pre.innerHTML = pixelsToAsciiColorGlitch(px, cols, rows);
+    }
   } else {
     pipeline.render(stages, canvas.width, canvas.height, u, false);
 
@@ -1123,26 +1166,30 @@ vec3 process(vec2 uv) {
 
       canvas.style.filter = `brightness(${Math.max(1, Math.min(100, brightnessPercent))}%)`;
 
-      // Auto-switch safety: read average luminance via WebGL
+      // Auto-switch safety: read average luminance via WebGL.
+      // readPixels forces a GPU sync — 2Hz is plenty for a safety probe.
       try {
-        const gl = pipeline.getGL();
-        const w = Math.min(canvas.width, 256);
-        const h = Math.min(canvas.height, 256);
-        const pixels = new Uint8Array(w * h * 4);
-        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        if (frameStart - lastLumProbeMs >= 500) {
+          lastLumProbeMs = frameStart;
+          const gl = pipeline.getGL();
+          const w = Math.min(canvas.width, 256);
+          const h = Math.min(canvas.height, 256);
+          const pixels = new Uint8Array(w * h * 4);
+          gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-        let totalLum = 0;
-        for (let i = 0; i < pixels.length; i += 4) {
-          const lum = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
-          totalLum += lum;
-        }
-        const avgLum = totalLum / (pixels.length / 4) / 255;
+          let totalLum = 0;
+          for (let i = 0; i < pixels.length; i += 4) {
+            const lum = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
+            totalLum += lum;
+          }
+          const avgLum = totalLum / (pixels.length / 4) / 255;
 
-        // Auto-switch if image is too dark/bright
-        if (avgLum < 0.05 || avgLum > 0.95) {
-          if (Math.random() < 0.08) {
-            canvas.style.filter = "none";
-            selectSource((currentShader + 1) % SHADERS.length);
+          // Auto-switch if image is too dark/bright
+          if (avgLum < 0.05 || avgLum > 0.95) {
+            if (Math.random() < 0.08) {
+              canvas.style.filter = "none";
+              selectSource((currentShader + 1) % SHADERS.length);
+            }
           }
         }
       } catch (e) {
@@ -1184,6 +1231,7 @@ vec3 process(vec2 uv) {
   const ftMs = frameTimeMs.toFixed(1);
   const fpsTag = fps >= 55 ? "fps" : fps >= 45 ? "FPS" : "FPS!";
   let line = `${fps} ${fpsTag} ${ftMs}ms ${canvas.width}×${canvas.height}  ·  bass${pct(bands.bass)} mid${pct(bands.mid)} hi${pct(bands.treble)}`;
+  if (autoPerfLevel > 0) line += `  ·  AUTOPERF L${autoPerfLevel}`;
   if (midi.enabled) line += `  · midi ${midi.mode} e${pct(e)} poly${midi.polyphony}`;
   meter.textContent = line;
 
@@ -1226,6 +1274,17 @@ vec3 process(vec2 uv) {
 
 // MIRE TV ORTF - Display at startup
 let mireVisible = true;
+
+function hideMire(): void {
+  mireElement.style.opacity = "0";
+  mireElement.style.visibility = "hidden";
+  mireElement.style.pointerEvents = "none";
+  mireVisible = false;
+}
+
+// Failsafe: the overlay is a boot splash — it must never outlive the mire,
+// whatever path autoplay takes to move on (Layer B, effects, direct gen swap).
+setTimeout(() => { if (mireVisible) hideMire(); }, 10000);
 
 function updateMireTime(): void {
   const now = new Date();
