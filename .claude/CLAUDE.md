@@ -4,6 +4,22 @@
 
 ---
 
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues on `obareau/terminal-synth` (use the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical roles map 1:1 to label names: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root (none yet — created lazily). See `docs/agents/domain.md`.
+
+---
+
 ## Project Overview
 
 **Terminal-Synth** is a dark industrial visual synthesizer built with:
