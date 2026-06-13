@@ -1,277 +1,88 @@
-# Terminal-Synth Development Roadmap
+# Terminal-Synth Roadmap
 
-> **Vision**: Dark industrial visual synthesizer with generative automation, real-time audio reactivity, and professional MIDI integration for live performances and AV content creation.
+## 🔒 Status: Feature Freeze (v1.9.0-stable)
 
----
+Terminal-Synth is feature-complete for its core mission: a dark industrial
+visual synthesizer for **solo live performance**, driven by **Adaptive
+Autoplay** (music-reactive evolution) with the performer supervising and
+biasing. No sequencer, no MIDI Learn — these were deliberately removed.
 
-## ✅ Released
-
-### v1.6.0 (Current - 2026-06-10)
-- ✅ **Adaptive Autoplay**: Parameters scale dynamically based on music energy/style
-- ✅ **Music Analysis**: Real-time BPM detection + energy trending
-- ✅ **Adaptive Beat Detection**: Threshold-based peak detection on bass pattern
-- ✅ **BPM Display**: Large, live-updating BPM indicator in topbar
-- ✅ **Tap Tempo**: Manual BPM setting via Shift+T key
-- ✅ **Lightweight**: Music analysis runs every frame, display updates 10Hz (minimal CPU)
-- ✅ **MIRE ORTF**: Exclusive startup screen with time display
-
-### v1.5.0 (2026-06-09)
-- ✅ **Nightcall Mountains**: 32 procedural hexagonal pyramids with 3D projection
-- ✅ **Light/Dark Theme**: Persistent UI theme toggle with localStorage
-- ✅ **Master Brightness**: Audio-reactive fade to black with smooth transitions
-- ✅ **91 Generators**: Wireframe, geometry, fractals, noise, patterns
-- ✅ **31 Effects**: Distortion, color, texture, feedback chains
-- ✅ **23 Disruptors**: Audio-triggered glitches and visual effects
-- ✅ **Generative Automation**: 4 preset modes with mutation/drift
-- ✅ **Linux .deb Package**: Official Debian/Ubuntu distribution
-
-### v1.0.1-delta
-- Sequencer + MIDI Learn system
-- 91 generators with audio reactivity
-- Comprehensive effects/disruptors chain
+**From v1.9.0 onward, development is debug/maintenance only.** No new
+features are planned. Work focuses on bug fixes, performance, and
+stability. See `.claude/CLAUDE.md` for the full project policy.
 
 ---
 
-## 🚀 Planned Features
+## Version History
 
-### v1.3.0 (Next Release)
-**Timeline**: Q3 2026
+### v1.0.1-delta — Foundations
+- 91 generators with audio reactivity, effects/disruptors chain
+- Sequencer + MIDI Learn (16-step automation, CC mapping) — **since removed**
+  in favor of Adaptive Autoplay
 
-#### Multi-Track Sequencer
-- [ ] Expand from 1 track to 4-8 parallel tracks
-- [ ] Independent keyframes per track
-- [ ] Track enable/disable toggles
-- [ ] Track color-coding for clarity
-- **Why**: More complex generative patterns, stacked automation effects
+### v1.2.0 — Master Brightness
+- Audio-reactive fade-to-black via CSS filter, exponential moving average
+  smoothing, slider-controlled amplification
 
-#### Advanced MIDI Features
-- [ ] MIDI CC feedback (send to controller display)
-- [ ] Pitch bend and aftertouch mapping
-- [ ] Note-to-parameter triggering
-- [ ] MIDI sync (clock, start/stop from DAW)
-- **Why**: Seamless DAW integration, live performance feedback
+### v1.5.0 — Nightcall Mountains + Theming
+- Nightcall Mountains generator (32 hexagonal pyramids, 3D projection)
+- Light/Dark theme toggle with localStorage persistence
+- 91 generators / 31 effects / 23 disruptors, Linux `.deb` packaging
 
-#### Performance Improvements
-- [ ] Shader compilation caching
-- [ ] WebGL2 advanced instancing
-- [ ] GPU memory optimization
-- [ ] Frame buffering strategies
-- **Why**: Smoother 60fps at 4K resolution
+### v1.6.0 — Adaptive Autoplay + Music Analysis
+- Real-time BPM detection (adaptive bass-peak threshold) and energy/style
+  classification (calm/driving/chaotic/peak)
+- Autoplay parameters scale dynamically with music energy
+- Tap tempo (`Shift+T`), MIRE ORTF startup screen
 
-#### UI Enhancements
-- [ ] Dark theme refinement (OLED-optimized)
-- [ ] Customizable panel layouts
-- [ ] Preset browser with search/tags
-- [ ] Real-time waveform scope per generator
-- **Why**: Better usability for long sessions
+### v1.7.x — Industrial Mode
+- 20 Industrial generators (monochrome, glitch-driven)
+- Post-process N&B with IGN dither, 4 palettes (B&W / Phosphor / Blueprint /
+  Sepia)
+- 12 Industrial disruptors
+- Autoplay can be restricted to the Industrial pool
 
----
+### v1.7.4 — Performance Pass
+- Auto-Perf: graduated degrade (stage cap squeeze, then render scale
+  reduction) when FPS drops below 50 for 5s, recovers when FPS ≥ 58 for 10s
+- Audio capture and MIRE startup fixes
 
-### v1.4.0 (Future Release)
-**Timeline**: Q4 2026
-
-#### Recording & Export
-- [ ] H.264 video export (faster than WebM)
-- [ ] Synchronized audio track embedding
-- [ ] Batch rendering (render multiple presets)
-- [ ] Custom resolution/framerate output
-- [ ] Screen region recording (partial screen)
-- **Why**: Professional VJ/streaming workflow
-
-#### Advanced Sequencer
-- [ ] Polyrhythmic sequences (different step counts per track)
-- [ ] Probability-based keyframes (random value ranges)
-- [ ] Nested sequences (loops within loops)
-- [ ] Swing/shuffle timing offset
-- **Why**: Generative complexity, evolving patterns
-
-#### Generator Enhancements
-- [ ] Custom shader editor (GLSLify integration)
-- [ ] Generator blending/morphing
-- [ ] 3D generator support (WebGL3D experiments)
-- [ ] User-uploaded shader library
-- **Why**: Unlimited creative possibilities
-
-#### Network Features
-- [ ] OSC input/output (TouchOSC, Max/MSP)
-- [ ] ArtNet/DMX support (stage lighting integration)
-- [ ] Multi-machine synchronization
-- [ ] Preset sharing platform (cloud sync)
-- **Why**: Multi-device setups, collaborative performances
+### v1.9.0 — Stage Cap, HUD, Master Brightness Rework → **Freeze**
+- Stage Cap slider (1–12, default 6) limits simultaneous effects+disruptors
+- Extended HUD: FPS, frame time, resolution, audio bands, version overlay
+- Master Brightness slider now controls the floor (0 = identity, 1 =
+  aggressive fade-to-black), fixing the previous always-black bug
+- **Feature freeze declared** — tagged `v1.9.0-stable`
 
 ---
 
-### v1.5.0+ (Long-term Vision)
-**Timeline**: 2027+
+## Abandoned Attempt: v1.8 Remote Control
 
-#### VJ Mode / Live Performance
-- [ ] Multi-window output (main + preview + controller)
-- [ ] Cue system with fade timing
-- [ ] BPM-locked crossfader
-- [ ] Beat-sync animations
-- [ ] Performance HUD overlay
-- **Why**: Professional VJ tool for clubs/festivals
+A WebSocket server (port 7777) + PWA tablet UI was built to allow
+Performance/Director/Spectator control modes from a phone/tablet over the
+local network, with a JSON-schema-driven adaptive UI and QR pairing.
 
-#### AI Integration (Experimental)
-- [ ] ML-based generative parameter suggestions
-- [ ] Audio waveform → generative shape mapping
-- [ ] Preset auto-categorization
-- [ ] Real-time performance analysis
-- **Why**: Adaptive performances, emergent creativity
+After implementation, the app crashed ~5–9 seconds after startup and the
+root cause could not be identified (candidates: an unhandled exception in
+the remote-state push loop, the WebSocketServer interfering with the
+Electron `BrowserWindow` lifecycle, or the QR/schema-builder integration).
+Given the low tolerance for a broken live-performance tool, the entire
+effort was reverted via `git reset --hard` to the last known-good commit
+and force-pushed.
 
-#### Spatial Audio & 3D
-- [ ] Ambisonic audio output
-- [ ] 3D spatial visualization (WebGL3D)
-- [ ] Volumetric rendering experiments
-- [ ] VR/AR headset support (WebXR)
-- **Why**: Immersive experiences, spatial design
-
-#### Studio Integration
-- [ ] DAW plugin version (VST3/AU)
-- [ ] Ableton Link deep integration
-- [ ] Real-time parameter preview in DAW
-- [ ] Session recovery after crashes
-- **Why**: Studio workflow, professional music production
+**The v1.8 code no longer exists in this repository.** The original design
+is preserved at `docs/archive/ROADMAP_v1.8.md` for reference if remote
+control is ever revisited — any future attempt should start by instrumenting
+`main.ts` for uncaught exceptions and `render-process-gone` events before
+porting any of the old code.
 
 ---
 
-## 🔧 Maintenance & Improvements
+## Current Policy
 
-### Bug Fixes & Performance
-- [ ] Fix MIDI controller lag on some devices
-- [ ] Optimize framebuffer resize handling
-- [ ] Improve ASCII mode performance
-- [ ] Reduce memory footprint on older GPUs
-- [ ] Better error reporting for WebGL failures
-
-### Code Quality
-- [ ] Increase test coverage (currently ~70%)
-- [ ] Refactor effect chain architecture
-- [ ] Standardize parameter naming
-- [ ] Add JSDoc comments to core modules
-- [ ] Extract utility functions
-
-### Documentation
-- [ ] Video tutorials (getting started, sequencer, MIDI)
-- [ ] Interactive documentation website
-- [ ] Generator gallery with descriptions
-- [ ] Community showcase
-- [ ] French/English docs parity
-
----
-
-## 📋 Known Limitations
-
-### Current Constraints
-- **Memory**: Large .deb package (~105MB) due to Electron bundling
-- **CPU**: Some effect chains can hit 100% on older processors
-- **GPU**: Requires WebGL2 capable device (Intel HD 4000+, NVIDIA GTX 400+)
-- **MIDI**: Some controllers need manual configuration
-- **Windows**: No native M1 Mac support (Intel only)
-- **Audio**: Loopback audio requires separate software on some systems
-
-### Not Planned
-- ❌ Mobile/tablet version (Electron desktop-only)
-- ❌ Web browser version (performance requirements)
-- ❌ Reverse rendering (image → audio)
-- ❌ Networked multiplayer sync (architectural complexity)
-- ❌ Real-time collaboration (cloud infrastructure needed)
-
----
-
-## 🎯 Design Philosophy
-
-### Core Principles
-1. **Minimalism**: Dark industrial aesthetic, no unnecessary UI chrome
-2. **Audio-First**: Every visual responds to sound input
-3. **Generativity**: Algorithmic patterns, not just manual control
-4. **Performance**: 60fps on mid-range hardware (GTX 1060 baseline)
-5. **Open Source**: MIT license, community contributions welcome
-
-### Not In Scope
-- Bloated UI with 100+ settings
-- Cloud/online features
-- Ad-supported or subscription model
-- Corporate/proprietary integrations
-
----
-
-## 📊 Community Feedback Priorities
-
-**Top Requested Features** (from GitHub issues):
-1. Multi-track sequencer (8 votes)
-2. OSC input support (6 votes)
-3. Custom shader editor (5 votes)
-4. Better preset management (5 votes)
-5. MIDI sync/clock (4 votes)
-
-**Top Reported Issues** (by frequency):
-1. MIDI lag on some controllers (3 reports)
-2. Memory usage on 8GB+ systems (2 reports)
-3. Audio sync timing (2 reports)
-4. Generator parameter ranges (1 report)
-
----
-
-## 🚦 Release Schedule
-
-```
-v1.2.0 ✅ (Shipped)
-  ├─ Jun 2026: Master Brightness
-  └─ v1.2.0 Release
-
-v1.3.0 📅 (Next)
-  ├─ Q3 2026: Multi-track sequencer
-  ├─ Q3 2026: MIDI feedback
-  └─ Q3 2026: Performance optimizations
-
-v1.4.0 🎯 (Future)
-  ├─ Q4 2026: Video export improvements
-  ├─ Q4 2026: Custom shader editor
-  └─ Q4 2026: OSC/DMX support
-
-v1.5.0+ 🌟 (Vision)
-  ├─ 2027: VJ mode + live performance
-  ├─ 2027: AI generative features
-  └─ 2027: 3D spatial audio
-```
-
----
-
-## 🔗 Contributing
-
-Interested in helping? See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-**Easy Issues for Contributors**:
-- [ ] Add more generator examples to docs
-- [ ] Translate UI strings to other languages
-- [ ] Write tutorial content
-- [ ] Test on different GPU models
-- [ ] Report bugs with minimal reproducible examples
-
----
-
-## 📞 Support & Feedback
-
-- **Report Bugs**: [GitHub Issues](https://github.com/obareau/terminal-synth/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/obareau/terminal-synth/discussions)
-- **Email**: olivier.bareau@gmail.com
-- **Community**: Discord server (coming soon)
-
----
-
-## 🎨 Long-term Vision
-
-Terminal-Synth is envisioned as a **professional-grade VJ tool** for:
-- **Live performances** at clubs, festivals, galleries
-- **Audiovisual installations** with generative evolution
-- **Music production** with real-time shader visualization
-- **Research** in generative graphics & audio reactivity
-
-The ultimate goal: **democratize high-quality audiovisual creation** through open-source, accessible, and creative tools.
-
----
-
-**Last Updated**: June 2026  
-**Maintainer**: Olivier Bareau  
-**Status**: Active Development
+- **Debug/maintenance only.** Fix bugs, improve performance, polish UX.
+- **No new major features** (Remote Control, Director Mode, etc. stay
+  shelved).
+- Workflow: reproduce → minimal fix → `npm test` → commit → push.
+- If a change breaks app startup, prefer reverting immediately over
+  incremental in-place debugging (see v1.8 postmortem above).
