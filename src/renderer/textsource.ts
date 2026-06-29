@@ -66,7 +66,8 @@ export class TacticDisplay {
     this.typePos    = 0;
   }
   forceNext(now: number): void {
-    if (now - this.lastForce < 320) return;
+    const minInterval = Math.max(320, this.holdMs * 0.4);
+    if (now - this.lastForce < minInterval) return;
     this.lastForce = now;
     this.swap(now);
   }
