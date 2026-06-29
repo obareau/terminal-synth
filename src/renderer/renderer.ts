@@ -190,6 +190,7 @@ allItems.set("Plasma", []);
 allItems.set("Geometry", []);
 allItems.set("Noise", []);
 allItems.set("Interactive", []);
+allItems.set("Lofi", []);
 
 SHADERS.forEach((s, i) => {
   // select caché (logique preset)
@@ -199,8 +200,9 @@ SHADERS.forEach((s, i) => {
   const o2 = o.cloneNode(true) as HTMLOptionElement;
   layerBSel.appendChild(o2);
 
-  // Déterminer la catégorie
-  const cat = getCategory(s.name);
+  // Déterminer la catégorie — priorité à s.category si c'est un onglet connu
+  const TAB_CATS = new Set(["Text","Plasma","Geometry","Noise","Interactive","Lofi"]);
+  const cat = (s.category && TAB_CATS.has(s.category)) ? s.category : getCategory(s.name);
 
   // liste visuelle cliquable
   const item = document.createElement("div");
