@@ -24,12 +24,12 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 ### Linux (Debian/Ubuntu)
 ```bash
 # Download and install .deb package
-sudo dpkg -i terminal-synth_1.9.1_amd64.deb
+sudo dpkg -i terminal-synth_2.0.0_amd64.deb
 terminal-synth
 ```
 
 ### Windows (Executable)
-1. Download `terminal-synth_1.9.1.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+1. Download `terminal-synth_2.0.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
 2. Run directly (no installation needed)
 3. Grant audio access when prompted
 
@@ -124,21 +124,30 @@ npm run package        # Build Windows .exe
 - Pixellisation 1-64px, réactif à l'audio (position + wobble)
 - Cycle naturel : 2 mots visibles (3s chacun) → 25s de pause
 
+### 🖼 Media Loader (v1.9.10)
+
+Onglet **Media** dans le panel générateurs :
+- **📂 Image / Vidéo** — file picker, upload WebGL texture slot 5 (`u_media`)
+- **Webcam** — freeze-frame capture toutes les X secondes, texture pixelisée (GL_NEAREST)
+- **3 générateurs Media** — `Media Direct` (warp + chroma split), `Media Glitch` (bandes VHS), `Media Kaleid` (kaléidoscope N-faces)
+- `mediaCol(uv)` disponible dans tous les shaders GLSL
+
 ### 🎛 Effect Sequencer (v1.9.5)
 
 Séquenceur d'effets BPM-synced. Accessible dans le panel gauche → onglet **Controls** → champ **SEQ** au-dessus de la liste d'effets.
 
 **Syntaxe :**
 ```
-FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>
+FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>, D:STR*2
 ```
 - `ID*N` — effet ON pendant N beats, puis off → step suivant
 - `ID?P` — probabilité P% de déclencher le step
 - `A+B` — effets simultanés dans le même step
 - `<A B C>` — alternance : cycle parmi les options à chaque passage
+- `D:ID` — disruptor dans le SEQ
 - Entrée ou ▶ pour lancer, ■ pour stopper
 
-**Abréviations des 47 effets :**
+**57 effets :**
 
 | ID | Effet | ID | Effet | ID | Effet |
 |----|-------|----|-------|----|-------|
@@ -157,7 +166,36 @@ FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>
 | `RFN` | RF Noise | `ORL` | Orbit Ring Lines | `ONC` | Orbit Nodes Connect |
 | `OSP` | Orbit Spiral | `POR` | Pulsing Orbits | `NPL` | Network Pulse |
 | `ORN` | Orbital Nodes | `WRN` | Wave Rings | `BWR` | BW Orbital Ring |
-| `BWG` | BW Grid Lines | `SBW` | Starfield BW | | |
+| `BWG` | BW Grid Lines | `SBW` | Starfield BW | `DUO` | Duotone |
+| `PST` | Pixel Sort | `CRT` | CRT Warp | `KAL` | Kaleidoscope |
+| `RPB` | Ripple Beat | `SLZ` | Solarize | `GBL` | Glitch Blocks |
+| `TRL` | Trails | `CGR` | Color Grade | `ZBL` | Zoom Blur |
+
+**61 disruptors (préfixe `D:` dans le SEQ) :**
+
+| ID | Nom | ID | Nom | ID | Nom |
+|----|-----|----|-----|----|-----|
+| `DCH` | Déchirure | `DRP` | Dropout | `STR` | Strobe |
+| `CRP` | Corrupt | `TRM` | Tremor | `PHS` | Phosphore |
+| `FLK` | Flicker | `SHT` | Shatter | `BBR` | Bloom Burst |
+| `GRW` | Glitch Rows | `FLH` | Flip H | `FLV` | Flip V |
+| `MSB` | Mosaic Burst | `SVX` | Spin Vortex | `PSH` | Psycho Shift |
+| `DST` | Displacement Storm | `NGB` | Negative Burst | `RDW` | Radial Warp |
+| `CSH` | Color Shift | `ZMP` | Zoom Pulse | `IJT` | Interlace Jitter |
+| `MFL` | Mirror Flip | `FRB` | Frequency Bars | `TSH` | Temporal Shift |
+| `STB` | Static Burst | `RGX` | RGB Explosion | `HCL` | H-Collapse |
+| `TSC` | Tile Scramble | `DBL` | Datableed | `SIG` | Signal Cut |
+| `PRN` | Pixel Rain | `ACD` | Acid Wash | `FRZ` | Freeze Glitch |
+| `WML` | Wave Melt | `VTR` | Vertical Tear | `ECD` | Echo Drift |
+| `HSM` | Heat Shimmer | `NGS` | Negative Spike | `SLB` | Scanline Burn |
+| `BLS` | Blink Strip | `CFG` | Chroma Fog | `DGE` | Digital Echo |
+| `CLM` | Color Melt | `WRL` | Warp Lens | `PCR` | Pixel Crush |
+| `CHB` | Crosshatch Burn | `BWD` | Bandwidth | `NFR` | Neon Flare |
+| `SBK` | Static Block | `BLD` | Block Displace *(Indus)* | `SCT` | Scan Tear *(Indus)* |
+| `FRH` | Frame Hold *(Indus)* | `DMS` | Datamosh *(Indus)* | `SGL` | Signal Loss *(Indus)* |
+| `SYL` | Sync Lost *(Indus)* | `BCR` | Bit Crush *(Indus)* | `GLS` | Glyph Storm *(Indus)* |
+| `HTP` | Halftone Pulse *(Indus)* | `SLD` | Scanline Density *(Indus)* | `CSK` | Contour Shock *(Indus)* |
+| `NGF` | Negative Flash *(Indus)* | | | | |
 
 ### 📺 Mode ASCII
 - Rendu texte haute-densité avec glitch multicolore subtil
@@ -212,23 +250,27 @@ Electron 34
 ### Fichiers Clés
 ```
 src/
-├── main.ts                  Process principal Electron (fenêtres, IPC, export vidéo)
-├── preload.ts                Pont contextBridge ↔ renderer
+├── main.ts                   Process principal Electron (fenêtres, IPC, export vidéo)
+├── preload.ts                 Pont contextBridge ↔ renderer
 └── renderer/
-    ├── gl.ts                 Pipeline WebGL2 (multi-pass, effects chain)
-    ├── shaders.ts             97 générateurs GLSL ES 3.00
-    ├── industrialShaders.ts  20 générateurs Industrial monochrome
-    ├── effects.ts             47 effets post-process
-    ├── disruptors.ts          36 perturbateurs audio-réactifs
+    ├── gl.ts                  Pipeline WebGL2 (multi-pass, effects chain, u_media)
+    ├── shaders.ts             100 générateurs GLSL ES 3.00 (builtin)
+    ├── industrialShaders.ts   20 générateurs Industrial monochrome
+    ├── lofiShaders.ts         14 générateurs Lofi/Chiptune/ASCII
+    ├── mediaShaders.ts         3 générateurs Media (u_media texture)
+    ├── effects.ts             57 effets post-process
+    ├── disruptors.ts          61 perturbateurs (24 builtin + 25 nouveaux)
+    ├── industrialDisruptors.ts 12 perturbateurs Industrial
     ├── audio.ts               FFT + audio input (loopback/micro)
     ├── musicAnalyzer.ts       BPM / énergie / style / tap tempo
     ├── autoplay.ts            Logique autoplay de base
     ├── autoplayAdapter.ts     Pont autoplay ↔ audio live
-    ├── autoplayAdvanced.ts    Presets (Gentle/Chaotic/Psycho/Glitch), génération
-    ├── textLayer.ts           Couche texte pixellisée
+    ├── autoplayAdvanced.ts    3 cycles indépendants, fade transitions, 5 presets
+    ├── textLayer.ts           Couche texte adaptive-width, font pool cross-platform
+    ├── textsource.ts          Source de texte RECTA (tactics, holdMs)
     ├── ascii.ts               Rendu ASCII glitch
-    ├── midi.ts                Input MIDI brut
-    ├── videoExport.ts         Capture/export vidéo
+    ├── midi.ts                Input MIDI brut + MIDI Learn
+    ├── videoExport.ts         Capture/export vidéo WebM
     └── renderer.ts            Event loop + UI glue + frame loop
 ```
 
