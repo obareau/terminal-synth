@@ -89,7 +89,7 @@ function createWindow(): void {
     if (input.type !== "keyDown") return;
     if (input.key === "F12") { win.webContents.toggleDevTools(); return; }
     // Scene bank : Ctrl+1-6 (recall) et Ctrl+Shift+1-6 (save)
-    const digitMatch = input.code?.match(/^Digit([1-6])$/);
+    const digitMatch = input.code?.match(/^(?:Digit|Numpad)([1-6])$/);
     if (digitMatch && input.control) {
       event.preventDefault();
       win.webContents.send("scene:action", {
