@@ -21,11 +21,13 @@ export interface AutoplayPreset {
   name: string;
   minMeasures: number;
   maxMeasures: number;
-  bassReactivity: number; // 0-1: how much bass affects aggression
-  effectChangeProb: number; // 0-1: probability of effect change
+  bassReactivity: number;
+  effectChangeProb: number;
   perturbatorChangeProb: number;
-  driftSpeed: number; // 0-1: evolution speed in generative loops
-  crossfadeDuration: number; // ms for smooth transitions
+  driftSpeed: number;
+  crossfadeDuration: number;
+  genChangePeriod: [number, number]; // [min, max] mesures entre changements de generator
+  fxChangePeriod: [number, number];  // [min, max] mesures entre transitions d'effets
 }
 
 export interface Snapshot {
@@ -58,7 +60,9 @@ export const AUTOPLAY_PRESETS: Record<string, AutoplayPreset> = {
     effectChangeProb: 0.1,
     perturbatorChangeProb: 0.05,
     driftSpeed: 0.1,
-    crossfadeDuration: 1000,
+    crossfadeDuration: 1200,
+    genChangePeriod: [6, 12],
+    fxChangePeriod: [3, 6],
   },
   chaotic: {
     name: "Chaotic",
@@ -68,7 +72,9 @@ export const AUTOPLAY_PRESETS: Record<string, AutoplayPreset> = {
     effectChangeProb: 0.7,
     perturbatorChangeProb: 0.6,
     driftSpeed: 0.8,
-    crossfadeDuration: 200,
+    crossfadeDuration: 300,
+    genChangePeriod: [2, 4],
+    fxChangePeriod: [1, 2],
   },
   psycho: {
     name: "Psycho",
@@ -78,7 +84,9 @@ export const AUTOPLAY_PRESETS: Record<string, AutoplayPreset> = {
     effectChangeProb: 0.9,
     perturbatorChangeProb: 0.9,
     driftSpeed: 1.0,
-    crossfadeDuration: 100,
+    crossfadeDuration: 120,
+    genChangePeriod: [1, 2],
+    fxChangePeriod: [1, 1],
   },
   glitch: {
     name: "Glitch",
@@ -89,6 +97,8 @@ export const AUTOPLAY_PRESETS: Record<string, AutoplayPreset> = {
     perturbatorChangeProb: 0.9,
     driftSpeed: 0.5,
     crossfadeDuration: 150,
+    genChangePeriod: [2, 4],
+    fxChangePeriod: [1, 2],
   },
   minimal: {
     name: "Minimal",
@@ -98,7 +108,9 @@ export const AUTOPLAY_PRESETS: Record<string, AutoplayPreset> = {
     effectChangeProb: 0.15,
     perturbatorChangeProb: 0.02,
     driftSpeed: 0.05,
-    crossfadeDuration: 1500,
+    crossfadeDuration: 1800,
+    genChangePeriod: [10, 20],
+    fxChangePeriod: [6, 12],
   },
 };
 
@@ -115,6 +127,8 @@ class AutoplayAdvanced {
   private currentMeasure: number = 0;
   private nextChangeAt: number = 0;
   private nextChangeMeasures: number = 8;
+  private nextGeneratorChangeAt: number = 0;
+  private nextFxChangeAt: number = 0;
   private animationFrameId: number = 0;
 
   // Audio reactivity
@@ -173,6 +187,8 @@ class AutoplayAdvanced {
     this.currentMeasure = 0;
     this.nextChangeMeasures = this.randomMeasures();
     this.nextChangeAt = this.currentMeasure + this.nextChangeMeasures;
+    this.nextGeneratorChangeAt = 0;
+    this.nextFxChangeAt = 0;
     this.frameStart = performance.now();
     this.loopMeasureCounter = 0;
 
@@ -218,7 +234,6 @@ class AutoplayAdvanced {
    * Called every measure
    */
   private onMeasureChange() {
-    // Update generative loop evolution
     if (this.generativeLoop && !this.generativeLoop.isFrozen) {
       this.loopMeasureCounter++;
       if (this.loopMeasureCounter >= this.generativeLoop.loopLength) {
@@ -227,7 +242,22 @@ class AutoplayAdvanced {
       }
     }
 
-    // Check if time to change
+    // Cycle rapide : changement de generator
+    if (this.currentMeasure >= this.nextGeneratorChangeAt) {
+      this.randomizeSource();
+      const [gMin, gMax] = this.preset.genChangePeriod;
+      this.nextGeneratorChangeAt = this.currentMeasure + gMin + Math.floor(Math.random() * (gMax - gMin + 1));
+    }
+
+    // Cycle rapide : transitions effets + disruptors
+    if (this.currentMeasure >= this.nextFxChangeAt) {
+      this.transitionEffects();
+      this.transitionPerturbators();
+      const [fMin, fMax] = this.preset.fxChangePeriod;
+      this.nextFxChangeAt = this.currentMeasure + fMin + Math.floor(Math.random() * (fMax - fMin + 1));
+    }
+
+    // Cycle principal : blend, text, render filter, sliders
     if (this.currentMeasure >= this.nextChangeAt) {
       this.triggerChange();
       this.nextChangeMeasures = this.randomMeasures();
@@ -239,43 +269,24 @@ class AutoplayAdvanced {
    * Trigger random changes (with audio reactivity)
    */
   private triggerChange() {
-    // Audio-reactive aggression
     const aggression = Math.min(1, this.lastBassEnergy * this.preset.bassReactivity);
-    this.lastBassEnergy = 0; // Reset
+    this.lastBassEnergy = 0;
 
-    // Apply changes with probability
-    if (Math.random() < this.preset.effectChangeProb + aggression * 0.3) {
-      this.randomizeEffects();
-    }
-
-    if (Math.random() < this.preset.perturbatorChangeProb + aggression * 0.2) {
-      this.randomizePerturbators();
-    }
-
-    // Occasionally swap source
-    if (Math.random() < 0.3 + aggression * 0.5) {
-      this.randomizeSource();
-    }
-
-    // Occasionally change blend
+    // Blend mode
     if (Math.random() < 0.2 + aggression * 0.3) {
       this.randomizeBlendMode();
     }
-
-    // Occasionally toggle text layer (moderate probability, shorter duration)
+    // Text layer
     if (Math.random() < 0.15 + aggression * 0.1) {
       this.randomizeTextLayer();
     }
-
-    // Occasionally randomize render filter (global color modes)
+    // Render filter
     if (Math.random() < 0.08 + aggression * 0.05) {
       this.randomizeRenderFilter();
     }
-
-    // Smooth slider changes
+    // Sliders (amounts) — smooth
     this.randomizeSliders(this.preset.crossfadeDuration);
 
-    // Create snapshot for history
     this.createSnapshot();
   }
 
@@ -457,26 +468,68 @@ class AutoplayAdvanced {
   /**
    * Helper: randomize effects
    */
-  private randomizeEffects() {
-    // Effets uniquement dans #chain
-    const checkboxes = document.querySelectorAll("#chain .fx input[type='checkbox']");
-    checkboxes.forEach((cb: Element) => {
-      if (Math.random() < 0.5) {
-        (cb as HTMLInputElement).checked = !(cb as HTMLInputElement).checked;
-        cb.dispatchEvent(new Event("change", { bubbles: true }));
+  private transitionEffects() {
+    document.querySelectorAll("#chain .fx").forEach((item) => {
+      if (Math.random() < 0.4) {
+        const cb = item.querySelector<HTMLInputElement>("input[type='checkbox']");
+        const rng = item.querySelector<HTMLInputElement>("input[type='range']");
+        if (cb && rng) this.transitionFxItem(cb, rng, Math.random() < 0.55);
       }
     });
   }
 
-  private randomizePerturbators() {
-    // Disruptors uniquement dans #disruptors-list (class "fx" aussi, pas "disruptor")
-    const checkboxes = document.querySelectorAll("#disruptors-list .fx input[type='checkbox']");
-    checkboxes.forEach((cb: Element) => {
-      if (Math.random() < 0.5) {
-        (cb as HTMLInputElement).checked = !(cb as HTMLInputElement).checked;
-        cb.dispatchEvent(new Event("change", { bubbles: true }));
+  private transitionPerturbators() {
+    document.querySelectorAll("#disruptors-list .fx").forEach((item) => {
+      if (Math.random() < 0.35) {
+        const cb = item.querySelector<HTMLInputElement>("input[type='checkbox']");
+        const rng = item.querySelector<HTMLInputElement>("input[type='range']");
+        if (cb && rng) this.transitionFxItem(cb, rng, Math.random() < 0.4);
       }
     });
+  }
+
+  private transitionFxItem(cb: HTMLInputElement, rng: HTMLInputElement, enable: boolean) {
+    const dur = this.preset.crossfadeDuration;
+    if (enable && !cb.checked) {
+      const target = 0.2 + Math.random() * 0.75;
+      cb.checked = true;
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
+      this.animateValue(rng, 0, target, dur);
+    } else if (!enable && cb.checked) {
+      const from = parseFloat(rng.value);
+      this.animateValue(rng, from, 0, dur, () => {
+        cb.checked = false;
+        cb.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+  }
+
+  private animateValue(
+    input: HTMLInputElement,
+    from: number,
+    to: number,
+    durationMs: number,
+    onComplete?: () => void
+  ) {
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / durationMs, 1);
+      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      input.value = String(from + (to - from) * ease);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      if (t < 1) requestAnimationFrame(tick);
+      else onComplete?.();
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // Garde pour compatibilité (plus appelé par triggerChange mais utilisé par evolveGenerativeLoop)
+  private randomizeEffects() {
+    this.transitionEffects();
+  }
+
+  private randomizePerturbators() {
+    this.transitionPerturbators();
   }
 
   private randomizeSliders(duration: number = 500, mutationStrength: number = 1) {
