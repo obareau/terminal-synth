@@ -2,6 +2,11 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.3] - 2026-06-29
+
+### Fixed
+- **Scene Bank raccourcis** — déplacé dans `before-input-event` Electron (avant le DOM) + IPC → fonctionne quelle que soit la focus. Pavé numérique (Numpad1-6) ajouté en plus des touches de chiffres (Digit1-6).
+
 ## [1.9.2] - 2026-06-29
 
 ### Added
