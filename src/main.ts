@@ -69,6 +69,19 @@ function createWindow(): void {
   });
 
 
+  // Intercept WebM downloads from the recorder and show a Save As dialog
+  // instead of silently saving to ~/Downloads. Must be set before loadFile.
+  session.defaultSession.on("will-download", (_event, item) => {
+    const filename = item.getFilename();
+    if (!filename.endsWith(".webm")) return;
+    const savePath = dialog.showSaveDialogSync(win, {
+      defaultPath: filename,
+      filters: [{ name: "WebM Video", extensions: ["webm"] }],
+    });
+    if (savePath) item.setSavePath(savePath);
+    else item.cancel();
+  });
+
   win.loadFile(path.join(__dirname, "index.html"));
 
   // F12 → DevTools (debug shaders / erreurs GL)

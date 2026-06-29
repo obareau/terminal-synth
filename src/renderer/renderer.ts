@@ -954,13 +954,18 @@ recBtn.addEventListener("click", async () => {
   }
   recorder = new MediaRecorder(stream, { mimeType });
   recorder.ondataavailable = (e) => { if (e.data.size > 0) recChunks.push(e.data); };
-  recorder.onstop = async () => {
+  recorder.onstop = () => {
     recBtn.classList.remove("rec");
     recBtn.textContent = "⏺ REC";
     const blob = new Blob(recChunks, { type: "video/webm" });
-    const buf  = await blob.arrayBuffer();
-    const name = `terminal-synth-${Date.now()}.webm`;
-    await window.synth?.saveVideo(new Uint8Array(buf), name);
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `terminal-synth-${Date.now()}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     recorder = null;
   };
   recorder.start(1000); // chunk toutes les secondes
