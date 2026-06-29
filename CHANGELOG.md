@@ -2,6 +2,17 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.5] - 2026-06-29
+
+### Added
+- **Effect Sequencer** — champ SEQ + bouton ▶/■ dans la bottom bar. Syntaxe DNA inspirée de BANG! :
+  - `FDB*4` : Feedback ON pendant 4 beats puis off
+  - `GLT?50` : Glitch avec 50% de probabilité
+  - `VHS*2+ABR` : VHS + Aberration simultanément, 2 beats
+  - `<NEO*4 ZOM*4>` : alternance Neon/Zoom à chaque cycle
+  - Exécution BPM-synced, boucle infinie, Entrée ou ▶ pour lancer
+- **IDs courts pour les 47 effets** — ENT, FDB, GLT, FLT, INV, GRN, NEO, OND, FSH, HUE, SCN, DTM, PIX, THM, ZOM, VHS, SEU, ABR, BLM, MIR, DTH, CHR, KUW, SLT, GLW, PDT, FLD, RCW, RCC, SCD, WSP, NTC, CPV, AGH, CBL, LUM, RFN, ORL, ONC, OSP, POR, NPL, ORN, WRN, BWR, BWG, SBW
+
 ## [1.9.4] - 2026-06-29
 
 ### Added
