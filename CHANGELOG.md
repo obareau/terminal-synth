@@ -2,6 +2,21 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.11] - 2026-06-29
+
+### Added
+- **10 nouveaux effets post-process** :
+  - `DUO` **Duotone** — luminance → navy shadow / amber highlight, réactif bass/treble
+  - `PST` **Pixel Sort** — remonte les pixels brillants (28 samples) : glitch art classique
+  - `CRT` **CRT Warp** — barrel distortion + vignette phosphor + phosphor row gaps
+  - `KAL` **Kaleidoscope** — 4-way mirror fold + drift audio-réactif
+  - `RPB` **Ripple Beat** — ondulation radiale persistante + burst sur chaque beat
+  - `SLZ` **Solarize** — inversion par-dessus un seuil (darkroom), seuil audio-réactif
+  - `GBL` **Glitch Blocks** — blocs larges déplacés + RGB split (plus brutal que GLT)
+  - `TRL` **Trails** — traînées directionnelles via fb() avec dérive audio
+  - `CGR` **Color Grade** — lift/gain cinématique (ombres teal / hautes lumières chaudes) + S-curve
+  - `ZBL` **Zoom Blur** — flou radial 8 taps vers le centre + flash sur beat
+
 ## [1.9.10] - 2026-06-29
 
 ### Added

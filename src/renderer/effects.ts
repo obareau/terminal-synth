@@ -1058,4 +1058,161 @@ vec3 process(vec2 uv) {
 }`,
   },
 
+  // ── Nouveaux effets ──────────────────────────────────────────────────────────
+
+  {
+    name: "Duotone", id: "DUO",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  vec3 c    = prev(uv);
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  vec3 shadow    = vec3(0.02, 0.04 + u_mid  * 0.10, 0.22 + u_bass * 0.15);
+  vec3 highlight = vec3(1.00, 0.76 + u_treble * 0.15, 0.04);
+  float t   = pow(clamp(lum, 0.0, 1.0), 0.65 + u_bass * 0.4);
+  return mix(c, mix(shadow, highlight, t), u_amount);
+}`,
+  },
+
+  {
+    name: "Pixel Sort", id: "PST",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a    = u_amount * (0.4 + u_bass * 0.8);
+  float range = a * 0.28;
+  float thresh = mix(0.75, 0.15, a);
+  vec3 best  = prev(uv);
+  float bestL = dot(best, vec3(0.299, 0.587, 0.114));
+  for (int i = 1; i <= 28; i++) {
+    vec3  s = prev(vec2(uv.x, uv.y + float(i) * range / 28.0));
+    float l = dot(s, vec3(0.299, 0.587, 0.114));
+    if (l > bestL && l > thresh) { best = s; bestL = l; }
+  }
+  return mix(prev(uv), best, step(thresh, bestL) * u_amount);
+}`,
+  },
+
+  {
+    name: "CRT Warp", id: "CRT",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec2 p  = uv - 0.5;
+  p      *= 1.0 + a * 0.28 * dot(p, p);
+  if (abs(p.x) > 0.499 || abs(p.y) > 0.499) return vec3(0.0);
+  vec3 col = prev(clamp(p + 0.5, 0.001, 0.999));
+  col *= mix(1.0, 1.0 - smoothstep(0.28, 0.72, length(p)), a * 0.85);
+  float scan = step(0.67, fract(uv.y * u_resolution.y / 3.0));
+  col *= mix(1.0, 0.72 + 0.28 * scan, a * 0.55);
+  return col;
+}`,
+  },
+
+  {
+    name: "Kaleidoscope", id: "KAL",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  vec2 p;
+  p.x = (uv.x < 0.5) ? uv.x : 1.0 - uv.x;
+  p.y = (uv.y < 0.5) ? uv.y : 1.0 - uv.y;
+  p  *= 2.0;
+  float t = u_time * 0.06;
+  p += vec2(cos(t) * u_mid * 0.06, sin(t * 1.3) * u_bass * 0.05);
+  return mix(prev(uv), prev(clamp(p, 0.0, 1.0)), u_amount);
+}`,
+  },
+
+  {
+    name: "Ripple Beat", id: "RPB",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a = u_amount;
+  vec2 p  = uv - 0.5;
+  p.x    *= u_resolution.x / u_resolution.y;
+  float r = length(p);
+  vec2 dir = p / max(r, 0.001);
+  float rip   = sin(r * 38.0 - u_time * 7.0) * exp(-r * 5.0) * 0.6;
+  float burst = u_beatEnv * sin(r * 22.0 - u_time * 5.0) * exp(-r * 3.5) * 1.4;
+  return prev(uv + dir * (rip + burst) * a * 0.022);
+}`,
+  },
+
+  {
+    name: "Solarize", id: "SLZ",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  vec3 c  = prev(uv);
+  float th = clamp(mix(0.92, 0.28, u_amount) - u_bass * 0.08, 0.05, 0.98);
+  vec3 sol = vec3(
+    (c.r > th) ? 1.0 - c.r : c.r,
+    (c.g > th) ? 1.0 - c.g : c.g,
+    (c.b > th) ? 1.0 - c.b : c.b);
+  return mix(c, sol, u_amount);
+}`,
+  },
+
+  {
+    name: "Glitch Blocks", id: "GBL",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a  = u_amount * (0.4 + u_bass * 0.9);
+  float tk = floor(u_time * 5.0);
+  vec2 bsz = vec2(mix(0.20, 0.08, a), mix(0.12, 0.04, a));
+  vec2 blk = floor(uv / bsz) * bsz;
+  float r1 = hash(blk + tk);
+  float r2 = hash(blk.yx + tk + 3.7);
+  float trig = step(0.55, r1) * step(0.4, a);
+  vec2 shift = vec2((r2 - 0.5) * a * 0.38, (r1 - 0.7) * a * 0.14) * trig;
+  float s    = length(shift) * 0.6;
+  return vec3(
+    prev(uv + shift + vec2( s, 0.0)).r,
+    prev(uv + shift).g,
+    prev(uv + shift - vec2( s, 0.0)).b);
+}`,
+  },
+
+  {
+    name: "Trails", id: "TRL",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a  = u_amount;
+  float t  = u_time;
+  vec2 dir = vec2(cos(t * 0.4 + u_bass), sin(t * 0.3 + u_mid)) * a * 0.025;
+  vec3 cur = prev(uv);
+  vec3 tr  = max(fb(uv + dir) * (0.88 + a * 0.06),
+                 fb(uv + dir * 2.0) * (0.75 + a * 0.12));
+  return mix(cur, max(cur, tr), a * 0.85);
+}`,
+  },
+
+  {
+    name: "Color Grade", id: "CGR",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  vec3 c  = prev(uv);
+  float a = u_amount;
+  vec3 g  = c * vec3(1.06, 0.97, 0.86) + vec3(-0.03, 0.02, 0.08) * (1.0 - c);
+  g       = g * g * (3.0 - 2.0 * g);
+  float lum = dot(g, vec3(0.299, 0.587, 0.114));
+  g         = mix(vec3(lum), g, 1.0 + u_bass * 0.45 * a);
+  return mix(c, g, a);
+}`,
+  },
+
+  {
+    name: "Zoom Blur", id: "ZBL",
+    body: /* glsl */ `
+vec3 process(vec2 uv) {
+  float a   = u_amount * (0.5 + u_level * 0.5);
+  float str = a * 0.07;
+  vec2 p    = uv - 0.5;
+  vec3 acc  = vec3(0.0);
+  for (int i = 0; i < 8; i++) {
+    acc += prev(p * (1.0 - float(i) / 7.0 * str) + 0.5);
+  }
+  acc /= 8.0;
+  acc += u_beatEnv * a * 0.18 * exp(-dot(p,p) * 8.0);
+  return acc;
+}`,
+  },
+
 ];

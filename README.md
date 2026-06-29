@@ -3,7 +3,7 @@
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
 ![Status](https://img.shields.io/badge/status-Feature%20Freeze%20%2F%20Stable-brightgreen)
-![Version](https://img.shields.io/badge/version-1.9.10-blue)
+![Version](https://img.shields.io/badge/version-1.9.11-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
@@ -54,7 +54,7 @@ npm run package        # Build Windows .exe
 | Feature | Details |
 |---------|---------|
 | **117 Générateurs** | Géométrie, plasma, noise, fractals, organics, Industrial monochrome |
-| **47 Effets** | Post-process audio-réactif (feedback, glitch, distortion, color, dither...) |
+| **57 Effets** | Post-process audio-réactif (feedback, glitch, distortion, color, dither...) |
 | **Effect Sequencer** | Syntaxe DNA BPM-synced : `FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>` |
 | **36 Perturbateurs** | Glitches déclenchés par l'audio (dropout, strobe, shatter, vortex...) |
 | **WebGL2 Pipeline** | Multi-pass ping-pong avec framebuffers |
