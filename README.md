@@ -3,7 +3,7 @@
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
 ![Status](https://img.shields.io/badge/status-Feature%20Freeze%20%2F%20Stable-brightgreen)
-![Version](https://img.shields.io/badge/version-1.9.5-blue)
+![Version](https://img.shields.io/badge/version-1.9.6-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
@@ -55,6 +55,7 @@ npm run package        # Build Windows .exe
 |---------|---------|
 | **117 Générateurs** | Géométrie, plasma, noise, fractals, organics, Industrial monochrome |
 | **47 Effets** | Post-process audio-réactif (feedback, glitch, distortion, color, dither...) |
+| **Effect Sequencer** | Syntaxe DNA BPM-synced : `FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>` |
 | **36 Perturbateurs** | Glitches déclenchés par l'audio (dropout, strobe, shatter, vortex...) |
 | **WebGL2 Pipeline** | Multi-pass ping-pong avec framebuffers |
 | **Modes de Fusion** | Blend modes (Normal, Add, Screen, Overlay, etc.) |
@@ -120,6 +121,41 @@ npm run package        # Build Windows .exe
 - Pixellisation 1-64px
 - Réactif aux effets (CSS filters) et à l'audio (position + wobble)
 - Apparition/disparition aléatoire
+
+### 🎛 Effect Sequencer (v1.9.5)
+
+Séquenceur d'effets BPM-synced. Accessible dans le panel gauche → onglet **Controls** → champ **SEQ** au-dessus de la liste d'effets.
+
+**Syntaxe :**
+```
+FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>
+```
+- `ID*N` — effet ON pendant N beats, puis off → step suivant
+- `ID?P` — probabilité P% de déclencher le step
+- `A+B` — effets simultanés dans le même step
+- `<A B C>` — alternance : cycle parmi les options à chaque passage
+- Entrée ou ▶ pour lancer, ■ pour stopper
+
+**Abréviations des 47 effets :**
+
+| ID | Effet | ID | Effet | ID | Effet |
+|----|-------|----|-------|----|-------|
+| `ENT` | Entropie | `FDB` | Feedback | `GLT` | Glitch |
+| `FLT` | Filtre | `INV` | Invert | `GRN` | Grain |
+| `NEO` | Neon | `OND` | Onde | `FSH` | Fisheye |
+| `HUE` | Hue | `SCN` | Scanlines | `DTM` | Datamosh |
+| `PIX` | Pixelate | `THM` | Thermal | `ZOM` | Zoom |
+| `VHS` | VHS | `SEU` | Seuil | `ABR` | Aberration |
+| `BLM` | Bloom | `MIR` | Miroir | `DTH` | Dithering |
+| `CHR` | Chrono | `KUW` | Kuwahara | `SLT` | Slit Scan |
+| `GLW` | Glow Edges | `PDT` | Posterize Dither | `FLD` | Floyd-Steinberg |
+| `RCW` | Rotate CW | `RCC` | Rotate CCW | `SCD` | Scanlines Distort |
+| `WSP` | Wave Spiral | `NTC` | NTSC Chroma | `CPV` | Composite Video |
+| `AGH` | Analog Ghosting | `CBL` | Color Bleed | `LUM` | Luma Separation |
+| `RFN` | RF Noise | `ORL` | Orbit Ring Lines | `ONC` | Orbit Nodes Connect |
+| `OSP` | Orbit Spiral | `POR` | Pulsing Orbits | `NPL` | Network Pulse |
+| `ORN` | Orbital Nodes | `WRN` | Wave Rings | `BWR` | BW Orbital Ring |
+| `BWG` | BW Grid Lines | `SBW` | Starfield BW | | |
 
 ### 📺 Mode ASCII
 - Rendu texte haute-densité avec glitch multicolore subtil

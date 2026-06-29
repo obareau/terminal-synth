@@ -54,6 +54,10 @@ stability. See `.claude/CLAUDE.md` for the full project policy.
   aggressive fade-to-black), fixing the previous always-black bug
 - **Feature freeze declared** — tagged `v1.9.0-stable`
 
+### v1.9.6 — Effect Sequencer fixes
+- SEQ déplacé dans le panel gauche (Controls), visible au-dessus de la liste d'effets
+- Parser robuste : `VHS*2+ABR` et `VHS+ABR*2` équivalents
+
 ### v1.9.5 — Effect Sequencer
 - Syntaxe DNA (inspirée BANG!) : `FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>` — durée en beats, probabilité, simultané `+`, alternance `<>`
 - 47 IDs courts mnémotechniques sur tous les effets

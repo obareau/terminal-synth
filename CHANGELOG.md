@@ -2,6 +2,12 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.6] - 2026-06-29
+
+### Fixed
+- Effect Sequencer déplacé dans le panel gauche (onglet Controls, au-dessus de la liste d'effets) — n'était pas visible dans la bottom bar surchargée
+- Parser SEQ : accepte `VHS*2+ABR` et `VHS+ABR*2` indifféremment (extraction de `*N`/`?P` indépendante de la position)
+
 ## [1.9.5] - 2026-06-29
 
 ### Added
