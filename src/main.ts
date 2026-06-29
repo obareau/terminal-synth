@@ -84,9 +84,19 @@ function createWindow(): void {
 
   win.loadFile(path.join(__dirname, "index.html"));
 
-  // F12 → DevTools (debug shaders / erreurs GL)
-  win.webContents.on("before-input-event", (_e, input) => {
-    if (input.key === "F12" && input.type === "keyDown") win.webContents.toggleDevTools();
+  // Raccourcis clavier gérés au niveau Electron (avant le DOM renderer)
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    if (input.key === "F12") { win.webContents.toggleDevTools(); return; }
+    // Scene bank : Ctrl+1-6 (recall) et Ctrl+Shift+1-6 (save)
+    const digitMatch = input.code?.match(/^Digit([1-6])$/);
+    if (digitMatch && input.control) {
+      event.preventDefault();
+      win.webContents.send("scene:action", {
+        idx: parseInt(digitMatch[1]!) - 1,
+        save: input.shift,
+      });
+    }
   });
 
   win.on("closed", () => {

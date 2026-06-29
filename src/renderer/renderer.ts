@@ -573,6 +573,7 @@ declare global {
       saveVideo: (data: Uint8Array, defaultName: string) => Promise<boolean>;
       openOutputWindow: () => Promise<boolean>;
       getStats: () => Promise<{ cpu: number; gpu: number }>;
+      onSceneAction: (cb: (data: { idx: number; save: boolean }) => void) => void;
     };
     applyRenderFilter?: (mode: "none" | "monochrome" | "green" | "amber") => void;
   }
@@ -713,13 +714,6 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "s" && !e.shiftKey) { e.preventDefault(); presetSaveBtn.click(); return; }
     if (e.key === "o") { e.preventDefault(); presetLoadBtn.click(); return; }
     if (e.key === "r") { e.preventDefault(); recBtn.click(); return; }
-    const sceneMatch = e.code.match(/^Digit([1-6])$/);
-    if (sceneMatch) {
-      e.preventDefault();
-      const idx = parseInt(sceneMatch[1]!) - 1;
-      if (e.shiftKey) saveScene(idx); else recallScene(idx);
-      return;
-    }
   }
 
   if (inInput) return; // le reste est désactivé si on est dans un input
@@ -1045,6 +1039,11 @@ sceneSlotBtns.forEach((btn, i) => {
 });
 
 updateSceneButtons();
+
+// Raccourcis scène via IPC (géré dans before-input-event côté main)
+window.synth?.onSceneAction(({ idx, save }) => {
+  if (save) saveScene(idx); else recallScene(idx);
+});
 
 // --- Enregistrement vidéo ---
 const recBtn = $<HTMLButtonElement>("rec");

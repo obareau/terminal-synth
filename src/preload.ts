@@ -17,4 +17,7 @@ contextBridge.exposeInMainWorld("synth", {
     ipcRenderer.invoke("window:open-output"),
   getStats: (): Promise<{ cpu: number; gpu: number }> =>
     ipcRenderer.invoke("stats:get-usage"),
+  onSceneAction: (cb: (data: { idx: number; save: boolean }) => void) => {
+    ipcRenderer.on("scene:action", (_e, data) => cb(data));
+  },
 });
