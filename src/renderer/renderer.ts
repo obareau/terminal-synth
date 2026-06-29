@@ -126,6 +126,15 @@ let beatEnv    = 0;   // 1→0 enveloppe rapide après chaque beat (flash)
 // ── Media (u_media texture) ─────────────────────────────────────────────────
 let mediaVideo: HTMLVideoElement | null = null;
 let mediaIsVideo = false;
+// Webcam freeze-frame capture
+let webcamStream: MediaStream | null = null;
+let webcamVideo: HTMLVideoElement | null = null;
+let captureCanvas: HTMLCanvasElement | null = null;
+let captureCtx: CanvasRenderingContext2D | null = null;
+let captureIntervalMs = 1000;
+let captureWidth = 64;
+let lastCaptureTime = 0;
+let mediaIsWebcam = false;
 let lastBeatIdx = -1; // détection de frontière de beat
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
@@ -1533,9 +1542,77 @@ recBtn.addEventListener("click", async () => {
 
   mediaClearBtn?.addEventListener("click", () => {
     if (mediaVideo) { mediaVideo.pause(); mediaVideo.src = ""; mediaVideo = null; }
-    mediaIsVideo = false;
+    if (webcamStream) { webcamStream.getTracks().forEach(t => t.stop()); webcamStream = null; }
+    if (webcamVideo) { webcamVideo.srcObject = null; webcamVideo = null; }
+    mediaIsVideo  = false;
+    mediaIsWebcam = false;
     pipeline.clearMedia();
     setMediaLabel(null);
+    const wc = document.getElementById("media-webcam-controls");
+    if (wc) wc.style.display = "none";
+    const wcBtn = document.getElementById("media-webcam-btn") as HTMLButtonElement | null;
+    if (wcBtn) { wcBtn.textContent = "📷 WEBCAM"; wcBtn.style.color = ""; }
+  });
+
+  // ── Webcam ──────────────────────────────────────────────────────────────────
+  const webcamBtn      = document.getElementById("media-webcam-btn") as HTMLButtonElement | null;
+  const webcamControls = document.getElementById("media-webcam-controls") as HTMLElement | null;
+  const captureIntervalRng = document.getElementById("media-capture-interval") as HTMLInputElement | null;
+  const captureIntervalVal = document.getElementById("media-capture-interval-val") as HTMLElement | null;
+  const captureResSelect   = document.getElementById("media-capture-res")  as HTMLSelectElement | null;
+
+  captureIntervalRng?.addEventListener("input", () => {
+    captureIntervalMs = parseFloat(captureIntervalRng.value) * 1000;
+    if (captureIntervalVal) captureIntervalVal.textContent = captureIntervalRng.value + "s";
+  });
+
+  captureResSelect?.addEventListener("change", () => {
+    captureWidth = parseInt(captureResSelect.value);
+    if (captureCanvas) {
+      captureCanvas.width  = captureWidth;
+      captureCanvas.height = Math.round(captureWidth * 9 / 16);
+    }
+  });
+
+  webcamBtn?.addEventListener("click", async () => {
+    if (mediaIsWebcam) {
+      // Stop webcam
+      if (webcamStream) { webcamStream.getTracks().forEach(t => t.stop()); webcamStream = null; }
+      if (webcamVideo) { webcamVideo.srcObject = null; webcamVideo = null; }
+      mediaIsWebcam = false;
+      pipeline.clearMedia();
+      setMediaLabel(null);
+      if (webcamControls) webcamControls.style.display = "none";
+      webcamBtn.textContent = "📷 WEBCAM";
+      webcamBtn.style.color = "";
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      webcamStream = stream;
+      const vid = document.createElement("video");
+      vid.srcObject = stream;
+      vid.muted = true;
+      vid.playsInline = true;
+      await vid.play();
+      webcamVideo = vid;
+      // Stop any file-based media
+      if (mediaVideo) { mediaVideo.pause(); mediaVideo.src = ""; mediaVideo = null; }
+      mediaIsVideo  = false;
+      mediaIsWebcam = true;
+      captureCanvas = document.createElement("canvas");
+      captureCanvas.width  = captureWidth;
+      captureCanvas.height = Math.round(captureWidth * 9 / 16);
+      captureCtx = captureCanvas.getContext("2d", { alpha: false });
+      lastCaptureTime = 0;
+      setMediaLabel("📷 webcam");
+      if (webcamControls) webcamControls.style.display = "flex";
+      webcamBtn.textContent = "⏹ STOP WEBCAM";
+      webcamBtn.style.color = "var(--accent)";
+    } catch (err) {
+      console.error("[Webcam] getUserMedia failed:", err);
+      setMediaLabel("⚠ webcam refusée");
+    }
   });
 }
 
@@ -1722,6 +1799,14 @@ function frame(now: number): void {
   pipeline.updateText(tactics.canvas);
   if (mediaIsVideo && mediaVideo && mediaVideo.readyState >= 2) {
     pipeline.updateMedia(mediaVideo);
+  }
+  if (mediaIsWebcam && webcamVideo && webcamVideo.readyState >= 2 && captureCtx && captureCanvas) {
+    const nowMs = performance.now();
+    if (nowMs - lastCaptureTime >= captureIntervalMs) {
+      lastCaptureTime = nowMs;
+      captureCtx.drawImage(webcamVideo, 0, 0, captureCanvas.width, captureCanvas.height);
+      pipeline.updateMedia(captureCanvas, true);
+    }
   }
 
   // Boost de niveau sur le beat : tous les effets sensibles à u_level pulsent en rythme
@@ -2044,10 +2129,17 @@ const textConfigBtn = $<HTMLButtonElement>("text-config");
 const textConfigPanel = $("text-config-panel");
 const textConfigCloseBtn = $<HTMLButtonElement>("text-config-close");
 
-// Toggle text layer
+// Restore text layer state from localStorage
+if (localStorage.getItem("ts-textlayer") === "on") {
+  textLayer.toggle();
+  textLayerBtn.classList.add("on");
+}
+
+// Toggle text layer + persist
 textLayerBtn.addEventListener("click", () => {
   textLayer.toggle();
   textLayerBtn.classList.toggle("on");
+  localStorage.setItem("ts-textlayer", textLayer.isEnabled ? "on" : "off");
 });
 
 // Pixelation control

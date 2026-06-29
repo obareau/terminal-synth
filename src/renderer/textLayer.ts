@@ -353,6 +353,8 @@ class TextLayer {
   /**
    * Toggle visibility
    */
+  get isEnabled(): boolean { return this.config.enabled; }
+
   toggle() {
     this.config.enabled = !this.config.enabled;
     if (this.config.enabled) {
