@@ -426,7 +426,10 @@ class AutoplayAdvanced {
    * When industrialOnly is set, restrict picks to shaders with category === "Industrial".
    */
   private randomizeSource() {
-    const all = Array.from(document.querySelectorAll(".src-item")) as HTMLElement[];
+    // Uniquement depuis l'onglet "All" — chaque generator y apparaît exactement une fois
+    const container = document.getElementById("sources-list");
+    if (!container) return;
+    const all = Array.from(container.querySelectorAll(".src-item")) as HTMLElement[];
     if (all.length === 0) return;
     let pool = all;
     if (this.industrialOnly) {
@@ -434,7 +437,7 @@ class AutoplayAdvanced {
         const idx = Number(el.dataset["idx"]);
         return SHADERS[idx]?.category === "Industrial";
       });
-      if (pool.length === 0) pool = all; // fallback if no Industrial shaders
+      if (pool.length === 0) pool = all;
     }
     const pick = pool[Math.floor(Math.random() * pool.length)];
     pick?.click();
@@ -455,7 +458,8 @@ class AutoplayAdvanced {
    * Helper: randomize effects
    */
   private randomizeEffects() {
-    const checkboxes = document.querySelectorAll(".fx input[type='checkbox']");
+    // Effets uniquement dans #chain
+    const checkboxes = document.querySelectorAll("#chain .fx input[type='checkbox']");
     checkboxes.forEach((cb: Element) => {
       if (Math.random() < 0.5) {
         (cb as HTMLInputElement).checked = !(cb as HTMLInputElement).checked;
@@ -464,11 +468,9 @@ class AutoplayAdvanced {
     });
   }
 
-  /**
-   * Helper: randomize perturbators
-   */
   private randomizePerturbators() {
-    const checkboxes = document.querySelectorAll(".disruptor input[type='checkbox']");
+    // Disruptors uniquement dans #disruptors-list (class "fx" aussi, pas "disruptor")
+    const checkboxes = document.querySelectorAll("#disruptors-list .fx input[type='checkbox']");
     checkboxes.forEach((cb: Element) => {
       if (Math.random() < 0.5) {
         (cb as HTMLInputElement).checked = !(cb as HTMLInputElement).checked;
@@ -477,11 +479,8 @@ class AutoplayAdvanced {
     });
   }
 
-  /**
-   * Helper: smooth slider changes
-   */
   private randomizeSliders(duration: number = 500, mutationStrength: number = 1) {
-    const sliders = document.querySelectorAll(".fx input[type='range'], .disruptor input[type='range']");
+    const sliders = document.querySelectorAll("#chain .fx input[type='range'], #disruptors-list .fx input[type='range']");
     const startTime = performance.now();
 
     sliders.forEach((slider: Element) => {

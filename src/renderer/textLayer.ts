@@ -39,6 +39,16 @@ class TextLayer {
   };
 
   private currentWord: string = "";
+  private currentFont: string = "'Courier New', monospace";
+  private readonly fontPool: string[] = [
+    "'Courier New', monospace",
+    "monospace",
+    "Impact, 'Arial Narrow', sans-serif",
+    "'Arial Black', 'Arial Bold', sans-serif",
+    "sans-serif",
+    "serif",
+    "'Lucida Console', 'Monaco', monospace",
+  ];
   private wordChangeTime: number = 0;
   private audioEnergy: number = 0;
   private audioFrequency: number = 0;
@@ -135,12 +145,12 @@ class TextLayer {
 
     // Adaptive font size: scale so text fills config.fontSize% of canvas width
     const refSize = 500;
-    this.ctx.font = `bold ${refSize}px 'Courier New', monospace`;
+    this.ctx.font = `bold ${refSize}px ${this.currentFont}`;
     const refWidth = this.ctx.measureText(this.currentWord).width;
     const targetWidth = w * (this.config.fontSize / 100);
     const baseFontSize = Math.min(refSize * targetWidth / refWidth, h * 0.82);
 
-    this.ctx.font = `bold ${baseFontSize}px 'Courier New', monospace`;
+    this.ctx.font = `bold ${baseFontSize}px ${this.currentFont}`;
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
 
@@ -157,7 +167,7 @@ class TextLayer {
     tempCanvas.height = textHeight;
 
     // Draw text on temp canvas
-    tempCtx.font = this.ctx.font;
+    tempCtx.font = `bold ${baseFontSize}px ${this.currentFont}`;
     tempCtx.textAlign = "center";
     tempCtx.textBaseline = "middle";
     tempCtx.fillStyle = this.config.color;
@@ -230,6 +240,7 @@ class TextLayer {
     if (this.config.words.length > 0) {
       const idx = Math.floor(Math.random() * this.config.words.length);
       this.currentWord = this.config.words[idx];
+      this.currentFont = this.fontPool[Math.floor(Math.random() * this.fontPool.length)];
       this.wordLoopCount++;
 
       // After 3 words, disable the layer and mark when
