@@ -54,6 +54,10 @@ stability. See `.claude/CLAUDE.md` for the full project policy.
   aggressive fade-to-black), fixing the previous always-black bug
 - **Feature freeze declared** — tagged `v1.9.0-stable`
 
+### v1.9.7 — Disruptors MIDI + preset nanoKONTROL2
+- Disruptors learnable (sensitivité + toggle on/off)
+- Bouton KORG : preset nanoKONTROL2 Scene 1 en un clic (knobs/faders/S/M/R câblés)
+
 ### v1.9.6 — Effect Sequencer fixes
 - SEQ déplacé dans le panel gauche (Controls), visible au-dessus de la liste d'effets
 - Parser robuste : `VHS*2+ABR` et `VHS+ABR*2` équivalents

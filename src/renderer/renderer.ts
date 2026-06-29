@@ -22,7 +22,7 @@ const isOutputMode = new URLSearchParams(window.location.search).get("mode") ===
 const isControlMode = !isOutputMode;
 // Bump on each release. Falls back here when package.json isn't bundled.
 // In sync with package.json "version" — keep both updated together.
-const APP_VERSION = "1.9.6";
+const APP_VERSION = "1.9.7";
 
 let performanceMode = false;
 let hudVisible = true;

@@ -2,6 +2,12 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.7] - 2026-06-29
+
+### Added
+- **Disruptors en MIDI Learn** — `disruptor:N` (sensitivité) et `disruptor:N:toggle` (on/off, value≥0.5=on) disponibles comme targets dans le MIDI Learn
+- **Preset nanoKONTROL2** — bouton KORG (visible si MIDI on) charge le mapping factory Scene 1 en un clic : knobs→effets, faders→brightness/scènes/stageCap, S/M/R buttons→disruptors 1-24
+
 ## [1.9.6] - 2026-06-29
 
 ### Fixed
