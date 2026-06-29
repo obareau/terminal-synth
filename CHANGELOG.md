@@ -2,6 +2,12 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.8] - 2026-06-29
+
+### Added
+- **Disruptors dans le SEQ** — préfixe `D:ID` : `FDB*4, D:STR*2, D:CRP+GLT*4?50`. Les 36 disruptors ont maintenant un id court mnémotechnique (DCH, DRP, STR, CRP, TRM, PHS, FLK, SHT, BBR, GRW, FLH, FLV, MSB, SVX, PSH, DST, NGB, RDW, CSH, ZMP, IJT, MFL, FRB, TSH + 12 industriels)
+- **Indicateur de step SEQ** — `2/4` à côté du ▶, feedback visuel en live
+
 ## [1.9.7] - 2026-06-29
 
 ### Added
