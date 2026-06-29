@@ -781,14 +781,15 @@ function parseSeqToken(tok: string): SeqStep | null {
     if (!alts.length) return null;
     return { indices: [], beats: 1, prob: 1, alts };
   }
-  // Normale : IDS[+IDS...][*N][?P]
-  const m = tok.match(/^([A-Z+]+?)(\*(\d+(?:\.\d+)?))?(\?(\d+))?$/i);
-  if (!m) return null;
-  const ids = m[1]!.toUpperCase().split("+");
+  // Extraire *N et ?P où qu'ils soient, puis parser la partie noms
+  const beatsM = tok.match(/\*(\d+(?:\.\d+)?)/);
+  const probM  = tok.match(/\?(\d+)/);
+  const beats  = beatsM ? parseFloat(beatsM[1]!) : 1;
+  const prob   = probM  ? parseInt(probM[1]!) / 100 : 1;
+  const namePart = tok.replace(/\*\d+(?:\.\d+)?/, "").replace(/\?\d+/, "").trim();
+  const ids = namePart.toUpperCase().split("+").map(s => s.trim()).filter(Boolean);
   const indices = ids.map(id => FX_ID_MAP.get(id) ?? -1).filter(i => i >= 0);
   if (!indices.length) return null;
-  const beats = m[3] ? parseFloat(m[3]) : 1;
-  const prob = m[5] ? parseInt(m[5]) / 100 : 1;
   return { indices, beats, prob, alts: [] };
 }
 
