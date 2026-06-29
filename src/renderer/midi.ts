@@ -20,6 +20,7 @@ export class MidiInput {
   mod = 0;
   bend = 0;
   readonly held = new Map<number, number>(); // note → vélocité 0..1
+  onProgramChange?: (pc: number) => void;
   private last = performance.now();
   private lastCC: { cc: number; value: number } | null = null;
 
@@ -80,6 +81,9 @@ export class MidiInput {
         if (d1 === 1) this.mod = d2 / 127; // mod wheel
         // Store all CC messages for MIDI Learn
         this.lastCC = { cc: d1, value: d2 };
+        break;
+      case 0xc0: // program change → rappel de scène
+        this.onProgramChange?.(d1);
         break;
       case 0xe0: // pitch bend
         this.bend = (((d2 << 7) | d1) / 16383) * 2 - 1;

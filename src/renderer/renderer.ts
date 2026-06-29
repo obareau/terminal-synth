@@ -599,6 +599,7 @@ midiModeSel.addEventListener("change", () => {
   midi.mode = midiModeSel.value as MidiMode;
 });
 
+
 textBtn.addEventListener("click", () => {
   text.toggle(!text.enabled);
   textBtn.classList.toggle("on", text.enabled);
@@ -1044,6 +1045,14 @@ updateSceneButtons();
 window.synth?.onSceneAction(({ idx, save }) => {
   if (save) saveScene(idx); else recallScene(idx);
 });
+
+// Program Change MIDI → rappel de scène (PC 0-5 = S1-S6)
+midi.onProgramChange = (pc) => {
+  if (pc < 0 || pc > 5) return;
+  recallScene(pc);
+  const btn = sceneSlotBtns[pc];
+  if (btn) { btn.classList.add("active"); setTimeout(() => btn.classList.remove("active"), 250); }
+};
 
 // --- Enregistrement vidéo ---
 const recBtn = $<HTMLButtonElement>("rec");
