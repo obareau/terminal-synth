@@ -238,9 +238,9 @@
     .scene-slot.filled:hover { background:rgba(0,255,136,0.08); }
     .scene-slot.active { background:rgba(0,255,136,0.28);border-color:var(--accent);opacity:1; }
     /* MIDI Learn */
-    body.midi-learn [data-midi-target] { outline:1px dashed rgba(255,100,100,0.55);cursor:crosshair; }
-    body.midi-learn [data-midi-target].learn-selected { outline:2px solid #ff4444;background:rgba(255,60,60,0.12); }
-    [data-midi-target].midi-bound { outline:1px solid rgba(0,180,255,0.5); }
+    body.midi-learn [data-midi-target] { box-shadow:0 0 0 2px rgba(0,140,255,0.55);cursor:crosshair; }
+    body.midi-learn [data-midi-target].learn-selected { box-shadow:0 0 0 2px #0088ff,0 0 10px rgba(0,140,255,0.5);background:rgba(0,100,255,0.1); }
+    [data-midi-target].midi-bound { box-shadow:0 0 0 1px rgba(0,180,255,0.7); }
 
     /* ── Left panel: generators with tabs ────────────────────────── */
     #left-panel {
