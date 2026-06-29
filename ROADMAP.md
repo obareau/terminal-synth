@@ -54,6 +54,11 @@ stability. See `.claude/CLAUDE.md` for the full project policy.
   aggressive fade-to-black), fixing the previous always-black bug
 - **Feature freeze declared** — tagged `v1.9.0-stable`
 
+### v1.9.9 — 14 générateurs Lofi + 8 remplaçants 2D
+- **Lofi generators** — onglet dédié : VHS Static, Super 8, Lo-Fi Waves, Cassette Hiss, Pixel Plasma, Game Boy, Chiptune Bars, Sine Chip, ASCII Density, ASCII Rain, Block Art, Teletext, Minitel 3615 (avec font bitmap "3615 ROBOTARIIS" en GLSL ES 3.00)
+- **Remplacement 8 générateurs 3D cassés** par des alternatives 2D fonctionnelles (Cross Hatch, Signal Jam, Barcode Rush, Bayer Storm, Spoke Wheel, Redacted, Stroboscope, Hex Grid)
+- Fix : onglet Lofi vide (`s.category` prioritaire sur heuristique nom), Chiptune Bars y inversé
+
 ### v1.9.8 — Disruptors dans le SEQ + indicateur de step
 - Syntaxe `D:ID` pour les disruptors dans le pattern SEQ
 - 36 ids courts sur tous les disruptors

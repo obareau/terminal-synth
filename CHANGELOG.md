@@ -2,6 +2,28 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.9] - 2026-06-29
+
+### Added
+- **14 générateurs Lofi** — nouvel onglet "Lofi · Chiptune · ASCII" dans le panel gauche :
+  - *Lo-Fi Tape* : VHS Static, Super 8, Lo-Fi Waves, Cassette Hiss
+  - *Chiptune / Pixel* : Pixel Plasma (palette CGA), Game Boy (4 verts), Chiptune Bars (8 barres FFT), Sine Chip (oscilloscope quantifié)
+  - *ASCII Art* : ASCII Density, ASCII Rain, Block Art (ANSI), Teletext
+  - *Minitel* : Minitel 3615 — font bitmap 4×5 GLSL ES 3.00, "3615 ROBOTARIIS" rendu pixel par pixel, palette Minitel 8 couleurs, contenu audio-réactif
+
+### Fixed
+- **8 générateurs 3D cassés remplacés** par des alternatives 2D fonctionnelles :
+  - IFS Fractal → **Cross Hatch** (hachures 3 angles, croisements orange on beat)
+  - Volumetric Fog → **Signal Jam** (interférence TV + grain phosphor vert)
+  - Torus Knot → **Barcode Rush** (barcodes animés + scanner beam rouge)
+  - Perlin 3D → **Bayer Storm** (dithering Bayer 4×4 + bruit animé)
+  - Spherical Harmonics → **Spoke Wheel** (rayons + anneaux tournants, inversion on beat)
+  - Klein Bottle → **Redacted** (barres censure sur bruit de texte, flash on beat)
+  - Typography → **Stroboscope** (diagonales croisées ambre + flash dur `u_beatEnv`)
+  - Voronoi cells → **Hex Grid** (grille hexagonale 2D, fill audio-réactif)
+- **Onglet Lofi vide** — `s.category` utilisé en priorité sur `getCategory(name)` + "Lofi" ajouté dans la map des catégories
+- **Chiptune Bars** — barres montaient depuis le haut (y inversé) → `step(p.y, stepped)` corrigé
+
 ## [1.9.8] - 2026-06-29
 
 ### Added
