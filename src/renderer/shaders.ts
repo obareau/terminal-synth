@@ -923,331 +923,223 @@ vec3 render(vec2 uv, vec2 res) {
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
   {
-    name: "IFS Fractal",
+    name: "Cross Hatch",
     params: [
-      { label: "Puissance",   key: "u_p0", min: 2, max: 10, default: 6,   step: 0.5  },
-      { label: "Échelle",     key: "u_p1", min: 0, max: 1,  default: 0.5, step: 0.01 },
-      { label: "Itérations",  key: "u_p2", min: 1, max: 20, default: 10,  step: 1    },
-    ],
-    src: /* glsl */ `
-float ifs_fold(inout vec3 p) {
-  float k = 1.0 + u_p1 * 0.8;
-  p *= k;
-  if (p.x > 1.0) p.x = 2.0 - p.x;
-  if (p.y > 1.0) p.y = 2.0 - p.y;
-  if (p.z > 1.0) p.z = 2.0 - p.z;
-  float r2 = dot(p, p);
-  if (r2 < 0.25) {
-    p /= r2 * u_p0;
-  }
-  return r2;
-}
-vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  vec3 ro = vec3(cos(u_time * 0.3), sin(u_time * 0.5), 0.5 + u_bass * 0.5);
-  vec3 rd = normalize(vec3(p, 0.8));
-  float d = 0.0, bright = 0.0;
-  vec3 pos = ro + rd * 0.1;
-  int niter = int(u_p2);
-  for (int i = 0; i < 20; i++) {
-    if (i >= niter) break;
-    float r2 = ifs_fold(pos);
-    pos += rd * max(0.001, r2 * 0.01);
-    bright += 0.1 / (0.5 + r2 * 5.0);
-    d += 0.02;
-    if (d > 2.0) break;
-  }
-  bright *= 0.5 + u_level * 0.7;
-  vec3 col = mix(vec3(0.02, 0.05, 0.1), vec3(0.9, 0.3, 0.05), bright * 0.5);
-  col = mix(col, vec3(0.1, 0.8, 0.2), sin(bright + u_time * 0.5) * 0.5 + 0.5);
-  return col * (0.5 + u_mid * 0.5);
-}`,
-  },
-
-  {
-    name: "Volumetric Fog",
-    params: [
-      { label: "Densité",     key: "u_p0", min: 1, max: 10, default: 4,   step: 0.5  },
-      { label: "Étapes lumi", key: "u_p1", min: 4, max: 32, default: 16,  step: 2    },
-      { label: "Vitesse",     key: "u_p2", min: 0, max: 1,  default: 0.3, step: 0.01 },
-    ],
-    src: /* glsl */ `
-float fbm3(vec3 p) {
-  float v = 0.0, a = 0.5;
-  for (int i = 0; i < 4; i++) {
-    v += a * abs(sin(p.x * 2.0) * sin(p.y * 2.0) * sin(p.z * 2.0));
-    p = p * 2.1 + vec3(1.7, 9.2, 5.3);
-    a *= 0.5;
-  }
-  return v;
-}
-vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  vec3 ro = vec3(sin(u_time * 0.2) * 2.0, cos(u_time * 0.15) * 2.0, u_time * mix(0.1, 0.5, u_p2));
-  vec3 rd = normalize(vec3(p, 1.5));
-  vec3 col = vec3(0.0);
-  float transmit = 1.0;
-  int nsteps = int(u_p1);
-  for (int step = 0; step < 32; step++) {
-    if (step >= nsteps) break;
-    vec3 pos = ro + rd * (float(step) * 0.1);
-    float density = fbm3(pos * u_p0) * 0.5 + 0.5;
-    density *= u_level * 0.8;
-    vec3 lightCol = mix(vec3(0.05, 0.2, 0.5), vec3(0.9, 0.3, 0.05), fbm3(pos + u_time) * 0.5 + 0.5);
-    col += lightCol * density * transmit * 0.08;
-    transmit *= 0.95;
-  }
-  col += (fbm3(ro * 3.0 + u_time) * 0.5 + 0.5) * vec3(0.1, 0.4, 0.8) * u_treble * 0.3;
-  return col;
-}`,
-  },
-
-  {
-    name: "Torus Knot",
-    params: [
-      { label: "P (tours)",   key: "u_p0", min: 1, max: 8,  default: 3,   step: 1    },
-      { label: "Q (boucles)", key: "u_p1", min: 1, max: 8,  default: 2,   step: 1    },
-      { label: "Vitesse",     key: "u_p2", min: 0, max: 1,  default: 0.3, step: 0.01 },
-    ],
-    src: /* glsl */ `
-float torus_knot(vec3 p) {
-  float t = atan(p.y, p.x);
-  float r = length(p.xy);
-  float theta = atan(p.z, r - 1.0);
-  float p_val = u_p0;
-  float q_val = u_p1;
-  float curve_t = atan(p.z, r - 1.0) * q_val / p_val + t;
-  float curve_r = 0.5 + 0.35 * cos(curve_t * p_val);
-  return length(vec3(cos(t) * (r - curve_r), sin(t) * (r - curve_r), p.z - sin(curve_t * p_val * 0.5)));
-}
-vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  vec3 ro = vec3(cos(u_time * mix(0.1, 0.5, u_p2)), sin(u_time * mix(0.1, 0.5, u_p2)), 0.3);
-  vec3 rd = normalize(vec3(p, 1.2));
-  float d = 0.0, bright = 0.0;
-  vec3 pos = ro + rd * 0.1;
-  for (int i = 0; i < 50; i++) {
-    float dist = torus_knot(pos);
-    if (dist < 0.01) { bright += 0.3; break; }
-    pos += rd * max(0.01, dist * 0.5);
-    bright += 0.02 / (0.3 + dist * 10.0);
-    d += length(rd) * 0.02;
-    if (d > 3.0) break;
-  }
-  bright *= 0.6 + u_level * 0.5;
-  float hue = atan(pos.y, pos.x) / TWO_PI + u_time * 0.1;
-  vec3 col = mix(vec3(0.0, 0.5, 0.9), vec3(0.9, 0.2, 0.6), fract(hue));
-  return col * bright * (0.5 + u_bass * 0.5);
-}`,
-  },
-
-  {
-    name: "Perlin 3D",
-    params: [
-      { label: "Échelle",  key: "u_p0", min: 1, max: 10, default: 3,   step: 0.5  },
-      { label: "Octaves",  key: "u_p1", min: 1, max: 8,  default: 4,   step: 1    },
-      { label: "Vitesse",  key: "u_p2", min: 0, max: 1,  default: 0.3, step: 0.01 },
-    ],
-    src: /* glsl */ `
-float perlin3(vec3 p) {
-  vec3 i = floor(p);
-  vec3 f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  float n = mix(
-    mix(
-      mix(hash(i), hash(i + vec3(1, 0, 0)), f.x),
-      mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x),
-      f.y
-    ),
-    mix(
-      mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x),
-      mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x),
-      f.x
-    ),
-    f.z
-  );
-  return n;
-}
-float fbm3d(vec3 p) {
-  float v = 0.0, a = 0.5;
-  int noctaves = int(clamp(u_p1, 1.0, 8.0));
-  for (int i = 0; i < 8; i++) {
-    if (i >= noctaves) break;
-    v += a * perlin3(p);
-    p = p * 2.1 + vec3(1.7, 9.2, 5.3);
-    a *= 0.5;
-  }
-  return v;
-}
-vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  vec3 ro = vec3(sin(u_time * 0.2), cos(u_time * 0.15), u_time * mix(0.1, 0.5, u_p2));
-  vec3 rd = normalize(vec3(p, 1.2));
-  float d = 0.0, bright = 0.0;
-  vec3 pos = ro + rd * 0.1;
-  for (int i = 0; i < 50; i++) {
-    float noise = fbm3d(pos * u_p0);
-    bright += abs(noise) * 0.08;
-    pos += rd * 0.04;
-    d += 0.04;
-    if (d > 2.0) break;
-  }
-  bright *= 0.5 + u_level * 0.7;
-  vec3 col = mix(vec3(0.02, 0.1, 0.2), vec3(0.3, 0.7, 0.9), bright * 0.3);
-  col = mix(col, vec3(0.9, 0.2, 0.4), sin(bright * 3.0 + u_time) * 0.5 + 0.5);
-  return col * (0.5 + u_mid * 0.5);
-}`,
-  },
-
-  {
-    name: "Spherical Harmonics",
-    params: [
-      { label: "Mode L",    key: "u_p0", min: 1, max: 6,  default: 3,   step: 1    },
-      { label: "Fréquence", key: "u_p1", min: 1, max: 10, default: 4,   step: 1    },
-      { label: "Vitesse",   key: "u_p2", min: 0, max: 1,  default: 0.3, step: 0.01 },
-    ],
-    src: /* glsl */ `
-float sph_harmonic(vec3 p) {
-  float theta = acos(p.z / length(p));
-  float phi = atan(p.y, p.x);
-  float l = u_p0;
-  float m = u_p1;
-  float sh = sin(theta) * cos(m * phi + u_time * mix(0.1, 0.8, u_p2));
-  sh *= pow(abs(cos(l * theta)), 2.0);
-  return sh;
-}
-vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  vec3 ro = vec3(sin(u_time * 0.2) * 1.5, cos(u_time * 0.15) * 1.5, 1.0);
-  vec3 rd = normalize(vec3(p, 1.2));
-  float d = 0.0, bright = 0.0;
-  vec3 pos = ro + rd * 0.1;
-  for (int i = 0; i < 50; i++) {
-    float sh = sph_harmonic(normalize(pos));
-    float val = abs(sh) * 0.5 + 0.5;
-    bright += val * 0.08;
-    pos += rd * 0.04;
-    d += 0.04;
-    if (d > 2.5) break;
-  }
-  bright *= 0.6 + u_level * 0.5;
-  vec3 col = mix(vec3(0.05, 0.15, 0.35), vec3(0.8, 0.4, 0.1), bright * 0.4);
-  col = mix(col, vec3(0.2, 0.8, 0.5), sin(bright * 2.0 + u_time) * 0.5 + 0.5);
-  return col * (0.5 + u_treble * 0.5);
-}`,
-  },
-
-  {
-    name: "Klein Bottle",
-    params: [
-      { label: "Rotation1", key: "u_p0", min: 0, max: 1, default: 0.3, step: 0.01 },
-      { label: "Rotation2", key: "u_p1", min: 0, max: 1, default: 0.5, step: 0.01 },
-      { label: "Vitesse",   key: "u_p2", min: 0, max: 1, default: 0.3, step: 0.01 },
-    ],
-    src: /* glsl */ `
-float klein_sdf(vec3 p) {
-  float u = atan(p.x, p.z);
-  float v = length(vec2(length(p.xz) - 2.0, p.y));
-  float w = v < 1.5 ? (2.0 * u / TWO_PI) : (2.0 - 2.0 * u / TWO_PI);
-  float x = 3.0 * cos(w) * (1.0 + sin(w) * 0.5 * cos(u));
-  float y = -5.0 * sin(w) + 10.0 * cos(w) * sin(u);
-  float z = 15.0 * cos(u) * (1.0 + sin(w) * 0.5 * sin(u));
-  vec3 surf = vec3(x, y, z) * 0.1;
-  return length(p - surf);
-}
-vec3 render(vec2 uv, vec2 res) {
-  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
-  vec3 ro = vec3(
-    sin(u_time * mix(0.1, 0.5, u_p0)) * 2.0,
-    cos(u_time * mix(0.1, 0.5, u_p1)) * 2.0,
-    1.5
-  );
-  vec3 rd = normalize(vec3(p, 1.2));
-  float d = 0.0, bright = 0.0;
-  vec3 pos = ro + rd * 0.1;
-  for (int i = 0; i < 50; i++) {
-    float dist = klein_sdf(pos);
-    if (dist < 0.02) { bright += 0.3; break; }
-    pos += rd * max(0.01, dist * 0.4);
-    bright += 0.05 / (0.5 + dist * 10.0);
-    d += 0.02;
-    if (d > 2.5) break;
-  }
-  bright *= 0.6 + u_level * 0.5;
-  vec3 col = mix(vec3(0.05, 0.2, 0.4), vec3(0.9, 0.4, 0.1), bright * 0.3);
-  col = mix(col, vec3(0.3, 0.7, 0.9), sin(bright + u_time * mix(0.1, 0.5, u_p2)) * 0.5 + 0.5);
-  return col * (0.5 + u_bass * 0.5);
-}`,
-  },
-
-  // ══════════════════════════════════════════════════════════════════════════════════════════════════
-  // NEW TEXT GENERATORS (5)
-  // ══════════════════════════════════════════════════════════════════════════════════════════════════
-
-  {
-    name: "Typography",
-    params: [
-      { label: "Durée texte",  key: "holdMs", min: 1000, max: 15000, default: 8000, step: 500  },
-      { label: "Géométrie",    key: "u_p0", min: 0,    max: 1,     default: 0.5,  step: 0.01 },
-      { label: "Épaisseur",    key: "u_p1", min: 0,    max: 1,     default: 0.4,  step: 0.01 },
+      { label: "Angle",   key: "u_p0", min: 0,  max: 1,  default: 0.1,  step: 0.01 },
+      { label: "Densité", key: "u_p1", min: 0,  max: 1,  default: 0.35, step: 0.01 },
     ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  float txt = textCol(uv).g;
   float t = u_time;
-  // distorsion géométrique des lettres
-  float dist = length((uv - 0.5) * vec2(res.x / res.y, 1.0));
-  float warp = sin(dist * mix(3.0, 15.0, u_p0) - t) * 0.15;
-  vec2 wuv = uv + normalize((uv - 0.5)) * warp;
-  float wtxt = textCol(wuv).g;
-  // épaisseur variable avec pulsation
-  float edge = smoothstep(
-    mix(0.01, 0.1, u_p1) + u_bass * 0.05,
-    0.0,
-    abs(wtxt - 0.5)
-  );
-  // effet de dégradé radial
-  float glow = exp(-dist * mix(2.0, 8.0, u_p0)) * 0.4;
-  vec3 col = vec3(0.0);
-  col += vec3(0.1, 0.9, 0.4) * (edge + wtxt * 0.3);
-  col += vec3(0.9, 0.3, 0.05) * glow * (0.5 + u_mid * 0.5);
-  col += (hash(uv * res + t) - 0.5) * 0.08;
-  return col * (0.55 + u_level * 0.7);
+  vec2 p = uv - 0.5;
+  float a    = u_p0 * TWO_PI;
+  float freq = 8.0 + u_p1 * 36.0 + u_bass * 6.0;
+  float th   = 0.84 - u_level * 0.16;
+  float h1 = step(th, abs(sin((p.x*cos(a)        + p.y*sin(a))        * freq + t * 2.0)));
+  float h2 = step(th, abs(sin((p.x*cos(a+2.094)  + p.y*sin(a+2.094)) * freq - t * 1.5)));
+  float h3 = step(th, abs(sin((p.x*cos(a+4.189)  + p.y*sin(a+4.189)) * freq*0.7 + t)));
+  float hatch = clamp(h1 + h2 + h3, 0.0, 1.0);
+  float cross = clamp(h1*h2 + h2*h3 + h1*h3, 0.0, 1.0);
+  vec3 fg  = mix(vec3(0.75, 0.65, 0.5), vec3(0.3, 0.95, 0.4), u_mid*0.6 + h2*0.4);
+  vec3 col = mix(vec3(0.02, 0.02, 0.04), fg, hatch);
+  return clamp(mix(col, vec3(1.0, 0.3, 0.0), cross * u_bass * 0.85), 0.0, 1.0);
 }`,
   },
-  // ── Shaders GLSL réels d'Internet (Shadertoy-style) ──────────────────────────
+
   {
-    name: "Voronoi cells",
+    name: "Signal Jam",
     params: [
-      { label: "Cells", key: "u_p0", min: 2, max: 20, default: 8.0, step: 1.0 },
-      { label: "Speed", key: "u_p1", min: 0, max: 2, default: 0.5, step: 0.1 },
+      { label: "Bandes",  key: "u_p0", min: 0, max: 1, default: 0.4,  step: 0.01 },
+      { label: "Vitesse", key: "u_p1", min: 0, max: 1, default: 0.5,  step: 0.01 },
+      { label: "Sync",    key: "u_p2", min: 0, max: 1, default: 0.35, step: 0.01 },
     ],
     src: /* glsl */ `
 vec3 render(vec2 uv, vec2 res) {
-  uv *= 8.0;
-  vec2 i_uv = floor(uv);
-  vec2 f_uv = fract(uv);
+  float t = u_time;
+  float band = floor(uv.y * mix(20.0, 80.0, u_p0));
+  float bNoise = fract(sin(band*127.1 + floor(t*mix(5.0,25.0,u_p1))*311.7)*43758.5);
+  float hShift = (bNoise - 0.5) * 0.1 * (0.3 + u_bass * 0.7);
+  vec2 p = vec2(fract(uv.x + hShift), uv.y);
+  float grain = fract(sin(dot(floor(p*vec2(320.0,240.0))+floor(t*30.0), vec2(127.1,311.7)))*43758.5);
+  float sync = step(0.96, fract(uv.y * 10.0 + t * 0.9 * u_p2));
+  float scan = 0.82 + 0.18 * step(0.5, fract(uv.y * res.y * 0.5));
+  float v = grain * (0.3 + u_level * 0.7) * (1.0 - sync) * scan;
+  float burst = step(0.94, bNoise) * u_bass;
+  return clamp(vec3(v*0.35, v, v*0.25) + vec3(burst, burst*0.3, 0.0), 0.0, 1.0);
+}`,
+  },
 
-  float minDist = 1.0;
-  vec3 col = vec3(0.0);
+  {
+    name: "Barcode Rush",
+    params: [
+      { label: "Largeur", key: "u_p0", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Vitesse", key: "u_p1", min: 0, max: 1, default: 0.4, step: 0.01 },
+    ],
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  float bw = mix(0.003, 0.02, u_p0);
+  float barIdx = floor(uv.x / bw);
+  float barX   = fract(uv.x / bw);
+  float jitter  = fract(sin(barIdx * 127.1) * 4375.8);
+  float scroll  = floor(barIdx + t * mix(5.0, 40.0, u_p1) * (0.5 + jitter * 0.5));
+  float on = step(0.45, fract(sin(scroll*311.7 + barIdx*0.13)*43758.5));
+  float gap = step(0.90, barX);
+  float bright = on * (1.0 - gap) * (0.35 + u_level*0.65 + u_bass*0.25);
+  // Red scanner beam sweeping vertically
+  float scan = exp(-abs(uv.y - (0.5 + sin(t*0.9)*0.35)) * 55.0) * u_mid;
+  vec3 col = vec3(bright) + vec3(scan*0.9, scan*0.05, 0.0);
+  return clamp(col, 0.0, 1.0);
+}`,
+  },
 
-  for (float y = -1.0; y <= 1.0; y++) {
-    for (float x = -1.0; x <= 1.0; x++) {
-      vec2 neighbor = vec2(x, y);
-      vec2 cell = i_uv + neighbor;
-      vec2 cellCenter = cell + hash(cell + u_time * 0.1);
+  {
+    name: "Bayer Storm",
+    params: [
+      { label: "Blocs",   key: "u_p0", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Vitesse", key: "u_p1", min: 0, max: 1, default: 0.4, step: 0.01 },
+    ],
+    src: /* glsl */ `
+float bayer4(vec2 sp) {
+  int x = int(mod(sp.x, 4.0));
+  int y = int(mod(sp.y, 4.0));
+  int mat[16];
+  mat[0]=0;  mat[1]=8;  mat[2]=2;  mat[3]=10;
+  mat[4]=12; mat[5]=4;  mat[6]=14; mat[7]=6;
+  mat[8]=3;  mat[9]=11; mat[10]=1; mat[11]=9;
+  mat[12]=15;mat[13]=7; mat[14]=13;mat[15]=5;
+  return float(mat[y*4+x]) / 16.0;
+}
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  float scale = mix(2.0, 18.0, u_p0);
+  vec2 blk = floor(uv * scale);
+  float n = fract(sin(dot(blk + floor(t * mix(1.0,12.0,u_p1)), vec2(127.1,311.7)))*43758.5);
+  n += u_bass * 0.35 * sin(blk.y*0.4 + t) + u_level * 0.2;
+  n = clamp(n, 0.0, 1.0);
+  float thresh = bayer4(floor(uv * res));
+  float dithered = step(thresh, n);
+  vec3 dark = vec3(0.02, 0.03, 0.02);
+  vec3 lit  = mix(vec3(0.6, 0.5, 0.2), vec3(0.95, 0.4, 0.05), u_mid*0.7 + fract(n*4.0)*0.3);
+  return mix(dark, lit, dithered);
+}`,
+  },
 
-      float dist = length(f_uv + neighbor - cellCenter);
-      if (dist < minDist) {
-        minDist = dist;
-        col = mix(vec3(0.1, 0.8, 0.6), vec3(0.9, 0.2, 0.4), hash(cell));
-      }
-    }
-  }
+  {
+    name: "Spoke Wheel",
+    params: [
+      { label: "Rayons",  key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Vitesse", key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Anneaux", key: "u_p2", min: 0, max: 1, default: 0.4, step: 0.01 },
+    ],
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float angle  = atan(p.y, p.x) / TWO_PI + 0.5;
+  float radius = length(p);
+  float N   = floor(4.0 + u_p0 * 14.0);
+  float spd = mix(0.05, 2.5, u_p1);
+  float sector = step(0.5 - u_bass*0.12, fract(angle * N - t * spd));
+  float rings  = step(0.72, fract(radius*(6.0 + u_mid*10.0) - t*u_p2*2.0));
+  float v = sector * (1.0 - rings) * (0.5 + u_level * 0.6);
+  // Beat inversion
+  float beatInv = step(0.88, u_bass) * 0.35;
+  v = mix(v, 1.0 - v, beatInv);
+  float vig = 1.0 - smoothstep(0.35, 0.68, radius);
+  vec3 warm = vec3(0.9, 0.35, 0.0);
+  vec3 cool = vec3(0.0, 0.45, 0.9);
+  return clamp(mix(cool, warm, sector) * v * vig, 0.0, 1.0);
+}`,
+  },
 
-  col += smoothstep(0.05, 0.0, minDist) * vec3(1.0);
-  col *= 0.5 + 0.5 * u_level;
-  return col;
+  {
+    name: "Redacted",
+    params: [
+      { label: "Barres",   key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Largeur",  key: "u_p1", min: 0, max: 1, default: 0.6, step: 0.01 },
+    ],
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  // Background: horizontal faux-text noise
+  float line = floor(uv.y * 60.0);
+  float lh = fract(sin(line * 127.1) * 43758.5);
+  float textSim = step(0.3 + lh*0.35, fract(uv.x * 60.0 + lh * 2.0));
+  vec3 doc = vec3(textSim * 0.65 + 0.04);
+  // Redaction bars — animated, per-row random width
+  float N = 4.0 + floor(u_p0 * 8.0);
+  float barRow = floor(uv.y * N);
+  float barW = mix(0.35, 0.92, fract(sin(barRow*311.7)*43758.5));
+  barW *= u_p1 * (0.6 + u_level * 0.45);
+  float redacted = step(fract(uv.y * N), barW);
+  // Occasionally a bar scrolls with audio
+  float scroll = step(0.7, fract(sin(barRow*73.1)*4375.8)) * step(0.7, u_bass);
+  redacted = max(redacted, scroll * step(fract(uv.x + t*0.05), barW));
+  // Black bar with faint grain
+  float barGrain = hash(vec2(floor(uv.x*150.0), barRow)) * 0.04;
+  vec3 bar = vec3(barGrain) + vec3(step(0.9, u_bass) * u_beatEnv * 0.4);
+  return clamp(mix(doc, bar, redacted), 0.0, 1.0);
+}`,
+  },
+
+  {
+    name: "Stroboscope",
+    params: [
+      { label: "Angle",   key: "u_p0", min: 0, max: 1, default: 0.25, step: 0.01 },
+      { label: "Densité", key: "u_p1", min: 0, max: 1, default: 0.35, step: 0.01 },
+    ],
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  float a  = u_p0 * PI;
+  float freq = 5.0 + u_p1 * 22.0 + u_mid * 4.0;
+  // Two diagonal stripe sets
+  float s1 = step(0.5, fract((uv.x*cos(a)        + uv.y*sin(a))        * freq + t * 1.8));
+  float s2 = step(0.5, fract((uv.x*cos(a+HALF_PI) + uv.y*sin(a+HALF_PI)) * (freq*0.6) - t * 1.2));
+  float v  = s1 * s2 * (0.45 + u_level * 0.55);
+  float v2 = (s1 + s2 - s1*s2) * 0.3 * u_treble;
+  // Hard beat flash
+  float beat = step(0.87, u_bass) * u_beatEnv;
+  v = mix(v + v2, 1.0, beat * 0.75);
+  vec3 amber = vec3(0.9, 0.65, 0.0);
+  vec3 dark  = vec3(0.02, 0.02, 0.04);
+  vec3 col = mix(dark, amber, v + v2);
+  col = mix(col, vec3(1.0), beat * 0.55);
+  return clamp(col, 0.0, 1.0);
+}`,
+  },
+  {
+    name: "Hex Grid",
+    params: [
+      { label: "Échelle", key: "u_p0", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Vitesse", key: "u_p1", min: 0, max: 1, default: 0.2, step: 0.01 },
+    ],
+    src: /* glsl */ `
+vec2 hexOff(vec2 p) {
+  vec2 r = vec2(1.0, 1.7320508);
+  vec2 h = r * 0.5;
+  vec2 a = mod(p, r) - h;
+  vec2 b = mod(p - h, r) - h;
+  return dot(a,a) < dot(b,b) ? a : b;
+}
+vec3 render(vec2 uv, vec2 res) {
+  float t = u_time;
+  float scale = 3.0 + u_p0 * 12.0;
+  vec2 p = (uv - 0.5) * scale * vec2(res.x / res.y, 1.0);
+  vec2 off = hexOff(p);
+  float d = length(off);
+  // Cell hash for color
+  vec2 cid = floor((p - off) * 10.0) * 0.1;
+  float h = fract(sin(dot(cid + floor(t * u_p1 * 0.5), vec2(127.1, 311.7))) * 43758.5);
+  // Audio-reactive fill
+  float fill = 0.12 + u_bass * 0.38 + u_level * 0.22;
+  float lit = step(d, 0.42 * fill);
+  // Border glow
+  float bord = exp(-max(d - 0.38, 0.0) * 25.0) * 0.35 * u_mid;
+  vec3 cellCol = mix(vec3(0.08, 0.55, 0.3), vec3(0.65, 0.15, 0.5), h);
+  cellCol = mix(cellCol, vec3(1.0, 0.45, 0.0), step(0.82, u_bass) * h);
+  return clamp(cellCol * (lit*(0.4+u_level*0.65) + bord), 0.0, 1.0);
 }`,
   },
   {
