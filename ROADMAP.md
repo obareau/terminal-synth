@@ -54,6 +54,10 @@ stability. See `.claude/CLAUDE.md` for the full project policy.
   aggressive fade-to-black), fixing the previous always-black bug
 - **Feature freeze declared** — tagged `v1.9.0-stable`
 
+### v1.9.2 — Scene Bank, Video Export Fix
+- **Scene Bank** — 6 slots persistants (localStorage) pour préparer des looks avant le show et les rappeler instantanément en live. `Ctrl+Shift+1-6` pour sauvegarder, `Ctrl+1-6` pour rappeler. Chaque scène capture : générateur A, layer B, effets, disruptors, Industrial mode + palette, stage cap.
+- **Export vidéo** — `URL.createObjectURL` + `will-download` handler ; plus de crash silencieux sur les longues vidéos
+
 ### v1.9.1 — BPM Overhaul, Beat-Reactive Effects, Linux Audio Fix
 - **BPM detection rewrite** — spectral flux (256-bin FFT, half-wave rectified)
   + 5s autocorrelation window + parabolic interpolation + octave correction.

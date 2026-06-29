@@ -2,6 +2,14 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.2] - 2026-06-29
+
+### Added
+- **Scene Bank** — 6 slots persistants (localStorage) qui capturent l'intégralité du look visuel : générateur A, layer B, effets, disruptors, Industrial mode + palette, stage cap. `Ctrl+Shift+1-6` pour sauvegarder, `Ctrl+1-6` pour rappeler. Boutons S1–S6 dans la bottom bar (Ctrl+clic = save, clic = recall).
+
+### Fixed
+- **Export vidéo** — remplacement du transfert IPC binaire (crash silencieux > 50 MB) par `URL.createObjectURL` + handler `will-download` Electron avec Save As dialog natif.
+
 ## [1.9.1] - 2026-06-29
 
 ### Added
