@@ -1,15 +1,15 @@
 # Terminal-Synth Roadmap
 
-## 🔒 Status: Feature Freeze (v1.9.0-stable)
+## 🚀 Status: v2.0.0 — Active development
 
-Terminal-Synth is feature-complete for its core mission: a dark industrial
-visual synthesizer for **solo live performance**, driven by **Adaptive
-Autoplay** (music-reactive evolution) with the performer supervising and
-biasing. No sequencer, no MIDI Learn — these were deliberately removed.
+Terminal-Synth est un synthétiseur visuel dark/industriel pour **performeur
+solo live**, piloté par **Adaptive Autoplay** (évolution music-reactive).
+v2.0 marque la fin du feature freeze v1.9 et ouvre un nouveau cycle de
+développement centré sur la profondeur : plus de matière visuelle, un
+autoplay plus intelligent, et un outil de scène plus mature.
 
-**From v1.9.0 onward, development is debug/maintenance only.** No new
-features are planned. Work focuses on bug fixes, performance, and
-stability. See `.claude/CLAUDE.md` for the full project policy.
+**Philosophie** : solo performer, autoplay-first, pas de séquenceur MIDI
+Learn — ces choix restent permanents.
 
 ---
 
@@ -53,6 +53,13 @@ stability. See `.claude/CLAUDE.md` for the full project policy.
 - Master Brightness slider now controls the floor (0 = identity, 1 =
   aggressive fade-to-black), fixing the previous always-black bug
 - **Feature freeze declared** — tagged `v1.9.0-stable`
+
+### v2.0.0 — Autoplay refonte + 25 disruptors + textLayer (2026-06-29)
+- **Autoplay rearchitecturé** — 3 cycles indépendants : generator (2–4 mesures), effets/disruptors (1–2 mesures), principal (blend/filtre/sliders). Fade-in/fade-out sur les transitions d'effets et disruptors.
+- **+25 disruptors** — total 61 : STB Static Burst, RGX RGB Explosion, HCL H-Collapse, TSC Tile Scramble, DBL Datableed, SIG Signal Cut, PRN Pixel Rain, ACD Acid Wash, FRZ Freeze Glitch, WML Wave Melt, VTR Vertical Tear, ECD Echo Drift, HSM Heat Shimmer, NGS Negative Spike, SLB Scanline Burn, BLS Blink Strip, CFG Chroma Fog, DGE Digital Echo, CLM Color Melt, WRL Warp Lens, PCR Pixel Crush, CHB Crosshatch Burn, BWD Bandwidth, NFR Neon Flare, SBK Static Block.
+- **textLayer** — adaptive width (% de la largeur canvas), 35 mots lexique ROBOTARIIS/indus, police aléatoire cross-platform par mot, timing revu (3s par mot, 25s pause).
+- **Fix u_beat/u_beatEnv** — déclarés dans COMMON_UNIFORMS, disponibles dans tous les shaders.
+- **Fix autoplay sélecteurs** — generators distribués équitablement, disruptors réellement randomisés.
 
 ### v1.9.9 — 14 générateurs Lofi + 8 remplaçants 2D
 - **Lofi generators** — onglet dédié : VHS Static, Super 8, Lo-Fi Waves, Cassette Hiss, Pixel Plasma, Game Boy, Chiptune Bars, Sine Chip, ASCII Density, ASCII Rain, Block Art, Teletext, Minitel 3615 (avec font bitmap "3615 ROBOTARIIS" en GLSL ES 3.00)
@@ -125,11 +132,20 @@ porting any of the old code.
 
 ---
 
-## Current Policy
+## v2.x — Pistes envisagées
 
-- **Debug/maintenance only.** Fix bugs, improve performance, polish UX.
-- **No new major features** (Remote Control, Director Mode, etc. stay
-  shelved).
-- Workflow: reproduce → minimal fix → `npm test` → commit → push.
-- If a change breaks app startup, prefer reverting immediately over
-  incremental in-place debugging (see v1.8 postmortem above).
+Ces pistes sont exploratoires — elles ne sont pas commitées et peuvent être
+abandonnées. Priorité : stabilité live avant tout.
+
+- **Générateurs** — nouveaux shaders (fluid sim, reaction-diffusion, SDF 2D)
+- **Effets** — plus de post-process (liquid lens, chroma key, feedback chaos)
+- **textLayer** — transitions entre mots (fondu, glitch swap, slide), taille variable par mot
+- **Remote Control** — si tentative v1.8 retentée, partir de `main.ts` avec uncaught exception handlers et `render-process-gone` avant tout code métier
+- **UI** — panel resizable, layout persistant, thème indus pur
+
+## Politique de développement
+
+- Stabilité live > features. Reverter immédiatement si l'app crash au démarrage.
+- Workflow : reproduire → fix minimal → `npm test` → commit → push.
+- Pas de MIDI Learn, pas de séquenceur — permanents.
+- Binaires (`.deb`, `.exe`) : locaux uniquement, jamais sur GitHub.

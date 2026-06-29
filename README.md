@@ -2,14 +2,14 @@
 
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
-![Status](https://img.shields.io/badge/status-Feature%20Freeze%20%2F%20Stable-brightgreen)
-![Version](https://img.shields.io/badge/version-1.9.11-blue)
+![Status](https://img.shields.io/badge/status-Active%20Development-brightgreen)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
 Terminal-Synth est un visualiseur audio pensé pour un **performeur solo** : pas de séquenceur, pas de MIDI Learn — l'**Adaptive Autoplay** pilote le show en réagissant à la musique (BPM, énergie, onsets), et le performeur supervise/influence en direct.
 
-Intègre **134 générateurs** (dont 20 Industrial monochrome), **47 effets post-process**, **36 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **détection BPM** (spectral flux + autocorrélation), **effets beat-réactifs** (pulse, glitch et disruptors synchronisés au tempo), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée, mode ASCII, et export vidéo WebM.
+Intègre **137 générateurs** (dont 20 Industrial monochrome, 14 Lofi/Chiptune, 3 Media), **57 effets post-process**, **61 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **détection BPM** (spectral flux + autocorrélation), **effets beat-réactifs** (pulse, glitch et disruptors synchronisés au tempo), **Adaptive Autoplay** (3 cycles indépendants — générateurs, effets, principal — avec transitions fade), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée adaptive-width, mode ASCII, et export vidéo WebM.
 
 Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
@@ -53,10 +53,10 @@ npm run package        # Build Windows .exe
 ### 🎨 Rendu Visuel
 | Feature | Details |
 |---------|---------|
-| **117 Générateurs** | Géométrie, plasma, noise, fractals, organics, Industrial monochrome |
-| **57 Effets** | Post-process audio-réactif (feedback, glitch, distortion, color, dither...) |
+| **137 Générateurs** | Géométrie, plasma, noise, fractals, organics, Industrial, Lofi/Chiptune, Media |
+| **57 Effets** | Post-process audio-réactif (feedback, glitch, distortion, color, dither, CRT, kaleidoscope...) |
 | **Effect Sequencer** | Syntaxe DNA BPM-synced : `FDB*4, GLT?50, VHS*2+ABR, <NEO*4 ZOM*4>` |
-| **36 Perturbateurs** | Glitches déclenchés par l'audio (dropout, strobe, shatter, vortex...) |
+| **61 Perturbateurs** | Glitches déclenchés par l'audio (dropout, strobe, shatter, pixel rain, acid wash, signal cut...) |
 | **WebGL2 Pipeline** | Multi-pass ping-pong avec framebuffers |
 | **Modes de Fusion** | Blend modes (Normal, Add, Screen, Overlay, etc.) |
 | **Layer B** | Second générateur superposable avec opacité réglable |
@@ -72,16 +72,18 @@ npm run package        # Build Windows .exe
 | **HUD Badge** | Affiche le mode + palette active |
 | **Autoplay Restriction** | "Industrial Only" force l'autoplay à puiser dans ce pool |
 
-### 🎼 Adaptive Autoplay & Music Analysis (v1.6 / v1.9 / v1.9.1)
+### 🎼 Adaptive Autoplay & Music Analysis (v1.6 / v1.9 / v2.0)
 | Feature | Details |
 |---------|---------|
+| **3 cycles indépendants** | Generator (2–4 mesures), Effets+Disruptors (1–2 mesures), Principal (blend/filtre/sliders) |
+| **Fade transitions** | Effets et disruptors : fade-in (amount 0→cible) et fade-out (amount→0 puis off) |
 | **Music-Reactive Evolution** | Générateurs/effets/perturbateurs changent en sync avec la musique |
 | **BPM Detection** | Spectral flux (256 bins FFT) + autocorrélation 5s + interpolation parabolique + correction d'octave |
-| **Beat-Reactive Effects** | `u_beat` (sawtooth) + `u_beatEnv` (envelope) disponibles dans tous les shaders ; disruptors beat-sync |
+| **Beat-Reactive Effects** | `u_beat` (sawtooth) + `u_beatEnv` (envelope) dans COMMON_UNIFORMS — disponibles dans tous les shaders et effets |
 | **Energy Display** | Indicateur temps réel (0-100%) color-coded (vert/jaune/rouge) |
 | **Style Classification** | Détecte calm/driving/chaotic/peak |
 | **Tap Tempo** | `Shift+T` pour caler le tempo manuellement |
-| **4 Presets** | Gentle / Chaotic / Psycho / Glitch — vitesse et intensité des évolutions |
+| **5 Presets** | Gentle / Chaotic / Psycho / Glitch / Minimal — vitesse et intensité des évolutions |
 | **Snapshots & Historique** | Undo/Redo (50 états max), export/import sessions JSON |
 
 ### ⚡ Auto-Perf (v1.7.4)
@@ -115,12 +117,12 @@ npm run package        # Build Windows .exe
 | **Toggle** | Press `T` (hors focus mode) ou bouton ☀ dans la topbar |
 | **Persistence** | Préférence sauvegardée en localStorage |
 
-### 📝 Couche Texte Pixellisée
-- Police géante configurable (10-200%)
-- Liste de mots aléatoire
-- Pixellisation 1-64px
-- Réactif aux effets (CSS filters) et à l'audio (position + wobble)
-- Apparition/disparition aléatoire
+### 📝 Couche Texte Pixellisée (v2.0)
+- **Adaptive width** — la fonte se scale automatiquement pour remplir N% de la largeur canvas (slider 30–100%, défaut 85%)
+- **Police aléatoire par mot** — pool cross-platform : DejaVu Sans Mono, Menlo, Consolas, Liberation Mono, Liberation Sans, Helvetica Neue, Georgia + génériques
+- **35 mots lexique ROBOTARIIS/Indus** — RECTA, VORTEX, VOID, PROTOCOL, OVERRIDE, WARFARE, FACTION…
+- Pixellisation 1-64px, réactif à l'audio (position + wobble)
+- Cycle naturel : 2 mots visibles (3s chacun) → 25s de pause
 
 ### 🎛 Effect Sequencer (v1.9.5)
 
@@ -279,5 +281,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v1.9.10** · WebGL2 · 134 Generators · 47 Effects · 36 Disruptors · Industrial Mode · Adaptive Autoplay · Master Brightness · Media Loader
+**v2.0.0** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer
 *Dark industrial visual synthesizer for solo live performance — autoplay-driven, music-reactive.*

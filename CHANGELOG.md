@@ -2,6 +2,62 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [2.0.0] - 2026-06-29
+
+### ⚡ Autoplay — Architecture refonte complète
+
+- **3 cycles indépendants** dans `onMeasureChange()` :
+  - **Cycle generator** (rapide) — change de générateur toutes les 2–4 mesures en mode Chaotic, 1–2 en Psycho, 6–12 en Gentle. Indépendant du cycle principal.
+  - **Cycle effets + disruptors** (très rapide) — transitions fade-in/fade-out toutes les 1–2 mesures en Chaotic, chaque mesure en Psycho.
+  - **Cycle principal** (lent) — blend mode, text layer, render filter, sliders.
+- **Fade-in/out sur effets et disruptors** — plus de toggle brutal. Activation : `amount` animé 0 → cible (ease in/out). Désactivation : `amount` animé → 0 puis checkbox off.
+- **Bug fix sélecteurs** — `randomizeSource()` query sur `#sources-list` uniquement (chaque générateur apparaissait 2× avant, biais de distribution). `randomizePerturbators()` query `#disruptors-list .fx` (avant : `.disruptor` ne matchait rien → disruptors jamais randomisés).
+- **Preset `genChangePeriod` + `fxChangePeriod`** — intervalles indépendants par preset.
+
+### 💥 +25 nouveaux disruptors (total : 61)
+
+| ID | Nom | Effet |
+|----|-----|-------|
+| `STB` | Static Burst | TV static brutal — noise total |
+| `RGX` | RGB Explosion | Aberration chromatique radiale depuis le centre |
+| `HCL` | H-Collapse | Image se compresse vers la ligne du milieu |
+| `TSC` | Tile Scramble | Tuiles qui permutent aléatoirement |
+| `DBL` | Datableed | Smear horizontal par ligne (peinture liquide) |
+| `SIG` | Signal Cut | Coupure noire + ligne phosphore CRT |
+| `PRN` | Pixel Rain | Pluie de pixels verts tombants |
+| `ACD` | Acid Wash | Rotation de teinte + explosion de saturation |
+| `FRZ` | Freeze Glitch | Gel du frame (fb) + slippage de bandes |
+| `WML` | Wave Melt | Distorsion vague double-axe |
+| `VTR` | Vertical Tear | Déchirure verticale colonne + chroma split |
+| `ECD` | Echo Drift | Double image fantôme oscillant |
+| `HSM` | Heat Shimmer | Distorsion thermique montante |
+| `NGS` | Negative Spike | Inversion dure avec pulse sur les bords |
+| `SLB` | Scanline Burn | Scanlines amplifiées + micro-shift |
+| `BLS` | Blink Strip | Bandes horizontales clignotent noir/blanc |
+| `CFG` | Chroma Fog | Brume chromatique trirotative (120° offset) |
+| `DGE` | Digital Echo | Traînée d'écho digital par phase |
+| `CLM` | Color Melt | Canaux R/G/B coulent à des vitesses différentes |
+| `WRL` | Warp Lens | Distorsion de lentille radiale burst |
+| `PCR` | Pixel Crush | Erreurs bit au niveau pixel (position flip) |
+| `CHB` | Crosshatch Burn | Trame croisée incandescente |
+| `BWD` | Bandwidth | Bandes horizontales étirées/compressées |
+| `NFR` | Neon Flare | Flare néon audio-réactif depuis le centre |
+| `SBK` | Static Block | Blocs de corruption large format |
+
+### 📝 textLayer — refonte complète
+
+- **Adaptive width** — la taille de fonte est calculée pour que le mot remplisse `N%` de la largeur canvas. Slider `WIDTH %` (30–100%, défaut 85%).
+- **35 mots lexique ROBOTARIIS/Indus** — RECTA, VORTEX, SIGNAL, STATIC, CHAOS, GLITCH, SURGE, VOID, FLUX, PULSE, BREACH, PROTOCOL, OVERRIDE, BLACKOUT, DRONE, RUST, BLADE, IRON, STEEL, NODE, SYNC, CORRUPT, WARFARE, FRAGMENT, FACTION, DISPATCH, TRANSMIT, FEEDBACK, SEQUENCE, LOCKDOWN, CRASH, STORM, NOISE, CIRCUIT, CHROME.
+- **Police aléatoire** par mot — pool cross-platform : `DejaVu Sans Mono`, `Menlo`, `Consolas`, `Liberation Mono`, `Liberation Sans`, `Helvetica Neue`, `Georgia` + génériques. Fallback Linux → Mac → Windows sur chaque stack.
+- **Timing revu** — `duration: 3000ms` (était 150ms !), `maxWordsPerSession: 2`, `reappearDelay: 25000ms` → cycle ~20% visible.
+- **Activé par défaut** — plus besoin de cliquer le bouton TEXT au démarrage.
+
+### Fixed
+
+- **`u_beat` / `u_beatEnv` manquants dans `COMMON_UNIFORMS`** — ces uniforms étaient envoyés via `bindUniforms()` mais non déclarés dans les headers GLSL. Tout shader les utilisant (media generators, certains builtin) compilait en erreur silencieuse → écran noir. Ajoutés à `COMMON_UNIFORMS` = disponibles dans tous les generators et effets.
+- **Media generators affichaient noir** — combinaison de `u_beatEnv` non déclaré + `u_mediaLoaded` non initialisé.
+- **Font pool** — suppression d'Impact, Arial Black, Lucida Console (non installés sur Linux/Arch) ; pool remplacé par des stacks CSS cross-platform corrects.
+
 ## [1.9.11] - 2026-06-29
 
 ### Added
