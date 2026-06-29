@@ -17,10 +17,11 @@ export interface Shader {
   name: string;
   src: string;
   params?: ShaderParam[];
-  category?: "Text" | "Plasma" | "Geometry" | "Noise" | "Interactive" | "Real-world" | "Industrial";
+  category?: "Text" | "Plasma" | "Geometry" | "Noise" | "Interactive" | "Real-world" | "Industrial" | "Lofi";
 }
 
 import { INDUSTRIAL_SHADERS } from "./industrialShaders";
+import { LOFI_SHADERS } from "./lofiShaders";
 
 const BUILTIN_SHADERS: Shader[] = [
   {
@@ -3984,4 +3985,4 @@ vec3 render(vec2 uv, vec2 res) {
   },
 ];
 
-export const SHADERS: Shader[] = [...BUILTIN_SHADERS, ...INDUSTRIAL_SHADERS];
+export const SHADERS: Shader[] = [...BUILTIN_SHADERS, ...INDUSTRIAL_SHADERS, ...LOFI_SHADERS];

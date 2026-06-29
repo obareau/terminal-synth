@@ -227,6 +227,7 @@ const listContainers: Record<string, HTMLElement | null> = {
   "Geometry": document.getElementById("sources-list-geometry"),
   "Noise": document.getElementById("sources-list-noise"),
   "Interactive": document.getElementById("sources-list-interactive"),
+  "Lofi": document.getElementById("sources-list-lofi"),
 };
 
 for (const [cat, items] of allItems) {
