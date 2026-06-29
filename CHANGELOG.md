@@ -2,6 +2,23 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.1] - 2026-06-29
+
+### Added
+- **Audio device picker** — bouton ⚙ dans la topbar : énumère tous les périphériques d'entrée audio et permet de choisir la source exacte (résout les ambiguïtés PipeWire/Linux)
+- **Uniforms beat** — `u_beat` (sawtooth 0→1/beat) et `u_beatEnv` (enveloppe 1→0 par beat) disponibles dans tous les shaders et effets GLSL
+
+### Fixed
+- **Capture audio Linux/PipeWire** — regex élargie (monitor|loopback|moniteur), log diagnostic des périphériques détectés, message d'erreur avec commande `pactl` actionnable
+- **BPM câblé dans l'autoplay** — `setBPM()` et `updateAudioEnergy()` enfin branchés dans la boucle principale (code mort `wrappedFrame` supprimé)
+
+### Improved
+- **Détection BPM** — réécriture complète : spectral flux half-wave rectifiée sur 256 bins FFT (style Mixxx) + autocorrélation sur fenêtre 5s + interpolation parabolique sub-frame + correction d'octave. Bien plus fiable que le peak counting sur le bass band.
+- **Réactivité BPM des effets** — `u_level` boosté de +25% sur chaque beat → tous les effets réagissant à `u_level` pulsent en rythme. Disruptors déclenchés en priorité sur les frontières de beat (durée courte pour glitch net). `metronomeCallback` branché pour aligner le beat sur l'autoplay.
+
+### Removed
+- Boutons ISF, SPOUT et export MP4 — jamais utilisés en pratique, libèrent de l'espace dans la toolbar
+
 ## [1.9.0] - 2026-06-12
 
 ### Added

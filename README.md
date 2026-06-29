@@ -3,13 +3,13 @@
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
 ![Status](https://img.shields.io/badge/status-Feature%20Freeze%20%2F%20Stable-brightgreen)
-![Version](https://img.shields.io/badge/version-1.9.0-blue)
+![Version](https://img.shields.io/badge/version-1.9.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
 Terminal-Synth est un visualiseur audio pensé pour un **performeur solo** : pas de séquenceur, pas de MIDI Learn — l'**Adaptive Autoplay** pilote le show en réagissant à la musique (BPM, énergie, onsets), et le performeur supervise/influence en direct.
 
-Intègre **117 générateurs** (dont 20 Industrial monochrome), **47 effets post-process**, **36 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **analyse musicale légère** (BPM, énergie, style), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée, mode ASCII, et export vidéo WebM/MP4.
+Intègre **117 générateurs** (dont 20 Industrial monochrome), **47 effets post-process**, **36 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **détection BPM** (spectral flux + autocorrélation), **effets beat-réactifs** (pulse, glitch et disruptors synchronisés au tempo), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée, mode ASCII, et export vidéo WebM.
 
 Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
@@ -24,12 +24,12 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 ### Linux (Debian/Ubuntu)
 ```bash
 # Download and install .deb package
-sudo dpkg -i terminal-synth_1.9.0_amd64.deb
+sudo dpkg -i terminal-synth_1.9.1_amd64.deb
 terminal-synth
 ```
 
 ### Windows (Executable)
-1. Download `terminal-synth_1.9.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+1. Download `terminal-synth_1.9.1.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
 2. Run directly (no installation needed)
 3. Grant audio access when prompted
 
@@ -71,11 +71,12 @@ npm run package        # Build Windows .exe
 | **HUD Badge** | Affiche le mode + palette active |
 | **Autoplay Restriction** | "Industrial Only" force l'autoplay à puiser dans ce pool |
 
-### 🎼 Adaptive Autoplay & Music Analysis (v1.6 / v1.9)
+### 🎼 Adaptive Autoplay & Music Analysis (v1.6 / v1.9 / v1.9.1)
 | Feature | Details |
 |---------|---------|
 | **Music-Reactive Evolution** | Générateurs/effets/perturbateurs changent en sync avec la musique |
-| **Adaptive BPM Detection** | Comptage de pics de basse avec seuil adaptatif |
+| **BPM Detection** | Spectral flux (256 bins FFT) + autocorrélation 5s + interpolation parabolique + correction d'octave |
+| **Beat-Reactive Effects** | `u_beat` (sawtooth) + `u_beatEnv` (envelope) disponibles dans tous les shaders ; disruptors beat-sync |
 | **Energy Display** | Indicateur temps réel (0-100%) color-coded (vert/jaune/rouge) |
 | **Style Classification** | Détecte calm/driving/chaotic/peak |
 | **Tap Tempo** | `Shift+T` pour caler le tempo manuellement |
@@ -93,7 +94,8 @@ npm run package        # Build Windows .exe
 | Feature | Details |
 |---------|---------|
 | **FFT Analysis** | Bass, Mid, Treble, Level en temps réel |
-| **System Audio** | Loopback (monitor) ou microphone |
+| **System Audio** | Loopback (monitor) ou microphone — bouton ⚙ pour choisir le périphérique exact |
+| **Linux/PipeWire** | Détection automatique (monitor/loopback/moniteur) + picker manuel si ambiguïté |
 | **MIDI Input** | Contrôleurs MIDI bruts (pas de MIDI Learn) |
 
 ### 💡 Master Brightness (v1.2)
@@ -154,7 +156,7 @@ npm run package        # Build Windows .exe
 
 - Click **⏺** (bouton record) ou `Ctrl+R`
 - L'enregistrement démarre, re-click ou `Ctrl+R` pour arrêter
-- Export **WebM** (natif, codec VP8) ou **MP4** via FFmpeg
+- Export **WebM** (natif, codec VP8)
 
 ---
 
@@ -189,7 +191,6 @@ src/
     ├── ascii.ts               Rendu ASCII glitch
     ├── midi.ts                Input MIDI brut
     ├── videoExport.ts         Capture/export vidéo
-    ├── isf.ts                 Support shaders ISF
     └── renderer.ts            Event loop + UI glue + frame loop
 ```
 

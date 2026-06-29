@@ -54,6 +54,19 @@ stability. See `.claude/CLAUDE.md` for the full project policy.
   aggressive fade-to-black), fixing the previous always-black bug
 - **Feature freeze declared** — tagged `v1.9.0-stable`
 
+### v1.9.1 — BPM Overhaul, Beat-Reactive Effects, Linux Audio Fix
+- **BPM detection rewrite** — spectral flux (256-bin FFT, half-wave rectified)
+  + 5s autocorrelation window + parabolic interpolation + octave correction.
+  BPM now wired into autoplayAdvanced (was dead code)
+- **Beat-reactive uniforms** — `u_beat` (sawtooth 0→1/beat) and `u_beatEnv`
+  (1→0 decay envelope) available in all shaders and effects; `u_level` boosted
+  +25% on beats so all existing effects pulse in tempo
+- **Beat-sync disruptors** — disruptors fire preferentially on beat boundaries
+  for a sharp glitch-on-beat effect
+- **Linux/PipeWire audio** — wider device matching, audio device picker (⚙)
+  lets you select any input directly, diagnotic logs for troubleshooting
+- Removed unused ISF, SPOUT, MP4 export buttons from toolbar
+
 ---
 
 ## Abandoned Attempt: v1.8 Remote Control
