@@ -237,6 +237,10 @@
     .scene-slot.filled { opacity:1;border-color:var(--accent);color:var(--accent); }
     .scene-slot.filled:hover { background:rgba(0,255,136,0.08); }
     .scene-slot.active { background:rgba(0,255,136,0.28);border-color:var(--accent);opacity:1; }
+    /* MIDI Learn */
+    body.midi-learn [data-midi-target] { outline:1px dashed rgba(255,100,100,0.55);cursor:crosshair; }
+    body.midi-learn [data-midi-target].learn-selected { outline:2px solid #ff4444;background:rgba(255,60,60,0.12); }
+    [data-midi-target].midi-bound { outline:1px solid rgba(0,180,255,0.5); }
 
     /* ── Left panel: generators with tabs ────────────────────────── */
     #left-panel {
@@ -527,6 +531,7 @@
       <option value="organ">organ</option>
       <option value="noise">noise</option>
     </select>
+    <button id="midi-learn-btn" title="MIDI Learn — clic sur un paramètre puis bouge un CC/PB · clic droit = débind" style="display:none;font-size:10px;letter-spacing:0.3px">LEARN</button>
     <div class="spacer"></div>
     <button id="preset-load" aria-label="Load Preset" title="Charger preset  [Ctrl+O]">⊞</button>
     <button id="preset-save" aria-label="Save Preset" title="Sauvegarder preset  [Ctrl+S]">⊙</button>
@@ -719,7 +724,7 @@
     <button id="text-config" aria-label="Configure Text Layer" title="Configure words">⚙️</button>
     <div class="sep"></div>
     <button id="master-brightness-toggle" aria-label="Master Brightness Toggle" title="Master Brightness (audio-driven) [B]">💡 Master</button>
-    <input id="master-brightness-slider" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Master Brightness Amount" title="Master Brightness Amount" style="width:60px">
+    <input id="master-brightness-slider" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Master Brightness Amount" title="Master Brightness Amount" data-midi-target="brightness" style="width:60px">
     <div class="sep"></div>
     <button id="industrial-mode-toggle" aria-label="Industrial Mode Toggle" title="Industrial Mode: monochrome 1-bit + dither + Industrial-only autoplay">⬛ Industrial</button>
     <button id="industrial-palette-btn" aria-label="Industrial Palette" title="Cycle palette: B&amp;W / Phosphor / Blueprint / Sepia" style="min-width:90px">B&amp;W</button>
@@ -727,15 +732,15 @@
     <button id="perf-mode-toggle" aria-label="Auto-Perf (graduated degrade when fps drops)" title="Auto-degrade when fps &lt; 50 for 5s: squeeze stage cap, then lower render scale. Recovers when fps is stable again.">⚡ Auto-Perf</button>
     <div class="sep"></div>
     <span id="max-stages-label" title="Max simultaneous effects+disruptors" style="font-size:11px;opacity:0.7;min-width:64px">STAGES 6</span>
-    <input id="max-stages" type="range" min="1" max="12" step="1" value="6" title="Cap concurrent effects+disruptors (post-process excluded)" style="width:80px">
+    <input id="max-stages" type="range" min="1" max="12" step="1" value="6" title="Cap concurrent effects+disruptors (post-process excluded)" data-midi-target="stageCap" style="width:80px">
     <div class="sep"></div>
     <span style="font-size:9px;opacity:0.45;letter-spacing:0.5px">SCENE</span>
-    <button class="scene-slot" data-idx="0" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+1 / Ctrl+Shift+1]">S1</button>
-    <button class="scene-slot" data-idx="1" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+2 / Ctrl+Shift+2]">S2</button>
-    <button class="scene-slot" data-idx="2" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+3 / Ctrl+Shift+3]">S3</button>
-    <button class="scene-slot" data-idx="3" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+4 / Ctrl+Shift+4]">S4</button>
-    <button class="scene-slot" data-idx="4" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+5 / Ctrl+Shift+5]">S5</button>
-    <button class="scene-slot" data-idx="5" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+6 / Ctrl+Shift+6]">S6</button>
+    <button class="scene-slot" data-idx="0" data-midi-target="scene:0" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+1 / Ctrl+Shift+1]">S1</button>
+    <button class="scene-slot" data-idx="1" data-midi-target="scene:1" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+2 / Ctrl+Shift+2]">S2</button>
+    <button class="scene-slot" data-idx="2" data-midi-target="scene:2" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+3 / Ctrl+Shift+3]">S3</button>
+    <button class="scene-slot" data-idx="3" data-midi-target="scene:3" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+4 / Ctrl+Shift+4]">S4</button>
+    <button class="scene-slot" data-idx="4" data-midi-target="scene:4" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+5 / Ctrl+Shift+5]">S5</button>
+    <button class="scene-slot" data-idx="5" data-midi-target="scene:5" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+6 / Ctrl+Shift+6]">S6</button>
     <div class="spacer"></div>
     <span id="meter"></span>
   </div>

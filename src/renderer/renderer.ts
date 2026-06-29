@@ -71,6 +71,7 @@ const blendSel  = $<HTMLSelectElement>("blend-mode");
 const layerBSel = $<HTMLSelectElement>("layer-b-shader");
 const layerBBtn = $<HTMLButtonElement>("layer-b-on");
 const layerBOpa = $<HTMLInputElement>("layer-b-opacity");
+layerBOpa.dataset.midiTarget = "layerBOpacity";
 const midiBtn = $<HTMLButtonElement>("midi");
 const midiModeSel = $<HTMLSelectElement>("midi-mode");
 const meter = $("meter");
@@ -384,6 +385,8 @@ let industrialModeEnabled = false;
 let industrialPalette = 0; // 0=B&W, 1=Phosphor, 2=Blueprint, 3=Sepia
 const PALETTE_NAMES = ["B&W", "PHOSPHOR", "BLUEPRINT", "SEPIA"] as const;
 
+const fxSliders: HTMLInputElement[] = [];
+
 EFFECTS.forEach((e, i) => {
   const st = fxState[i]!;
   const wrap = document.createElement("label");
@@ -403,9 +406,11 @@ EFFECTS.forEach((e, i) => {
   rng.max = "1";
   rng.step = "0.01";
   rng.value = String(st.amount);
+  rng.dataset.midiTarget = `effect:${i}`;
   rng.addEventListener("input", () => {
     st.amount = Number(rng.value);
   });
+  fxSliders.push(rng);
   wrap.append(cb, name, rng);
   chain.appendChild(wrap);
 });
@@ -584,11 +589,14 @@ midiBtn.addEventListener("click", async () => {
     midi.stop();
     midiBtn.textContent = "🎛 MIDI";
     midiBtn.classList.remove("on");
+    midiLearnBtn.style.display = "none";
+    exitMidiLearn();
   } else {
     try {
       await midi.start();
       midiBtn.textContent = "🎛 " + midi.deviceName;
       midiBtn.classList.add("on");
+      midiLearnBtn.style.display = "";
     } catch (e) {
       console.error(e);
       midiBtn.textContent = "MIDI ✗";
@@ -598,6 +606,148 @@ midiBtn.addEventListener("click", async () => {
 midiModeSel.addEventListener("change", () => {
   midi.mode = midiModeSel.value as MidiMode;
 });
+
+// --- MIDI Learn ---
+
+type MidiTarget =
+  | { type: "stageCap" }
+  | { type: "layerBOpacity" }
+  | { type: "brightness" }
+  | { type: "scene"; idx: number }
+  | { type: "effect"; idx: number };
+
+interface MidiCC { cc: number; target: MidiTarget }  // cc === -1 → pitch bend
+
+const MIDI_MAP_KEY = "ts-midi-map";
+let midiMap: MidiCC[] = [];
+try { const s = localStorage.getItem(MIDI_MAP_KEY); if (s) midiMap = JSON.parse(s); } catch {}
+
+let midiLearnMode = false;
+let midiLearnPending: { target: MidiTarget; el: HTMLElement } | null = null;
+let prevMidiBend = 0;
+
+const midiLearnBtn = $<HTMLButtonElement>("midi-learn-btn");
+
+function saveMidiMap(): void {
+  try { localStorage.setItem(MIDI_MAP_KEY, JSON.stringify(midiMap)); } catch {}
+}
+
+function parseMidiTarget(s: string): MidiTarget | null {
+  if (s === "stageCap")     return { type: "stageCap" };
+  if (s === "layerBOpacity") return { type: "layerBOpacity" };
+  if (s === "brightness")   return { type: "brightness" };
+  const sm = s.match(/^scene:(\d)$/);   if (sm) return { type: "scene",  idx: parseInt(sm[1]!) };
+  const em = s.match(/^effect:(\d+)$/); if (em) return { type: "effect", idx: parseInt(em[1]!) };
+  return null;
+}
+
+function applyMidiTarget(target: MidiTarget, value: number): void {
+  switch (target.type) {
+    case "stageCap":
+      maxStages = Math.round(1 + value * 11);
+      if (maxStagesInput) maxStagesInput.value = String(maxStages);
+      if (maxStagesLabel) maxStagesLabel.textContent = `STAGES ${maxStages}`;
+      break;
+    case "layerBOpacity":
+      layerBOpa.value = String(value);
+      syncBlend();
+      break;
+    case "brightness":
+      masterBrightnessAmount = value;
+      masterBrightnessSlider.value = String(value);
+      break;
+    case "scene":
+      if (value >= 0.5) recallScene(target.idx);
+      break;
+    case "effect":
+      if (fxState[target.idx]) {
+        fxState[target.idx]!.amount = value;
+        if (fxSliders[target.idx]) fxSliders[target.idx]!.value = String(value);
+      }
+      break;
+  }
+}
+
+function midiTargetToSelector(target: MidiTarget): string | null {
+  switch (target.type) {
+    case "stageCap":     return "#max-stages";
+    case "layerBOpacity": return "#layer-b-opacity";
+    case "brightness":   return "#master-brightness-slider";
+    case "scene":        return `.scene-slot[data-idx="${target.idx}"]`;
+    case "effect":       return `[data-midi-target="effect:${target.idx}"]`;
+  }
+}
+
+function updateMidiBadges(): void {
+  document.querySelectorAll<HTMLElement>("[data-midi-target]").forEach((el) => {
+    el.classList.remove("midi-bound");
+    el.title = el.title.replace(/\s*\[(?:CC\d+|PB)\]/, "").trim();
+  });
+  for (const m of midiMap) {
+    const sel = midiTargetToSelector(m.target);
+    if (!sel) continue;
+    const el = document.querySelector<HTMLElement>(sel);
+    if (!el) continue;
+    el.classList.add("midi-bound");
+    el.title = (el.title || "").trim() + ` [${m.cc === -1 ? "PB" : `CC${m.cc}`}]`;
+  }
+}
+
+function exitMidiLearn(): void {
+  midiLearnMode = false;
+  midiLearnPending = null;
+  document.body.classList.remove("midi-learn");
+  document.querySelectorAll(".learn-selected").forEach((x) => x.classList.remove("learn-selected"));
+  midiLearnBtn.classList.remove("on");
+}
+
+function completeLearning(cc: number): void {
+  if (!midiLearnPending) return;
+  const { target } = midiLearnPending;
+  midiMap = midiMap.filter((m) => JSON.stringify(m.target) !== JSON.stringify(target));
+  midiMap.push({ cc, target });
+  saveMidiMap();
+  updateMidiBadges();
+  exitMidiLearn();
+}
+
+midiLearnBtn.addEventListener("click", () => {
+  midiLearnMode = !midiLearnMode;
+  if (midiLearnMode) {
+    document.body.classList.add("midi-learn");
+    midiLearnBtn.classList.add("on");
+    midiLearnPending = null;
+  } else {
+    exitMidiLearn();
+  }
+});
+
+// Clic sur un [data-midi-target] en learn mode → sélectionner le paramètre
+document.addEventListener("mousedown", (e) => {
+  if (!midiLearnMode) return;
+  const el = (e.target as HTMLElement).closest("[data-midi-target]") as HTMLElement | null;
+  if (!el) return;
+  e.preventDefault(); e.stopPropagation();
+  const target = parseMidiTarget(el.dataset.midiTarget!);
+  if (!target) return;
+  document.querySelectorAll(".learn-selected").forEach((x) => x.classList.remove("learn-selected"));
+  el.classList.add("learn-selected");
+  midiLearnPending = { target, el };
+}, true);
+
+// Clic droit sur un control mappé → débind
+document.addEventListener("contextmenu", (e) => {
+  const el = (e.target as HTMLElement).closest("[data-midi-target].midi-bound") as HTMLElement | null;
+  if (!el) return;
+  e.preventDefault();
+  const target = parseMidiTarget(el.dataset.midiTarget!);
+  if (!target) return;
+  midiMap = midiMap.filter((m) => JSON.stringify(m.target) !== JSON.stringify(target));
+  saveMidiMap();
+  updateMidiBadges();
+});
+
+updateMidiBadges();
 
 
 textBtn.addEventListener("click", () => {
@@ -1206,6 +1356,29 @@ function frame(now: number): void {
 
   // MIDI = contrôle : on replie l'énergie/mod dans les canaux existants.
   midi.update();
+  if (midi.enabled) {
+    const lastCC = midi.getAndClearLastCC();
+    if (midiLearnMode && midiLearnPending) {
+      // Détection : CC reçu ou mouvement pitch bend significatif
+      if (lastCC) {
+        completeLearning(lastCC.cc);
+      } else if (Math.abs(midi.bend - prevMidiBend) > 0.08) {
+        completeLearning(-1);
+      }
+    } else if (!midiLearnMode) {
+      if (lastCC) {
+        for (const m of midiMap) {
+          if (m.cc === lastCC.cc) applyMidiTarget(m.target, lastCC.value / 127);
+        }
+      }
+      if (midi.bend !== prevMidiBend) {
+        for (const m of midiMap) {
+          if (m.cc === -1) applyMidiTarget(m.target, (midi.bend + 1) / 2);
+        }
+      }
+    }
+    prevMidiBend = midi.bend;
+  }
   const e = midi.energy;
   const mod = midi.mod;
   const noise = midi.mode === "noise";
