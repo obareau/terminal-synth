@@ -21,6 +21,8 @@ uniform float u_mid;
 uniform float u_treble;
 uniform float u_level;
 uniform float u_amount;
+uniform float u_beat;
+uniform float u_beatEnv;
 uniform float u_p0;
 uniform float u_p1;
 uniform float u_p2;

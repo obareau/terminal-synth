@@ -2129,10 +2129,14 @@ const textConfigBtn = $<HTMLButtonElement>("text-config");
 const textConfigPanel = $("text-config-panel");
 const textConfigCloseBtn = $<HTMLButtonElement>("text-config-close");
 
-// Restore text layer state from localStorage
-if (localStorage.getItem("ts-textlayer") === "on") {
-  textLayer.toggle();
-  textLayerBtn.classList.add("on");
+// textLayer démarre enabled:true — on synchronise le bouton et on respecte localStorage si "off"
+{
+  const saved = localStorage.getItem("ts-textlayer");
+  if (saved === "off") {
+    textLayer.toggle(); // désactive (part de true → false)
+  } else {
+    textLayerBtn.classList.add("on"); // déjà activé par défaut
+  }
 }
 
 // Toggle text layer + persist

@@ -21,13 +21,13 @@ class TextLayer {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
   private config: TextLayerConfig = {
-    enabled: false,
+    enabled: true,
     words: ["SYNTH", "CHAOS", "GLITCH", "PSYCHO", "VORTEX", "SIGNAL"],
     pixelationLevel: 4,
     fontSize: 70,
     color: "#00ff00",
     opacity: 0.8,
-    duration: 150,
+    duration: 3000,
     audioReactive: true,
   };
 
@@ -35,10 +35,10 @@ class TextLayer {
   private wordChangeTime: number = 0;
   private audioEnergy: number = 0;
   private audioFrequency: number = 0;
-  private wordLoopCount: number = 0; // Track number of words shown in current session
-  private maxWordsPerSession: number = 3; // Show 2-3 words max then disappear
-  private disabledAt: number = 0; // Track when layer was disabled
-  private reappearDelay: number = 5000; // Wait 5 seconds before reappearing
+  private wordLoopCount: number = 0;
+  private maxWordsPerSession: number = 6;
+  private disabledAt: number = 0;
+  private reappearDelay: number = 4000;
 
   /**
    * Initialize text layer
