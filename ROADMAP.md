@@ -54,6 +54,10 @@ stability. See `.claude/CLAUDE.md` for the full project policy.
   aggressive fade-to-black), fixing the previous always-black bug
 - **Feature freeze declared** — tagged `v1.9.0-stable`
 
+### v1.9.4 — MIDI Learn
+- Bouton LEARN (visible si MIDI on) : clic sur un param → bouge un CC/PB → mappé. Targets : 47 effets, stage cap, layer B opacity, master brightness, scènes S1-S6, pitch bend. Persistance localStorage. Clic droit = débind.
+- MIDI Program Change PC 0-5 → recall scènes S1-S6
+
 ### v1.9.3 — Scene Bank shortcuts fix
 - Raccourcis Ctrl+1-6 / Ctrl+Shift+1-6 déplacés dans `before-input-event` Electron + IPC pour contourner les interceptions DOM. Pavé numérique supporté (Numpad1-6).
 

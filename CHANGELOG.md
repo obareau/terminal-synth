@@ -2,6 +2,15 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.4] - 2026-06-29
+
+### Added
+- **MIDI Learn** — bouton LEARN (visible si MIDI on) : clic sur un paramètre → bouge un CC ou le pitch bend → mapping persistant (localStorage). Targets : 47 amounts d'effets, stage cap, layer B opacity, master brightness, scènes S1-S6 (trigger CC≥64), pitch bend. Clic droit = débind. Badge `[CC7]` / `[PB]` dans les tooltips, halo bleu sur les controls mappés.
+- **MIDI Program Change** — PC 0-5 → recall scènes S1-S6 (pour les contrôleurs qui supportent PC)
+
+### Fixed
+- MIDI Learn : `box-shadow` à la place de `outline` (invisible sur les `input[type=range]` dans Electron). Couleur bleue.
+
 ## [1.9.3] - 2026-06-29
 
 ### Fixed
