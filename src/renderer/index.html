@@ -233,6 +233,9 @@
     }
     .sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; margin: 0 var(--spacing-sm); opacity: 0.5; }
     .spacer { flex: 1; }
+    .scene-slot { width:24px;min-width:24px;padding:0;font-size:10px;font-weight:700;opacity:0.28;border:1px solid transparent;letter-spacing:0; }
+    .scene-slot.filled { opacity:1;border-color:var(--accent);color:var(--accent); }
+    .scene-slot.filled:hover { background:rgba(0,255,136,0.08); }
 
     /* ── Left panel: generators with tabs ────────────────────────── */
     #left-panel {
@@ -724,6 +727,14 @@
     <div class="sep"></div>
     <span id="max-stages-label" title="Max simultaneous effects+disruptors" style="font-size:11px;opacity:0.7;min-width:64px">STAGES 6</span>
     <input id="max-stages" type="range" min="1" max="12" step="1" value="6" title="Cap concurrent effects+disruptors (post-process excluded)" style="width:80px">
+    <div class="sep"></div>
+    <span style="font-size:9px;opacity:0.45;letter-spacing:0.5px">SCENE</span>
+    <button class="scene-slot" data-idx="0" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+1 / Ctrl+Shift+1]">S1</button>
+    <button class="scene-slot" data-idx="1" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+2 / Ctrl+Shift+2]">S2</button>
+    <button class="scene-slot" data-idx="2" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+3 / Ctrl+Shift+3]">S3</button>
+    <button class="scene-slot" data-idx="3" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+4 / Ctrl+Shift+4]">S4</button>
+    <button class="scene-slot" data-idx="4" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+5 / Ctrl+Shift+5]">S5</button>
+    <button class="scene-slot" data-idx="5" title="Clic: rappeler · Ctrl+Clic: sauvegarder  [Ctrl+6 / Ctrl+Shift+6]">S6</button>
     <div class="spacer"></div>
     <span id="meter"></span>
   </div>

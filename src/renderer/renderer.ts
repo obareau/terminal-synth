@@ -754,9 +754,16 @@ document.addEventListener("keydown", (e) => {
 
   // Ctrl+S / Ctrl+O / Ctrl+R
   if (e.ctrlKey) {
-    if (e.key === "s") { e.preventDefault(); presetSaveBtn.click(); return; }
+    if (e.key === "s" && !e.shiftKey) { e.preventDefault(); presetSaveBtn.click(); return; }
     if (e.key === "o") { e.preventDefault(); presetLoadBtn.click(); return; }
     if (e.key === "r") { e.preventDefault(); recBtn.click(); return; }
+    const sceneMatch = e.code.match(/^Digit([1-6])$/);
+    if (sceneMatch) {
+      e.preventDefault();
+      const idx = parseInt(sceneMatch[1]!) - 1;
+      if (e.shiftKey) saveScene(idx); else recallScene(idx);
+      return;
+    }
   }
 
   // Espace = RECTA prochaine tactique
@@ -930,6 +937,114 @@ presetLoadBtn.addEventListener("click", async () => {
     if (p.rectaHoldMs) { tactics.holdMs = p.rectaHoldMs; rectaSpeedRng.value = String(p.rectaHoldMs); }
   } catch (err) { console.error("[Preset]", err); }
 });
+
+// --- Scene Bank ---
+
+interface Scene {
+  shaderIndex: number;
+  layerB: { enabled: boolean; shaderIndex: number; blendMode: number; opacity: number };
+  effects: { enabled: boolean; amount: number }[];
+  disruptors: { enabled: boolean; sensitivity: number }[];
+  industrialMode: { enabled: boolean; palette: number };
+  maxStages: number;
+}
+
+const SCENE_BANK_KEY = "ts-scene-bank";
+let sceneBank: (Scene | null)[] = Array(6).fill(null);
+try {
+  const stored = localStorage.getItem(SCENE_BANK_KEY);
+  if (stored) sceneBank = JSON.parse(stored);
+} catch {}
+
+function captureScene(): Scene {
+  return {
+    shaderIndex: currentShader,
+    layerB: {
+      enabled: layerBEnabled,
+      shaderIndex: Number(layerBSel.value),
+      blendMode: Number(blendSel.value),
+      opacity: Number(layerBOpa.value),
+    },
+    effects: fxState.map((s) => ({ enabled: s.enabled, amount: s.amount })),
+    disruptors: disruptorState.map((s) => ({ enabled: s.enabled, sensitivity: s.sensitivity })),
+    industrialMode: { enabled: industrialModeEnabled, palette: industrialPalette },
+    maxStages,
+  };
+}
+
+function applyScene(scene: Scene): void {
+  if (scene.shaderIndex >= 0 && scene.shaderIndex < SHADERS.length) {
+    shaderSel.value = String(scene.shaderIndex);
+    loadShader(scene.shaderIndex);
+  }
+  layerBEnabled = scene.layerB.enabled;
+  layerBBtn.classList.toggle("on", layerBEnabled);
+  layerBBtn.textContent = layerBEnabled ? "B on" : "B";
+  if (scene.layerB.shaderIndex >= 0 && scene.layerB.shaderIndex < SHADERS.length)
+    layerBSel.value = String(scene.layerB.shaderIndex);
+  blendSel.value  = String(scene.layerB.blendMode);
+  layerBOpa.value = String(scene.layerB.opacity);
+  loadLayerB(); syncBlend();
+  scene.effects.forEach((e, i) => {
+    if (!fxState[i]) return;
+    fxState[i]!.enabled = e.enabled;
+    fxState[i]!.amount  = e.amount;
+  });
+  chain.querySelectorAll<HTMLInputElement>(".fx input[type=checkbox]").forEach((cb, i) => {
+    cb.checked = fxState[i]?.enabled ?? false;
+    cb.closest(".fx")?.classList.toggle("on", cb.checked);
+  });
+  chain.querySelectorAll<HTMLInputElement>(".fx input[type=range]").forEach((r, i) => {
+    r.value = String(fxState[i]?.amount ?? 0.3);
+  });
+  const dsRows = disruptorsList.querySelectorAll<HTMLElement>(".fx");
+  scene.disruptors.forEach((d, i) => {
+    if (!disruptorState[i]) return;
+    disruptorState[i]!.enabled     = d.enabled;
+    disruptorState[i]!.sensitivity = d.sensitivity;
+    const row  = dsRows[i];
+    if (!row) return;
+    const cb   = row.querySelector<HTMLInputElement>("input[type=checkbox]");
+    const sens = row.querySelector<HTMLInputElement>("input[type=range]");
+    if (cb)   { cb.checked = d.enabled; row.classList.toggle("on", d.enabled); }
+    if (sens) sens.value = String(d.sensitivity);
+  });
+  industrialModeEnabled = scene.industrialMode.enabled;
+  industrialPalette     = scene.industrialMode.palette;
+  industrialModeToggle.classList.toggle("on", industrialModeEnabled);
+  industrialPaletteBtn.textContent = PALETTE_NAMES[industrialPalette]!;
+  autoplayAdvanced.setIndustrialOnly(industrialModeEnabled);
+  refreshIndustrialBadge();
+  maxStages = scene.maxStages;
+  if (maxStagesInput) maxStagesInput.value = String(maxStages);
+  if (maxStagesLabel) maxStagesLabel.textContent = `STAGES ${maxStages}`;
+}
+
+const sceneSlotBtns = Array.from(document.querySelectorAll<HTMLButtonElement>(".scene-slot"));
+
+function updateSceneButtons(): void {
+  sceneSlotBtns.forEach((btn, i) => btn.classList.toggle("filled", sceneBank[i] !== null));
+}
+
+function saveScene(idx: number): void {
+  sceneBank[idx] = captureScene();
+  try { localStorage.setItem(SCENE_BANK_KEY, JSON.stringify(sceneBank)); } catch {}
+  updateSceneButtons();
+}
+
+function recallScene(idx: number): void {
+  const scene = sceneBank[idx];
+  if (scene) applyScene(scene);
+}
+
+sceneSlotBtns.forEach((btn, i) => {
+  btn.addEventListener("click", (e) => {
+    if (e.ctrlKey) { e.preventDefault(); saveScene(i); }
+    else recallScene(i);
+  });
+});
+
+updateSceneButtons();
 
 // --- Enregistrement vidéo ---
 const recBtn = $<HTMLButtonElement>("rec");
