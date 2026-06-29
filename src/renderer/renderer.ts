@@ -708,6 +708,20 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "F11" || (!inInput && (e.key === "f" || e.key === "F")))
     window.synth?.toggleFullscreen();
 
+  // Ctrl shortcuts — toujours actifs même si focus sur un input
+  if (e.ctrlKey) {
+    if (e.key === "s" && !e.shiftKey) { e.preventDefault(); presetSaveBtn.click(); return; }
+    if (e.key === "o") { e.preventDefault(); presetLoadBtn.click(); return; }
+    if (e.key === "r") { e.preventDefault(); recBtn.click(); return; }
+    const sceneMatch = e.code.match(/^Digit([1-6])$/);
+    if (sceneMatch) {
+      e.preventDefault();
+      const idx = parseInt(sceneMatch[1]!) - 1;
+      if (e.shiftKey) saveScene(idx); else recallScene(idx);
+      return;
+    }
+  }
+
   if (inInput) return; // le reste est désactivé si on est dans un input
 
   // Tab = focus mode (canvas plein écran interne)
@@ -750,20 +764,6 @@ document.addEventListener("keydown", (e) => {
     hudVisible = !hudVisible;
     $("performance-hud").style.display = hudVisible ? "block" : "none";
     return;
-  }
-
-  // Ctrl+S / Ctrl+O / Ctrl+R
-  if (e.ctrlKey) {
-    if (e.key === "s" && !e.shiftKey) { e.preventDefault(); presetSaveBtn.click(); return; }
-    if (e.key === "o") { e.preventDefault(); presetLoadBtn.click(); return; }
-    if (e.key === "r") { e.preventDefault(); recBtn.click(); return; }
-    const sceneMatch = e.code.match(/^Digit([1-6])$/);
-    if (sceneMatch) {
-      e.preventDefault();
-      const idx = parseInt(sceneMatch[1]!) - 1;
-      if (e.shiftKey) saveScene(idx); else recallScene(idx);
-      return;
-    }
   }
 
   // Espace = RECTA prochaine tactique
