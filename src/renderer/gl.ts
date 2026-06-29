@@ -105,6 +105,7 @@ void main() {
 
 const UNIFORM_NAMES = [
   "u_resolution","u_time","u_bass","u_mid","u_treble","u_level","u_amount",
+  "u_beat","u_beatEnv",
   "u_p0","u_p1","u_p2","u_p3",
   "u_prev","u_feedback","u_audio","u_text","u_fbmTex",
 ];
@@ -131,7 +132,7 @@ void main(){
   fragColor = vec4(v, v, v, 1.0);
 }`;
 
-export interface Uniforms { time: number; bass: number; mid: number; treble: number; level: number; }
+export interface Uniforms { time: number; bass: number; mid: number; treble: number; level: number; beat?: number; beatEnv?: number; }
 export interface Program  { program: WebGLProgram; loc: Partial<Record<string, WebGLUniformLocation | null>>; }
 export interface Stage    { fx: Program; amount: number; }
 export interface CompileResult { success: boolean; program?: Program; error?: string; }
@@ -395,8 +396,10 @@ export class Pipeline {
     gl.uniform1f(p.loc["u_bass"]??null,   u.bass);
     gl.uniform1f(p.loc["u_mid"]??null,    u.mid);
     gl.uniform1f(p.loc["u_treble"]??null, u.treble);
-    gl.uniform1f(p.loc["u_level"]??null,  u.level);
-    gl.uniform1f(p.loc["u_amount"]??null, amount);
+    gl.uniform1f(p.loc["u_level"]??null,   u.level);
+    gl.uniform1f(p.loc["u_beat"]??null,    u.beat    ?? 0);
+    gl.uniform1f(p.loc["u_beatEnv"]??null, u.beatEnv ?? 0);
+    gl.uniform1f(p.loc["u_amount"]??null,  amount);
     for (let i = 0; i < 4; i++) gl.uniform1f(p.loc[`u_p${i}`]??null, this.genParams[i] ?? 0);
   }
 

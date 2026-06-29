@@ -9,13 +9,11 @@ import { TacticDisplay } from "./textsource";
 import { TEXTS } from "./texts";
 import { SHADERS, type ShaderParam } from "./shaders";
 import { EFFECTS } from "./effects";
-import { parseISF } from "./isf";
 import { BLEND_MODES } from "./gl";
 import { DISRUPTORS } from "./disruptors";
 import { autoplayAdvanced, AUTOPLAY_PRESETS } from "./autoplayAdvanced";
 import { textLayer } from "./textLayer";
 import { MusicAnalyzer } from "./musicAnalyzer";
-import { AutoplayAdapter } from "./autoplayAdapter";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -62,11 +60,13 @@ const layerAName  = $("layer-a-name");
 const paramsPanel = $("params-panel");
 const audioBtn = $<HTMLButtonElement>("audio");
 const srcSel = $<HTMLSelectElement>("audio-src");
+const audioDeviceBtn = $<HTMLButtonElement>("audio-device-btn");
+const audioDevicePanel = $("audio-device-panel");
+const audioDeviceList = $("audio-device-list");
+const audioDeviceClose = $<HTMLButtonElement>("audio-device-close");
 const asciiBtn = $<HTMLButtonElement>("ascii-toggle");
 const textBtn = $<HTMLButtonElement>("text-toggle");
 const fullBtn = $<HTMLButtonElement>("full");
-const isfBtn  = $<HTMLButtonElement>("isf-load");
-const spoutBtn = $<HTMLButtonElement>("spout");
 const blendSel  = $<HTMLSelectElement>("blend-mode");
 const layerBSel = $<HTMLSelectElement>("layer-b-shader");
 const layerBBtn = $<HTMLButtonElement>("layer-b-on");
@@ -115,6 +115,13 @@ let asciiGlitchPermanentEnabled = false;
 let masterBrightnessEnabled = false;
 let masterBrightnessAmount = 0.5;
 let smoothedAudioLevel = 0; // Exponential moving average for smooth fading
+let chosenAudioDeviceId: string | undefined;
+let chosenAudioDeviceLabel: string | undefined;
+
+// Beat phase & envelope — calculés depuis le BPM détecté chaque frame
+let beatPhase  = 0;   // 0→1 sawtooth par beat (pour shaders)
+let beatEnv    = 0;   // 1→0 enveloppe rapide après chaque beat (flash)
+let lastBeatIdx = -1; // détection de frontière de beat
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
 
@@ -469,8 +476,9 @@ DISRUPTORS.forEach((d, i) => {
 // --- Contrôles ---
 async function enableAudio(): Promise<void> {
   try {
-    await audio.start(srcSel.value as AudioSource);
-    audioBtn.textContent = "🔊 on";
+    await audio.start(srcSel.value as AudioSource, chosenAudioDeviceId);
+    const label = chosenAudioDeviceLabel ?? srcSel.value;
+    audioBtn.textContent = `🔊 ${label.length > 14 ? label.slice(0, 13) + "…" : label}`;
     audioBtn.classList.add("on");
   } catch (e) {
     console.error(e);
@@ -492,7 +500,59 @@ audioBtn.addEventListener("click", async () => {
 // Changer la source pendant que l'audio tourne = restart immédiat sur
 // la nouvelle source (avant : le select n'était lu qu'au clic sur audio).
 srcSel.addEventListener("change", async () => {
+  chosenAudioDeviceId = undefined;
+  chosenAudioDeviceLabel = undefined;
   if (audio.enabled) await enableAudio();
+});
+
+// Audio device picker
+audioDeviceBtn.addEventListener("click", async () => {
+  if (audioDevicePanel.style.display !== "none") {
+    audioDevicePanel.style.display = "none";
+    return;
+  }
+  audioDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Chargement…</div>';
+  audioDevicePanel.style.display = "block";
+  let devices: MediaDeviceInfo[];
+  try {
+    devices = await audio.enumerateInputs();
+  } catch {
+    audioDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--red)">Erreur d\'accès au micro</div>';
+    return;
+  }
+  audioDeviceList.innerHTML = "";
+  for (const dev of devices) {
+    const btn = document.createElement("button");
+    const isActive = dev.deviceId === chosenAudioDeviceId;
+    btn.style.cssText = `
+      display:block; width:100%; text-align:left; padding:7px 12px;
+      background:${isActive ? "var(--accent-bg)" : "none"};
+      color:${isActive ? "var(--accent)" : "var(--text-sec)"};
+      border:none; border-bottom:1px solid var(--border-subtle);
+      cursor:pointer; font-size:11px; font-family:var(--font-ui);
+    `;
+    btn.textContent = dev.label || `Device ${dev.deviceId.slice(0, 8)}`;
+    btn.addEventListener("click", async () => {
+      chosenAudioDeviceId = dev.deviceId;
+      chosenAudioDeviceLabel = dev.label;
+      audioDevicePanel.style.display = "none";
+      await enableAudio();
+    });
+    audioDeviceList.appendChild(btn);
+  }
+  if (devices.length === 0) {
+    audioDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Aucun périphérique</div>';
+  }
+});
+
+audioDeviceClose.addEventListener("click", () => {
+  audioDevicePanel.style.display = "none";
+});
+
+document.addEventListener("click", (e) => {
+  if (!audioDevicePanel.contains(e.target as Node) && e.target !== audioDeviceBtn) {
+    audioDevicePanel.style.display = "none";
+  }
 });
 
 asciiBtn.addEventListener("click", () => {
@@ -511,8 +571,6 @@ declare global {
       loadFile:  (filters: { name: string; extensions: string[] }[]) => Promise<{ name: string; content: string } | null>;
       saveFile:  (content: string, filters: { name: string; extensions: string[] }[], defaultName: string) => Promise<boolean>;
       saveVideo: (data: Uint8Array, defaultName: string) => Promise<boolean>;
-      exportMP4: (config: any) => Promise<any>;
-      spoutSendFrame: (w: number, h: number, pixels: Uint8Array) => Promise<void>;
       openOutputWindow: () => Promise<boolean>;
       getStats: () => Promise<{ cpu: number; gpu: number }>;
     };
@@ -549,45 +607,6 @@ fullBtn.addEventListener("click", () => {
   window.synth?.toggleFullscreen();
 });
 
-// --- ISF loader ---
-isfBtn.addEventListener("click", async () => {
-  const result = await window.synth?.loadFile([
-    { name: "ISF Shaders", extensions: ["fs", "frag", "glsl"] },
-    { name: "All Files", extensions: ["*"] },
-  ]);
-  if (!result) return;
-  const shader = parseISF(result.name, result.content);
-  if (!shader) {
-    isfBtn.textContent = "ISF ✗";
-    setTimeout(() => { isfBtn.textContent = "ISF…"; }, 3000);
-    return;
-  }
-  const entry = { name: shader.name, src: shader.glsl };
-  const existingIdx = SHADERS.findIndex((s) => s.name === shader.name);
-  if (existingIdx >= 0) {
-    SHADERS[existingIdx] = entry;
-    loadShader(existingIdx);
-    shaderSel.value = String(existingIdx);
-  } else {
-    SHADERS.push(entry);
-    const idx = SHADERS.length - 1;
-    const o = document.createElement("option");
-    o.value = String(idx);
-    o.textContent = shader.name;
-    shaderSel.appendChild(o);
-    shaderSel.value = String(idx);
-    loadShader(idx);
-  }
-});
-
-// --- Spout output ---
-let spoutEnabled = false;
-let spoutFrameIdx = 0;
-spoutBtn.addEventListener("click", () => {
-  spoutEnabled = !spoutEnabled;
-  spoutBtn.classList.toggle("on", spoutEnabled);
-  spoutBtn.textContent = spoutEnabled ? "SPOUT on" : "SPOUT";
-});
 
 // --- Master Brightness (independent of effects) ---
 masterBrightnessToggle.addEventListener("click", () => {
@@ -1030,22 +1049,24 @@ function frame(now: number): void {
   audio.fillTexData(audioData);
   pipeline.updateAudio(audioData);
 
-  // Music analysis - check BPM on raw audio bands every frame (for onset detection)
-  // But only update display every 60 frames (~1x/sec) to minimize DOM overhead
+  // Music analysis — spectral flux onset + ACF BPM, spectre brut passé pour la précision
   const rawBands = audio.bands();
-  const analysis = musicAnalyzer.analyze(rawBands);
+  const analysis = musicAnalyzer.analyze(rawBands, audioData.subarray(0, 256));
+
+  if (analysis) {
+    autoplayAdvanced.updateAudioEnergy(bands.bass, bands.mid, bands.treble);
+    if (analysis.bpmConfidence > 0.5) autoplayAdvanced.setBPM(analysis.bpm);
+  }
 
   analyzeFrameCounter++;
   if (analyzeFrameCounter >= ANALYZE_INTERVAL) {
     analyzeFrameCounter = 0;
     if (analysis) {
-      // Display BPM (large, visible)
       if (musicInfoElements.bpmDisplay) {
         musicInfoElements.bpmDisplay.textContent = `${analysis.bpm}`;
         musicInfoElements.bpmDisplay.style.color =
           analysis.bpmConfidence > 0.5 ? "var(--orange)" : "var(--text-dim)";
       }
-      // Display Energy (large, visible)
       if (musicInfoElements.energyDisplay) {
         const percent = Math.round(analysis.energy * 100);
         musicInfoElements.energyDisplay.textContent = `${percent}%`;
@@ -1061,6 +1082,15 @@ function frame(now: number): void {
   const mod = midi.mod;
   const noise = midi.mode === "noise";
 
+  // --- Beat phase & envelope (depuis BPM détecté, indépendant de l'autoplay) ---
+  const bpmNow    = musicAnalyzer.getBPM();
+  const beatMs    = 60_000 / bpmNow;
+  const beatIdx   = Math.floor(now / beatMs);
+  beatPhase       = (now % beatMs) / beatMs;          // 0→1 sawtooth
+  const onBeat    = beatIdx !== lastBeatIdx;
+  if (onBeat) { lastBeatIdx = beatIdx; beatEnv = 1.0; }
+  beatEnv        *= 0.82;                             // decay ~0.15s flash à 60fps
+
   // Sequencer update (BPM-synced automation)
   // Énergie globale + détection de hit (front montant) → pioche d'une nouvelle tactique.
   const energy = Math.max(bands.bass, e);
@@ -1072,12 +1102,17 @@ function frame(now: number): void {
   tactics.draw(now, energy);
   pipeline.updateText(tactics.canvas);
 
+  // Boost de niveau sur le beat : tous les effets sensibles à u_level pulsent en rythme
+  const levelOnBeat = Math.min(1, Math.max(bands.level, e) + beatEnv * 0.25);
+
   const u = {
     time,
-    bass: Math.max(bands.bass, noise ? e : e * 0.4),
-    mid: Math.max(bands.mid, mod),
-    treble: Math.max(bands.treble, noise ? e * 0.8 : 0),
-    level: Math.max(bands.level, e),
+    bass:    Math.max(bands.bass, noise ? e : e * 0.4),
+    mid:     Math.max(bands.mid, mod),
+    treble:  Math.max(bands.treble, noise ? e * 0.8 : 0),
+    level:   levelOnBeat,
+    beat:    beatPhase,
+    beatEnv: beatEnv,
   };
 
   const stages: Stage[] = [];
@@ -1103,9 +1138,13 @@ function frame(now: number): void {
       stages.push({ fx: ds.prog, amount: ds.amount });
     } else if (nowMs - ds.lastFire > ds.cooldownMs) {
       const threshold = 1.0 - ds.sensitivity * 0.75;
-      if (rawEnergy > threshold || Math.random() < rawEnergy * ds.sensitivity * 0.02) {
+      // Déclenchement normal (niveau audio) OU sur le beat si signal présent
+      const beatTrigger = onBeat && rawEnergy > 0.15 && Math.random() < ds.sensitivity * 0.6;
+      if (rawEnergy > threshold || Math.random() < rawEnergy * ds.sensitivity * 0.02 || beatTrigger) {
         ds.lastFire = nowMs;
-        ds.fireUntil = nowMs + ds.durationMs * (0.6 + Math.random() * 0.8);
+        // Sur le beat : durée légèrement plus courte pour un glitch net, pas trainant
+        const durationMult = beatTrigger ? (0.4 + Math.random() * 0.4) : (0.6 + Math.random() * 0.8);
+        ds.fireUntil = nowMs + ds.durationMs * durationMult;
         stages.push({ fx: ds.prog, amount: ds.amount });
       }
     }
@@ -1214,14 +1253,6 @@ vec3 process(vec2 uv) {
     asciiGlitch.innerHTML = "";
   }
 
-  // Spout : readback toutes les 8 images (~7 fps) pour limiter la charge IPC
-  spoutFrameIdx++;
-  if (spoutEnabled && spoutFrameIdx % 8 === 0) {
-    const spoutPixels = pipeline.readback();
-    if (spoutPixels) {
-      window.synth?.spoutSendFrame(canvas.width, canvas.height, spoutPixels);
-    }
-  }
 
   text.energy = energy;
   text.update(now);
@@ -1308,42 +1339,15 @@ setInterval(() => {
   });
 }, 500);
 
-// --- Export MP4 with FFmpeg ---
-const exportBtn = $<HTMLButtonElement>("export-mp4");
-exportBtn.addEventListener("click", async () => {
-  try {
-    exportBtn.disabled = true;
-    exportBtn.textContent = "🔄 Encoding...";
-
-    const result = await window.synth?.exportMP4({
-      config: {
-        fps: 30,
-        bitrate: "5000k", // H.264 bitrate
-        audioBitrate: "320k", // AAC high quality
-        outputPath: "", // Will be prompted by dialog
-      },
-      frameCount: 0,
-      canvasWidth: canvas.width,
-      canvasHeight: canvas.height,
-    });
-
-    exportBtn.textContent = "✅ Done";
-    setTimeout(() => {
-      exportBtn.textContent = "🎬";
-      exportBtn.disabled = false;
-    }, 3000);
-  } catch (err) {
-    console.error("Export failed:", err);
-    exportBtn.textContent = "❌ Failed";
-    setTimeout(() => {
-      exportBtn.textContent = "🎬";
-      exportBtn.disabled = false;
-    }, 3000);
-  }
-});
 
 // --- Autoplay Advanced: Full generative system ---
-autoplayAdvanced.init(120); // Default BPM
+autoplayAdvanced.init(120);
+
+// Aligner beatEnv sur le métronomé de l'autoplay quand il tourne (beat 0 = downbeat)
+autoplayAdvanced.setMetronomeCallback((_measure, beat) => {
+  if (beat === 0) beatEnv = 1.0; // downbeat = flash fort
+  else            beatEnv = Math.max(beatEnv, 0.45); // autres beats = flash demi
+});
 
 // Status display
 const statusEl = $("autoplay-status");
@@ -1407,18 +1411,6 @@ setupAutoplayButton("autoplay-glitch", "glitch");
   window.synth?.saveFile(session, [{ name: "JSON", extensions: ["json"] }], "autoplay-session.json");
 });
 
-// Audio reactivity: feed bass energy to autoplay
-const originalFrameFunc = frame;
-const wrappedFrame = (now: number) => {
-  originalFrameFunc(now);
-  autoplayAdvanced.updateAudioEnergy(bands.bass, bands.mid, bands.treble);
-};
-
-// Update BPM if detected
-setInterval(() => {
-  // TODO: Get BPM from audio analysis
-  // autoplayAdvanced.setBPM(detectedBPM);
-}, 1000);
 
 // --- Text Layer: Giant Pixelated Text ---
 textLayer.init(app);

@@ -24,14 +24,30 @@ export class AudioInput {
   enabled = false;
   source: AudioSource = "system";
 
-  async start(source: AudioSource): Promise<void> {
+  async enumerateInputs(): Promise<MediaDeviceInfo[]> {
+    const probe = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === "audioinput");
+    } finally {
+      probe.getTracks().forEach((t) => t.stop());
+    }
+  }
+
+  async start(source: AudioSource, deviceId?: string): Promise<void> {
     await this.stop();
     this.source = source;
     this.ctx = new AudioContext();
     await this.ctx.resume();
 
     let stream: MediaStream;
-    if (source === "system") {
+    if (deviceId) {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: deviceId } },
+        video: false,
+      });
+      console.log(`[Audio] Capture via device: ${deviceId}`);
+    } else if (source === "system") {
       stream = await this.captureSystem();
     } else {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -65,9 +81,9 @@ export class AudioInput {
     const probe = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const monitor = devices.find(
-        (d) => d.kind === "audioinput" && /monitor/i.test(d.label),
-      );
+      const audioInputs = devices.filter((d) => d.kind === "audioinput");
+      console.log(`[Audio] Entrées audio détectées: ${audioInputs.map((d) => `"${d.label}"`).join(", ") || "aucune"}`);
+      const monitor = audioInputs.find((d) => /monitor|loopback|moniteur/i.test(d.label));
       if (monitor) {
         const monStream = await navigator.mediaDevices.getUserMedia({
           audio: { deviceId: { exact: monitor.deviceId } },
@@ -81,7 +97,9 @@ export class AudioInput {
     }
     if (navigator.platform.toLowerCase().includes("linux")) {
       throw new Error(
-        "Aucune source 'Monitor of …' trouvée — vérifier que PipeWire/PulseAudio expose le monitor de la sortie",
+        "Aucune source monitor trouvée. Ouvrir F12 → Console pour voir les entrées détectées.\n" +
+        "Sur PipeWire : pactl list sources | grep -i monitor\n" +
+        "Si absent : pw-loopback -m '[FL FR]' --capture-props='media.class=Audio/Sink'",
       );
     }
     // loopback via getDisplayMedia ; on demande la vidéo (requise) puis on la jette.

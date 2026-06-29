@@ -516,21 +516,18 @@
       <option value="system">sys</option>
       <option value="mic">mic</option>
     </select>
+    <button id="audio-device-btn" aria-label="Choisir périphérique audio" title="Choisir périphérique audio" style="font-size:11px;padding:0 6px">⚙</button>
     <div class="sep"></div>
     <button id="midi" aria-label="MIDI Toggle" title="MIDI [M]">MIDI</button>
     <select id="midi-mode" aria-label="MIDI Mode">
       <option value="organ">organ</option>
       <option value="noise">noise</option>
     </select>
-    <div class="sep"></div>
-    <button id="isf-load" aria-label="Load ISF Shader" title="Charger shader ISF">ISF</button>
-    <button id="spout" aria-label="Spout Output" title="Spout output">SPOUT</button>
     <div class="spacer"></div>
     <button id="preset-load" aria-label="Load Preset" title="Charger preset  [Ctrl+O]">⊞</button>
     <button id="preset-save" aria-label="Save Preset" title="Sauvegarder preset  [Ctrl+S]">⊙</button>
     <div class="sep"></div>
     <button id="rec" aria-label="Record Video" title="Enregistrer vidéo  [Ctrl+R]">●</button>
-    <button id="export-mp4" aria-label="Export MP4" title="Exporter MP4 haute qualité  [Ctrl+E]">⊳</button>
     <div class="sep"></div>
     <button id="autoplay-gentle" aria-label="Gentle Automation" title="Gentle automation (slow)">◈ Gentle</button>
     <button id="autoplay-chaotic" aria-label="Chaotic Automation" title="Chaotic automation (fast)">◈ Chaos</button>
@@ -814,6 +811,26 @@
 
 <div id="focus-hint">Tab · Échap</div>
 <div id="performance-hud"></div>
+
+<!-- ── Audio Device Picker ───────────────────────────────── -->
+<div id="audio-device-panel" style="
+  display: none;
+  position: fixed;
+  top: 36px;
+  left: 8px;
+  width: 300px;
+  background: var(--ctrl);
+  border: 1px solid var(--border);
+  z-index: 1002;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+  font-family: var(--font-ui);
+">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;font-weight:700;letter-spacing:0.4px;color:var(--text);text-transform:uppercase">Source audio</span>
+    <button id="audio-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+  </div>
+  <div id="audio-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
+</div>
 <script>
 // Force initial paint before renderer.js loads
 document.body.offsetHeight;

@@ -148,6 +148,12 @@ class AutoplayAdvanced {
     this.updateMeasureDuration();
   }
 
+  setBPM(bpm: number) {
+    if (bpm === this.bpm) return;
+    this.bpm = bpm;
+    this.updateMeasureDuration();
+  }
+
   private updateMeasureDuration() {
     const beatMs = 60000 / this.bpm;
     this.measureDurationMs = beatMs * 4;
