@@ -22,9 +22,16 @@ class TextLayer {
   private ctx: CanvasRenderingContext2D | null = null;
   private config: TextLayerConfig = {
     enabled: true,
-    words: ["SYNTH", "CHAOS", "GLITCH", "PSYCHO", "VORTEX", "SIGNAL"],
+    words: [
+      "RECTA", "VORTEX", "SIGNAL", "STATIC", "CHAOS", "GLITCH",
+      "SURGE", "VOID", "FLUX", "PULSE", "BREACH", "PROTOCOL",
+      "OVERRIDE", "BLACKOUT", "DRONE", "RUST", "BLADE", "IRON",
+      "STEEL", "NODE", "SYNC", "CORRUPT", "WARFARE", "FRAGMENT",
+      "FACTION", "DISPATCH", "TRANSMIT", "FEEDBACK", "SEQUENCE",
+      "LOCKDOWN", "CRASH", "STORM", "NOISE", "CIRCUIT", "CHROME",
+    ],
     pixelationLevel: 4,
-    fontSize: 70,
+    fontSize: 85,
     color: "#00ff00",
     opacity: 0.8,
     duration: 3000,
@@ -126,8 +133,13 @@ class TextLayer {
     const h = this.canvas.height;
     const pixelSize = this.config.pixelationLevel;
 
-    // Set font
-    const baseFontSize = Math.min(w, h) * (this.config.fontSize / 100) * 0.2;
+    // Adaptive font size: scale so text fills config.fontSize% of canvas width
+    const refSize = 500;
+    this.ctx.font = `bold ${refSize}px 'Courier New', monospace`;
+    const refWidth = this.ctx.measureText(this.currentWord).width;
+    const targetWidth = w * (this.config.fontSize / 100);
+    const baseFontSize = Math.min(refSize * targetWidth / refWidth, h * 0.82);
+
     this.ctx.font = `bold ${baseFontSize}px 'Courier New', monospace`;
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
