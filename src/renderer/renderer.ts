@@ -450,6 +450,9 @@ const disruptorState: DisruptorState[] = DISRUPTORS.map((d) => {
   };
 });
 
+const disruptorSliders: HTMLInputElement[] = [];
+const disruptorCbs: HTMLInputElement[] = [];
+
 DISRUPTORS.forEach((d, i) => {
   const st   = disruptorState[i]!;
   const row  = document.createElement("div");
@@ -458,10 +461,12 @@ DISRUPTORS.forEach((d, i) => {
 
   const cb = document.createElement("input");
   cb.type  = "checkbox";
+  cb.dataset.midiTarget = `disruptor:${i}:toggle`;
   cb.addEventListener("change", () => {
     st.enabled = cb.checked;
     row.classList.toggle("on", cb.checked);
   });
+  disruptorCbs.push(cb);
 
   const nm = document.createElement("span");
   nm.className = "fx-name";
@@ -472,7 +477,9 @@ DISRUPTORS.forEach((d, i) => {
   sens.type  = "range"; sens.min = "0"; sens.max = "1"; sens.step = "0.01";
   sens.value = String(st.sensitivity);
   sens.title = "Sensibilité";
+  sens.dataset.midiTarget = `disruptor:${i}`;
   sens.addEventListener("input", () => { st.sensitivity = Number(sens.value); });
+  disruptorSliders.push(sens);
 
   row.append(cb, nm, sens);
   disruptorsList.appendChild(row);
@@ -590,6 +597,7 @@ midiBtn.addEventListener("click", async () => {
     midiBtn.textContent = "🎛 MIDI";
     midiBtn.classList.remove("on");
     midiLearnBtn.style.display = "none";
+    midiKorgBtn.style.display = "none";
     exitMidiLearn();
   } else {
     try {
@@ -597,6 +605,7 @@ midiBtn.addEventListener("click", async () => {
       midiBtn.textContent = "🎛 " + midi.deviceName;
       midiBtn.classList.add("on");
       midiLearnBtn.style.display = "";
+      midiKorgBtn.style.display = "";
     } catch (e) {
       console.error(e);
       midiBtn.textContent = "MIDI ✗";
@@ -614,7 +623,9 @@ type MidiTarget =
   | { type: "layerBOpacity" }
   | { type: "brightness" }
   | { type: "scene"; idx: number }
-  | { type: "effect"; idx: number };
+  | { type: "effect"; idx: number }
+  | { type: "disruptor"; idx: number }
+  | { type: "disruptorToggle"; idx: number };
 
 interface MidiCC { cc: number; target: MidiTarget }  // cc === -1 → pitch bend
 
@@ -636,8 +647,10 @@ function parseMidiTarget(s: string): MidiTarget | null {
   if (s === "stageCap")     return { type: "stageCap" };
   if (s === "layerBOpacity") return { type: "layerBOpacity" };
   if (s === "brightness")   return { type: "brightness" };
-  const sm = s.match(/^scene:(\d)$/);   if (sm) return { type: "scene",  idx: parseInt(sm[1]!) };
-  const em = s.match(/^effect:(\d+)$/); if (em) return { type: "effect", idx: parseInt(em[1]!) };
+  const sm = s.match(/^scene:(\d)$/);        if (sm) return { type: "scene",          idx: parseInt(sm[1]!) };
+  const em = s.match(/^effect:(\d+)$/);      if (em) return { type: "effect",         idx: parseInt(em[1]!) };
+  const dm = s.match(/^disruptor:(\d+)$/);   if (dm) return { type: "disruptor",      idx: parseInt(dm[1]!) };
+  const dt = s.match(/^disruptor:(\d+):toggle$/); if (dt) return { type: "disruptorToggle", idx: parseInt(dt[1]!) };
   return null;
 }
 
@@ -665,16 +678,33 @@ function applyMidiTarget(target: MidiTarget, value: number): void {
         if (fxSliders[target.idx]) fxSliders[target.idx]!.value = String(value);
       }
       break;
+    case "disruptor":
+      if (disruptorState[target.idx]) {
+        disruptorState[target.idx]!.sensitivity = value;
+        if (disruptorSliders[target.idx]) disruptorSliders[target.idx]!.value = String(value);
+      }
+      break;
+    case "disruptorToggle": {
+      const on = value >= 0.5;
+      if (disruptorState[target.idx]) {
+        disruptorState[target.idx]!.enabled = on;
+        if (disruptorCbs[target.idx]) disruptorCbs[target.idx]!.checked = on;
+        disruptorCbs[target.idx]?.closest(".fx")?.classList.toggle("on", on);
+      }
+      break;
+    }
   }
 }
 
 function midiTargetToSelector(target: MidiTarget): string | null {
   switch (target.type) {
-    case "stageCap":     return "#max-stages";
-    case "layerBOpacity": return "#layer-b-opacity";
-    case "brightness":   return "#master-brightness-slider";
-    case "scene":        return `.scene-slot[data-idx="${target.idx}"]`;
-    case "effect":       return `[data-midi-target="effect:${target.idx}"]`;
+    case "stageCap":          return "#max-stages";
+    case "layerBOpacity":     return "#layer-b-opacity";
+    case "brightness":        return "#master-brightness-slider";
+    case "scene":             return `.scene-slot[data-idx="${target.idx}"]`;
+    case "effect":            return `[data-midi-target="effect:${target.idx}"]`;
+    case "disruptor":         return `[data-midi-target="disruptor:${target.idx}"]`;
+    case "disruptorToggle":   return `[data-midi-target="disruptor:${target.idx}:toggle"]`;
   }
 }
 
@@ -745,6 +775,69 @@ document.addEventListener("contextmenu", (e) => {
   midiMap = midiMap.filter((m) => JSON.stringify(m.target) !== JSON.stringify(target));
   saveMidiMap();
   updateMidiBadges();
+});
+
+// Preset nanoKONTROL2 (Scene 1, factory CCs)
+function loadNanoKontrolPreset(): void {
+  const preset: MidiCC[] = [
+    // Knobs 1-8 (CC 16-23) → amounts effets 1-8
+    { cc: 16, target: { type: "effect", idx: 0 } },
+    { cc: 17, target: { type: "effect", idx: 1 } },
+    { cc: 18, target: { type: "effect", idx: 2 } },
+    { cc: 19, target: { type: "effect", idx: 3 } },
+    { cc: 20, target: { type: "effect", idx: 4 } },
+    { cc: 21, target: { type: "effect", idx: 5 } },
+    { cc: 22, target: { type: "effect", idx: 6 } },
+    { cc: 23, target: { type: "effect", idx: 7 } },
+    // Fader 1 (CC 0) → Master Brightness
+    { cc: 0,  target: { type: "brightness" } },
+    // Faders 2-7 (CC 1-6) → Scènes S1-S6
+    { cc: 1,  target: { type: "scene", idx: 0 } },
+    { cc: 2,  target: { type: "scene", idx: 1 } },
+    { cc: 3,  target: { type: "scene", idx: 2 } },
+    { cc: 4,  target: { type: "scene", idx: 3 } },
+    { cc: 5,  target: { type: "scene", idx: 4 } },
+    { cc: 6,  target: { type: "scene", idx: 5 } },
+    // Fader 8 (CC 7) → Stage Cap
+    { cc: 7,  target: { type: "stageCap" } },
+    // S buttons 1-8 (CC 32-39) → Disruptors 1-8 toggle
+    { cc: 32, target: { type: "disruptorToggle", idx: 0 } },
+    { cc: 33, target: { type: "disruptorToggle", idx: 1 } },
+    { cc: 34, target: { type: "disruptorToggle", idx: 2 } },
+    { cc: 35, target: { type: "disruptorToggle", idx: 3 } },
+    { cc: 36, target: { type: "disruptorToggle", idx: 4 } },
+    { cc: 37, target: { type: "disruptorToggle", idx: 5 } },
+    { cc: 38, target: { type: "disruptorToggle", idx: 6 } },
+    { cc: 39, target: { type: "disruptorToggle", idx: 7 } },
+    // M buttons 1-8 (CC 48-55) → Disruptors 9-16 toggle
+    { cc: 48, target: { type: "disruptorToggle", idx: 8 } },
+    { cc: 49, target: { type: "disruptorToggle", idx: 9 } },
+    { cc: 50, target: { type: "disruptorToggle", idx: 10 } },
+    { cc: 51, target: { type: "disruptorToggle", idx: 11 } },
+    { cc: 52, target: { type: "disruptorToggle", idx: 12 } },
+    { cc: 53, target: { type: "disruptorToggle", idx: 13 } },
+    { cc: 54, target: { type: "disruptorToggle", idx: 14 } },
+    { cc: 55, target: { type: "disruptorToggle", idx: 15 } },
+    // R buttons 1-8 (CC 64-71) → Disruptors 17-24 toggle
+    { cc: 64, target: { type: "disruptorToggle", idx: 16 } },
+    { cc: 65, target: { type: "disruptorToggle", idx: 17 } },
+    { cc: 66, target: { type: "disruptorToggle", idx: 18 } },
+    { cc: 67, target: { type: "disruptorToggle", idx: 19 } },
+    { cc: 68, target: { type: "disruptorToggle", idx: 20 } },
+    { cc: 69, target: { type: "disruptorToggle", idx: 21 } },
+    { cc: 70, target: { type: "disruptorToggle", idx: 22 } },
+    { cc: 71, target: { type: "disruptorToggle", idx: 23 } },
+  ];
+  midiMap = preset;
+  saveMidiMap();
+  updateMidiBadges();
+}
+
+const midiKorgBtn = document.getElementById("midi-korg-btn") as HTMLButtonElement;
+midiKorgBtn.addEventListener("click", () => {
+  loadNanoKontrolPreset();
+  midiKorgBtn.classList.add("on");
+  setTimeout(() => midiKorgBtn.classList.remove("on"), 800);
 });
 
 updateMidiBadges();
