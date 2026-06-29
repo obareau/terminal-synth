@@ -13,12 +13,13 @@
 
 export interface Effect {
   name: string;
+  id: string;
   body: string;
 }
 
 export const EFFECTS: Effect[] = [
   {
-    name: "Entropie",
+    name: "Entropie", id: "ENT",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -31,7 +32,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Feedback",
+    name: "Feedback", id: "FDB",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -46,7 +47,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Glitch",
+    name: "Glitch", id: "GLT",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount * (0.35 + u_bass * 1.3);
@@ -65,7 +66,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Filtre",
+    name: "Filtre", id: "FLT",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   vec3 c = prev(uv);
@@ -82,7 +83,7 @@ vec3 process(vec2 uv) {
   // ── Batch 4 ───────────────────────────────────────────────────────────────
 
   {
-    name: "Invert",
+    name: "Invert", id: "INV",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount * (0.5 + u_bass * 0.5);
@@ -90,7 +91,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Grain",
+    name: "Grain", id: "GRN",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -116,7 +117,7 @@ vec3 process(vec2 uv) {
   // ── Batch 3 ───────────────────────────────────────────────────────────────
 
   {
-    name: "Neon",
+    name: "Neon", id: "NEO",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a  = u_amount;
@@ -135,7 +136,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Onde",
+    name: "Onde", id: "OND",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -149,7 +150,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Fisheye",
+    name: "Fisheye", id: "FSH",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a  = u_amount;
@@ -161,7 +162,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Hue",
+    name: "Hue", id: "HUE",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a    = u_amount;
@@ -177,7 +178,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Scanlines",
+    name: "Scanlines", id: "SCN",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a     = u_amount;
@@ -199,7 +200,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Datamosh",
+    name: "Datamosh", id: "DTM",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a    = u_amount;
@@ -217,7 +218,7 @@ vec3 process(vec2 uv) {
   // ── Batch 2 ───────────────────────────────────────────────────────────────
 
   {
-    name: "Pixelate",
+    name: "Pixelate", id: "PIX",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a    = u_amount;
@@ -227,7 +228,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Thermal",
+    name: "Thermal", id: "THM",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a   = u_amount;
@@ -243,7 +244,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Zoom",
+    name: "Zoom", id: "ZOM",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a   = u_amount;
@@ -261,7 +262,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "VHS",
+    name: "VHS", id: "VHS",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a  = u_amount;
@@ -279,7 +280,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Seuil",
+    name: "Seuil", id: "SEU",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a    = u_amount;
@@ -296,7 +297,7 @@ vec3 process(vec2 uv) {
   // ── Batch 1 ───────────────────────────────────────────────────────────────
 
   {
-    name: "Aberration",
+    name: "Aberration", id: "ABR",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a   = u_amount;
@@ -309,7 +310,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Bloom",
+    name: "Bloom", id: "BLM",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   vec3  col   = prev(uv);
@@ -329,7 +330,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Miroir",
+    name: "Miroir", id: "MIR",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a    = u_amount;
@@ -346,7 +347,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Dithering",
+    name: "Dithering", id: "DTH",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -374,7 +375,7 @@ vec3 process(vec2 uv) {
   // ── NEW EFFECTS (5) ────────────────────────────────────────────────────────
 
   {
-    name: "Chrono",
+    name: "Chrono", id: "CHR",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -404,7 +405,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Kuwahara",
+    name: "Kuwahara", id: "KUW",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -456,7 +457,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Slit Scan",
+    name: "Slit Scan", id: "SLT",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -497,7 +498,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Glow Edges",
+    name: "Glow Edges", id: "GLW",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -535,7 +536,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Posterize Dither",
+    name: "Posterize Dither", id: "PDT",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -577,7 +578,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Floyd-Steinberg",
+    name: "Floyd-Steinberg", id: "FLD",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -596,7 +597,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Continuous Rotate CW",
+    name: "Continuous Rotate CW", id: "RCW",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float speed = u_amount * 4.0;
@@ -611,7 +612,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Continuous Rotate CCW",
+    name: "Continuous Rotate CCW", id: "RCC",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float speed = u_amount * 4.0;
@@ -626,7 +627,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Scanlines Distort",
+    name: "Scanlines Distort", id: "SCD",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -638,7 +639,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Wave Spiral",
+    name: "Wave Spiral", id: "WSP",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -655,7 +656,7 @@ vec3 process(vec2 uv) {
   // ── NTSC / Analog Effects ───────────────────────────────────────────────────
 
   {
-    name: "NTSC Chroma",
+    name: "NTSC Chroma", id: "NTC",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -675,7 +676,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Composite Video",
+    name: "Composite Video", id: "CPV",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -705,7 +706,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Analog Ghosting",
+    name: "Analog Ghosting", id: "AGH",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -725,7 +726,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Color Bleed",
+    name: "Color Bleed", id: "CBL",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -747,7 +748,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Luma Separation",
+    name: "Luma Separation", id: "LUM",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -772,7 +773,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "RF Noise",
+    name: "RF Noise", id: "RFN",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -794,7 +795,7 @@ vec3 process(vec2 uv) {
   // ── Minimalistic Geometric Effects ───────────────────────────────────────
 
   {
-    name: "Orbit Ring Lines",
+    name: "Orbit Ring Lines", id: "ORL",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -813,7 +814,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Orbit Nodes Connect",
+    name: "Orbit Nodes Connect", id: "ONC",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -839,7 +840,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Orbit Spiral",
+    name: "Orbit Spiral", id: "OSP",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -859,7 +860,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Pulsing Orbits",
+    name: "Pulsing Orbits", id: "POR",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -880,7 +881,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Network Pulse",
+    name: "Network Pulse", id: "NPL",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -906,7 +907,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Orbital Nodes",
+    name: "Orbital Nodes", id: "ORN",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -937,7 +938,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Wave Rings",
+    name: "Wave Rings", id: "WRN",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -963,7 +964,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "BW Orbital Ring",
+    name: "BW Orbital Ring", id: "BWR",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -989,7 +990,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "BW Grid Lines",
+    name: "BW Grid Lines", id: "BWG",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;
@@ -1022,7 +1023,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Starfield BW",
+    name: "Starfield BW", id: "SBW",
     body: /* glsl */ `
 vec3 process(vec2 uv) {
   float a = u_amount;

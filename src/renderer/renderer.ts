@@ -749,6 +749,113 @@ document.addEventListener("contextmenu", (e) => {
 
 updateMidiBadges();
 
+// --- Effect Sequencer ---
+
+interface SeqStep {
+  indices: number[];   // index dans fxState (peut être plusieurs via +)
+  beats: number;       // durée en beats
+  prob: number;        // probabilité 0-1
+  alts: SeqStep[][];   // alternatives <A B C> (vide = pas d'alternance)
+}
+
+const FX_ID_MAP = new Map<string, number>(
+  EFFECTS.map((e, i) => [e.id.toUpperCase(), i])
+);
+
+function parseSeqPattern(src: string): SeqStep[] {
+  const steps: SeqStep[] = [];
+  const tokens = src.split(",").map(s => s.trim()).filter(Boolean);
+  for (const tok of tokens) {
+    const step = parseSeqToken(tok);
+    if (step) steps.push(step);
+  }
+  return steps;
+}
+
+function parseSeqToken(tok: string): SeqStep | null {
+  // Alternance <A B C>
+  if (tok.startsWith("<") && tok.endsWith(">")) {
+    const inner = tok.slice(1, -1).trim();
+    const parts = inner.split(/\s+/);
+    const alts = parts.map(p => { const s = parseSeqToken(p); return s ? [s] : []; }).filter(a => a.length > 0);
+    if (!alts.length) return null;
+    return { indices: [], beats: 1, prob: 1, alts };
+  }
+  // Normale : IDS[+IDS...][*N][?P]
+  const m = tok.match(/^([A-Z+]+?)(\*(\d+(?:\.\d+)?))?(\?(\d+))?$/i);
+  if (!m) return null;
+  const ids = m[1]!.toUpperCase().split("+");
+  const indices = ids.map(id => FX_ID_MAP.get(id) ?? -1).filter(i => i >= 0);
+  if (!indices.length) return null;
+  const beats = m[3] ? parseFloat(m[3]) : 1;
+  const prob = m[5] ? parseInt(m[5]) / 100 : 1;
+  return { indices, beats, prob, alts: [] };
+}
+
+let seqSteps: SeqStep[] = [];
+let seqPlaying = false;
+let seqStepIdx = 0;
+let seqAltCycle = 0;
+let seqBeatStart = -1;        // beatIdx où le step courant a commencé
+let seqStepBeats = 0;         // durée du step courant
+let seqActiveIndices: number[] = [];  // effets ON par le sequenceur
+
+const seqInput  = document.getElementById("seq-input")  as HTMLInputElement;
+const seqPlayBtn = document.getElementById("seq-play")  as HTMLButtonElement;
+
+function seqApplyStep(step: SeqStep, on: boolean): void {
+  for (const idx of step.indices) {
+    if (fxState[idx]) fxState[idx]!.enabled = on;
+  }
+}
+
+function seqResolveStep(step: SeqStep): SeqStep {
+  if (!step.alts.length) return step;
+  const alt = step.alts[seqAltCycle % step.alts.length]!;
+  seqAltCycle++;
+  return alt[0]!;
+}
+
+function seqReset(): void {
+  // Éteindre tous les effets gérés par le seq
+  for (const idx of seqActiveIndices) {
+    if (fxState[idx]) fxState[idx]!.enabled = false;
+  }
+  seqActiveIndices = [];
+  seqStepIdx = 0;
+  seqAltCycle = 0;
+  seqBeatStart = -1;
+}
+
+function seqStop(): void {
+  seqPlaying = false;
+  seqPlayBtn.textContent = "▶";
+  seqPlayBtn.classList.remove("on");
+  seqReset();
+}
+
+function seqStart(): void {
+  const src = seqInput.value.trim();
+  seqSteps = parseSeqPattern(src);
+  if (!seqSteps.length) return;
+  seqPlaying = true;
+  seqStepIdx = 0;
+  seqAltCycle = 0;
+  seqBeatStart = -1;
+  seqActiveIndices = [];
+  seqPlayBtn.textContent = "■";
+  seqPlayBtn.classList.add("on");
+}
+
+seqPlayBtn.addEventListener("click", () => {
+  if (seqPlaying) seqStop(); else seqStart();
+});
+
+seqInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { if (seqPlaying) seqStop(); else seqStart(); }
+  e.stopPropagation();
+});
+
 
 textBtn.addEventListener("click", () => {
   text.toggle(!text.enabled);
@@ -1391,6 +1498,29 @@ function frame(now: number): void {
   const onBeat    = beatIdx !== lastBeatIdx;
   if (onBeat) { lastBeatIdx = beatIdx; beatEnv = 1.0; }
   beatEnv        *= 0.82;                             // decay ~0.15s flash à 60fps
+
+  // --- Effect Sequencer tick ---
+  if (seqPlaying && seqSteps.length) {
+    if (seqBeatStart < 0) seqBeatStart = beatIdx;     // premier beat
+    const elapsed = beatIdx - seqBeatStart;
+    if (elapsed >= seqStepBeats) {
+      // Éteindre step précédent
+      for (const idx of seqActiveIndices) {
+        if (fxState[idx]) fxState[idx]!.enabled = false;
+      }
+      seqActiveIndices = [];
+      // Avancer au step suivant
+      const raw = seqSteps[seqStepIdx % seqSteps.length]!;
+      const step = seqResolveStep(raw);
+      seqStepIdx++;
+      seqBeatStart = beatIdx;
+      seqStepBeats = step.beats;
+      if (Math.random() < step.prob) {
+        seqApplyStep(step, true);
+        seqActiveIndices = [...step.indices];
+      }
+    }
+  }
 
   // Sequencer update (BPM-synced automation)
   // Énergie globale + détection de hit (front montant) → pioche d'une nouvelle tactique.
