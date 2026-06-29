@@ -39,15 +39,15 @@ class TextLayer {
   };
 
   private currentWord: string = "";
-  private currentFont: string = "'Courier New', monospace";
+  private currentFont: string = "monospace";
   private readonly fontPool: string[] = [
-    "'Courier New', monospace",
     "monospace",
-    "Impact, 'Arial Narrow', sans-serif",
-    "'Arial Black', 'Arial Bold', sans-serif",
+    "'DejaVu Sans Mono', monospace",
+    "'Liberation Mono', monospace",
+    "'Ubuntu Mono', monospace",
     "sans-serif",
+    "'Liberation Sans', sans-serif",
     "serif",
-    "'Lucida Console', 'Monaco', monospace",
   ];
   private wordChangeTime: number = 0;
   private audioEnergy: number = 0;
