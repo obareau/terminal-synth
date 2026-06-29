@@ -2,6 +2,19 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [1.9.10] - 2026-06-29
+
+### Added
+- **Media loader** (`u_media` sampler2D) — nouvel onglet "Media" dans le panel générateurs :
+  - Bouton 📂 CHARGER IMAGE / VIDÉO — ouvre un file picker image/* ou video/*
+  - Images uploadées une seule fois (WebGL tex upload) ; vidéos re-uploadées chaque frame via `readyState >= HAVE_CURRENT_DATA`
+  - Bouton ✕ EFFACER MÉDIA reset vers texture 1×1 sombre
+  - 3 générateurs Media : **Media Direct** (warp audio + chroma split), **Media Glitch** (déplacement bandes VHS + dropout scanlines), **Media Kaleid** (kaléidoscope N faces + rotation audio)
+  - `mediaCol(uv)` disponible dans tous les shaders GLSL (slot texture 5)
+
+### Fixed
+- **Overlay RECTA trop rapide** — `holdMs` par défaut passe de 8 s à 24 s (×3) ; slider étendu jusqu'à 36 s
+
 ## [1.9.9] - 2026-06-29
 
 ### Added

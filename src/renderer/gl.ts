@@ -34,11 +34,13 @@ ${COMMON_UNIFORMS}
 uniform sampler2D u_audio;
 uniform sampler2D u_text;
 uniform sampler2D u_fbmTex;
+uniform sampler2D u_media;
 float fftAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float waveAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
 vec3 textCol(vec2 uv) { return texture(u_text, uv).rgb; }
 // 5-octave value-noise fbm baked at startup (tiles every 64 units).
 float fbmTex(vec2 p) { return texture(u_fbmTex, p * (1.0 / 64.0)).r; }
+vec3 mediaCol(vec2 uv) { return texture(u_media, clamp(uv, 0.0, 1.0)).rgb; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 #define PI      3.14159265358979323846
 #define TWO_PI  6.28318530717958647692
@@ -107,7 +109,7 @@ const UNIFORM_NAMES = [
   "u_resolution","u_time","u_bass","u_mid","u_treble","u_level","u_amount",
   "u_beat","u_beatEnv",
   "u_p0","u_p1","u_p2","u_p3",
-  "u_prev","u_feedback","u_audio","u_text","u_fbmTex",
+  "u_prev","u_feedback","u_audio","u_text","u_fbmTex","u_media",
 ];
 
 // Bakes the same fbm the Industrial shaders used to compute per-pixel
@@ -168,9 +170,10 @@ export class Pipeline {
   // tex[0]/[1] ping-pong · tex[2] historique · tex[3] layer B
   private tex: (WebGLTexture | null)[]    = [null, null, null, null];
   private fbo: (WebGLFramebuffer | null)[] = [null, null, null, null];
-  private audioTex: WebGLTexture;
-  private textTex:  WebGLTexture;
-  private fbmTex:   WebGLTexture;
+  private audioTex:  WebGLTexture;
+  private textTex:   WebGLTexture;
+  private fbmTex:    WebGLTexture;
+  private mediaTex:  WebGLTexture;
   private w = 0;
   private h = 0;
   private blendMode    = 0;
@@ -195,6 +198,7 @@ export class Pipeline {
     this.audioTex = this.makeAudioTex();
     this.textTex  = this.makeTextTex();
     this.fbmTex   = this.bakeFbmTex();
+    this.mediaTex = this.makeMediaTex();
   }
 
   // One-shot GPU bake of the fbm noise texture. R16F when float render
@@ -267,6 +271,31 @@ export class Pipeline {
     gl.bindTexture(gl.TEXTURE_2D, this.audioTex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,256,2,gl.RED,gl.UNSIGNED_BYTE,data);
+  }
+  private makeMediaTex(): WebGLTexture {
+    const gl = this.gl, t = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([8,8,8,255]));
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  updateMedia(src: TexImageSource): void {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.mediaTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  }
+  clearMedia(): void {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.mediaTex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([8,8,8,255]));
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
   }
 
   // ── Compilation ─────────────────────────────────────────────────────────────
@@ -411,6 +440,7 @@ export class Pipeline {
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.audioTex); gl.uniform1i(p.loc["u_audio"]??null, 2);
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, this.textTex);  gl.uniform1i(p.loc["u_text"]??null,  3);
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, this.fbmTex);   gl.uniform1i(p.loc["u_fbmTex"]??null, 4);
+    gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, this.mediaTex); gl.uniform1i(p.loc["u_media"]??null,  5);
     if (srcTex !== undefined) {
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTex);       gl.uniform1i(p.loc["u_prev"]??null, 0);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tex[2]);  gl.uniform1i(p.loc["u_feedback"]??null, 1);

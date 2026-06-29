@@ -3,13 +3,13 @@
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
 ![Status](https://img.shields.io/badge/status-Feature%20Freeze%20%2F%20Stable-brightgreen)
-![Version](https://img.shields.io/badge/version-1.9.9-blue)
+![Version](https://img.shields.io/badge/version-1.9.10-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
 Terminal-Synth est un visualiseur audio pensé pour un **performeur solo** : pas de séquenceur, pas de MIDI Learn — l'**Adaptive Autoplay** pilote le show en réagissant à la musique (BPM, énergie, onsets), et le performeur supervise/influence en direct.
 
-Intègre **131 générateurs** (dont 20 Industrial monochrome), **47 effets post-process**, **36 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **détection BPM** (spectral flux + autocorrélation), **effets beat-réactifs** (pulse, glitch et disruptors synchronisés au tempo), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée, mode ASCII, et export vidéo WebM.
+Intègre **134 générateurs** (dont 20 Industrial monochrome), **47 effets post-process**, **36 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **détection BPM** (spectral flux + autocorrélation), **effets beat-réactifs** (pulse, glitch et disruptors synchronisés au tempo), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée, mode ASCII, et export vidéo WebM.
 
 Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 
@@ -279,5 +279,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v1.9.0** · WebGL2 · 117 Generators · 47 Effects · 36 Disruptors · Industrial Mode · Adaptive Autoplay · Master Brightness
+**v1.9.10** · WebGL2 · 134 Generators · 47 Effects · 36 Disruptors · Industrial Mode · Adaptive Autoplay · Master Brightness · Media Loader
 *Dark industrial visual synthesizer for solo live performance — autoplay-driven, music-reactive.*

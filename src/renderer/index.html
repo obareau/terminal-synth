@@ -595,6 +595,7 @@
         <button class="tab-btn" data-tab="gen-noise" role="tab" aria-selected="false" aria-controls="gen-noise">Noise</button>
         <button class="tab-btn" data-tab="gen-interactive" role="tab" aria-selected="false" aria-controls="gen-interactive">Interactive</button>
         <button class="tab-btn" data-tab="gen-lofi" role="tab" aria-selected="false" aria-controls="gen-lofi">Lofi</button>
+        <button class="tab-btn" data-tab="gen-media" role="tab" aria-selected="false" aria-controls="gen-media">Media</button>
       </div>
 
       <div id="gen-all" class="tab-content active">
@@ -630,6 +631,17 @@
       <div id="gen-lofi" class="tab-content">
         <div class="ph" style="flex-shrink:0">Lofi · Chiptune · ASCII</div>
         <div id="sources-list-lofi" style="flex:1;overflow-y:auto;min-height:0"></div>
+      </div>
+
+      <div id="gen-media" class="tab-content">
+        <div class="ph" style="flex-shrink:0">Media — Image &amp; Vidéo</div>
+        <div style="padding:8px;flex-shrink:0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
+          <button id="media-load-btn" style="width:100%;padding:5px;font-size:10px;letter-spacing:0.1em">📂 CHARGER IMAGE / VIDÉO</button>
+          <div id="media-filename" style="font-size:9px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">aucun média chargé</div>
+          <button id="media-clear-btn" style="width:100%;padding:3px;font-size:9px;display:none">✕ EFFACER MÉDIA</button>
+          <input type="file" id="media-file-input" accept="image/*,video/*" style="display:none">
+        </div>
+        <div id="sources-list-media" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
 
       <!-- Hidden select for preset compatibility -->
@@ -725,7 +737,7 @@
     <input id="ascii-cols" type="range" min="20" max="200" step="5" aria-label="ASCII Columns" title="Densité" style="width:52px">
     <div class="sep"></div>
     <button id="text-toggle" aria-label="Text Overlay Toggle" title="Overlay RECTA  [T]">TXT</button>
-    <input id="recta-speed" type="range" min="500" max="12000" step="250" value="4200" aria-label="RECTA Speed" title="Durée RECTA" style="width:52px">
+    <input id="recta-speed" type="range" min="500" max="36000" step="500" value="4200" aria-label="RECTA Speed" title="Durée RECTA" style="width:52px">
     <input id="recta-font-size" type="range" min="8" max="24" step="1" value="14" aria-label="RECTA Font Size" title="RECTA Font Size" style="width:52px">
     <button id="recta-mono" aria-label="RECTA Monochrome" title="RECTA: Monochrome">◼ W</button>
     <button id="recta-green" aria-label="RECTA Green" title="RECTA: Green terminal">◼ G</button>

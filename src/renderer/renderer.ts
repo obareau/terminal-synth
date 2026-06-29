@@ -122,6 +122,10 @@ let chosenAudioDeviceLabel: string | undefined;
 // Beat phase & envelope — calculés depuis le BPM détecté chaque frame
 let beatPhase  = 0;   // 0→1 sawtooth par beat (pour shaders)
 let beatEnv    = 0;   // 1→0 enveloppe rapide après chaque beat (flash)
+
+// ── Media (u_media texture) ─────────────────────────────────────────────────
+let mediaVideo: HTMLVideoElement | null = null;
+let mediaIsVideo = false;
 let lastBeatIdx = -1; // détection de frontière de beat
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
@@ -191,6 +195,7 @@ allItems.set("Geometry", []);
 allItems.set("Noise", []);
 allItems.set("Interactive", []);
 allItems.set("Lofi", []);
+allItems.set("Media", []);
 
 SHADERS.forEach((s, i) => {
   // select caché (logique preset)
@@ -201,7 +206,7 @@ SHADERS.forEach((s, i) => {
   layerBSel.appendChild(o2);
 
   // Déterminer la catégorie — priorité à s.category si c'est un onglet connu
-  const TAB_CATS = new Set(["Text","Plasma","Geometry","Noise","Interactive","Lofi"]);
+  const TAB_CATS = new Set(["Text","Plasma","Geometry","Noise","Interactive","Lofi","Media"]);
   const cat = (s.category && TAB_CATS.has(s.category)) ? s.category : getCategory(s.name);
 
   // liste visuelle cliquable
@@ -229,7 +234,8 @@ const listContainers: Record<string, HTMLElement | null> = {
   "Geometry": document.getElementById("sources-list-geometry"),
   "Noise": document.getElementById("sources-list-noise"),
   "Interactive": document.getElementById("sources-list-interactive"),
-  "Lofi": document.getElementById("sources-list-lofi"),
+  "Lofi":  document.getElementById("sources-list-lofi"),
+  "Media": document.getElementById("sources-list-media"),
 };
 
 for (const [cat, items] of allItems) {
@@ -1184,9 +1190,9 @@ asciiColsRng.value = String(ASCII_COLS);
 asciiColsRng.addEventListener("input", () => { ASCII_COLS = Number(asciiColsRng.value); });
 
 // --- RECTA speed ---
-tactics.holdMs = 8000;
+tactics.holdMs = 24000;
 const rectaSpeedRng = $<HTMLInputElement>("recta-speed");
-rectaSpeedRng.value = "8000";
+rectaSpeedRng.value = "24000";
 rectaSpeedRng.addEventListener("input", () => { tactics.holdMs = Number(rectaSpeedRng.value); });
 
 // --- RECTA font size ---
@@ -1478,6 +1484,61 @@ recBtn.addEventListener("click", async () => {
   recBtn.textContent = "⏹ STOP";
 });
 
+// ── Media loader ─────────────────────────────────────────────────────────────
+{
+  const mediaLoadBtn  = document.getElementById("media-load-btn")  as HTMLButtonElement | null;
+  const mediaClearBtn = document.getElementById("media-clear-btn") as HTMLButtonElement | null;
+  const mediaFileInput = document.getElementById("media-file-input") as HTMLInputElement | null;
+  const mediaFilename  = document.getElementById("media-filename")  as HTMLElement | null;
+
+  function setMediaLabel(name: string | null): void {
+    if (mediaFilename) mediaFilename.textContent = name ?? "aucun média chargé";
+    if (mediaClearBtn) mediaClearBtn.style.display = name ? "" : "none";
+  }
+
+  mediaLoadBtn?.addEventListener("click", () => mediaFileInput?.click());
+
+  mediaFileInput?.addEventListener("change", () => {
+    const file = mediaFileInput?.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const label = file.name.length > 36 ? "…" + file.name.slice(-33) : file.name;
+
+    if (file.type.startsWith("video/")) {
+      if (mediaVideo) { mediaVideo.pause(); mediaVideo.src = ""; }
+      const vid = document.createElement("video");
+      vid.src   = url;
+      vid.loop  = true;
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.autoplay = true;
+      vid.addEventListener("canplay", () => {
+        void vid.play();
+        pipeline.updateMedia(vid);
+      }, { once: true });
+      vid.load();
+      mediaVideo  = vid;
+      mediaIsVideo = true;
+    } else {
+      // Image
+      mediaIsVideo = false;
+      if (mediaVideo) { mediaVideo.pause(); mediaVideo.src = ""; mediaVideo = null; }
+      const img = new Image();
+      img.onload = () => { pipeline.updateMedia(img); URL.revokeObjectURL(url); };
+      img.src = url;
+    }
+    setMediaLabel(label);
+    if (mediaFileInput) mediaFileInput.value = "";
+  });
+
+  mediaClearBtn?.addEventListener("click", () => {
+    if (mediaVideo) { mediaVideo.pause(); mediaVideo.src = ""; mediaVideo = null; }
+    mediaIsVideo = false;
+    pipeline.clearMedia();
+    setMediaLabel(null);
+  });
+}
+
 function asciiGrid(): { cols: number; rows: number } {
   const cw = app.clientWidth;
   const ch = app.clientHeight;
@@ -1659,6 +1720,9 @@ function frame(now: number): void {
   tactics.update(now);
   tactics.draw(now, energy);
   pipeline.updateText(tactics.canvas);
+  if (mediaIsVideo && mediaVideo && mediaVideo.readyState >= 2) {
+    pipeline.updateMedia(mediaVideo);
+  }
 
   // Boost de niveau sur le beat : tous les effets sensibles à u_level pulsent en rythme
   const levelOnBeat = Math.min(1, Math.max(bands.level, e) + beatEnv * 0.25);
