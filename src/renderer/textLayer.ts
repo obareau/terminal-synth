@@ -41,13 +41,20 @@ class TextLayer {
   private currentWord: string = "";
   private currentFont: string = "monospace";
   private readonly fontPool: string[] = [
+    // Mono — Linux → Mac → Windows → fallback
+    "'DejaVu Sans Mono', Menlo, Consolas, 'Courier New', monospace",
+    // Mono — Mac → Linux → Windows
+    "Menlo, Monaco, 'Ubuntu Mono', 'Liberation Mono', Consolas, monospace",
+    // Mono — Windows → Linux → Mac
+    "Consolas, 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', monospace",
+    // Mono générique (toujours dispo)
     "monospace",
-    "'DejaVu Sans Mono', monospace",
-    "'Liberation Mono', monospace",
-    "'Ubuntu Mono', monospace",
-    "sans-serif",
-    "'Liberation Sans', sans-serif",
-    "serif",
+    // Sans — Linux → Win → Mac
+    "'Liberation Sans', 'Ubuntu', Arial, 'Helvetica Neue', sans-serif",
+    // Sans — Mac → Linux → Win
+    "'Helvetica Neue', 'Noto Sans', 'DejaVu Sans', Arial, sans-serif",
+    // Serif cross-platform
+    "Georgia, 'Noto Serif', 'DejaVu Serif', serif",
   ];
   private wordChangeTime: number = 0;
   private audioEnergy: number = 0;
