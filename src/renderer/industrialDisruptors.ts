@@ -15,7 +15,7 @@ import type { Disruptor } from "./disruptors";
 export const INDUSTRIAL_DISRUPTORS: Disruptor[] = [
   // 1. BLOCK DISPLACE — bass kick → 8×8 cell shift
   {
-    name: "Block Displace",
+    name: "Block Displace", id: "BLD",
     defaultSensitivity: 0.65,
     defaultDurationMs: 90,
     defaultCooldownMs: 250,
@@ -32,7 +32,7 @@ vec3 process(vec2 uv) {
 
   // 2. SCAN TEAR — onset → horizontal slice offset
   {
-    name: "Scan Tear",
+    name: "Scan Tear", id: "SCT",
     defaultSensitivity: 0.6,
     defaultDurationMs: 70,
     defaultCooldownMs: 220,
@@ -48,7 +48,7 @@ vec3 process(vec2 uv) {
 
   // 3. FRAME HOLD — pull from previous frame (fb) for stutter effect
   {
-    name: "Frame Hold",
+    name: "Frame Hold", id: "FRH",
     defaultSensitivity: 0.55,
     defaultDurationMs: 120,
     defaultCooldownMs: 400,
@@ -64,7 +64,7 @@ vec3 process(vec2 uv) {
 
   // 4. DATAMOSH — p-frame style motion smear via fb
   {
-    name: "Datamosh",
+    name: "Datamosh", id: "DMS",
     defaultSensitivity: 0.5,
     defaultDurationMs: 200,
     defaultCooldownMs: 500,
@@ -80,7 +80,7 @@ vec3 process(vec2 uv) {
 
   // 5. SIGNAL LOSS — black bars + noise sweep
   {
-    name: "Signal Loss",
+    name: "Signal Loss", id: "SGL",
     defaultSensitivity: 0.7,
     defaultDurationMs: 100,
     defaultCooldownMs: 600,
@@ -100,7 +100,7 @@ vec3 process(vec2 uv) {
 
   // 6. SYNC LOST — vertical roll
   {
-    name: "Sync Lost",
+    name: "Sync Lost", id: "SYL",
     defaultSensitivity: 0.6,
     defaultDurationMs: 180,
     defaultCooldownMs: 500,
@@ -118,7 +118,7 @@ vec3 process(vec2 uv) {
 
   // 7. BIT CRUSH — luminance quantized to N levels
   {
-    name: "Bit Crush",
+    name: "Bit Crush", id: "BCR",
     defaultSensitivity: 0.55,
     defaultDurationMs: 110,
     defaultCooldownMs: 280,
@@ -136,7 +136,7 @@ vec3 process(vec2 uv) {
 
   // 8. GLYPH STORM — burst of monospace glyph overlay
   {
-    name: "Glyph Storm",
+    name: "Glyph Storm", id: "GLS",
     defaultSensitivity: 0.6,
     defaultDurationMs: 130,
     defaultCooldownMs: 350,
@@ -161,7 +161,7 @@ vec3 process(vec2 uv) {
 
   // 9. HALFTONE PULSE — dot pattern overlay modulated by audio
   {
-    name: "Halftone Pulse",
+    name: "Halftone Pulse", id: "HTP",
     defaultSensitivity: 0.5,
     defaultDurationMs: 140,
     defaultCooldownMs: 300,
@@ -181,7 +181,7 @@ vec3 process(vec2 uv) {
 
   // 10. SCANLINE DENSITY — pulsing CRT scanlines
   {
-    name: "Scanline Density",
+    name: "Scanline Density", id: "SLD",
     defaultSensitivity: 0.45,
     defaultDurationMs: 160,
     defaultCooldownMs: 320,
@@ -197,7 +197,7 @@ vec3 process(vec2 uv) {
 
   // 11. CONTOUR SHOCK — edge detection flash
   {
-    name: "Contour Shock",
+    name: "Contour Shock", id: "CSK",
     defaultSensitivity: 0.65,
     defaultDurationMs: 80,
     defaultCooldownMs: 240,
@@ -215,7 +215,7 @@ vec3 process(vec2 uv) {
 
   // 12. NEGATIVE FLASH — invert luminance for 1-3 frames
   {
-    name: "Negative Flash",
+    name: "Negative Flash", id: "NGF",
     defaultSensitivity: 0.75,
     defaultDurationMs: 60,
     defaultCooldownMs: 700,

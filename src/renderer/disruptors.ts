@@ -6,6 +6,7 @@
 
 export interface Disruptor {
   name: string;
+  id: string;
   body: string;
   defaultSensitivity: number; // 0..1 — seuil de déclenchement
   defaultDurationMs: number;  // durée d'un burst
@@ -16,7 +17,7 @@ import { INDUSTRIAL_DISRUPTORS } from "./industrialDisruptors";
 
 const BUILTIN_DISRUPTORS: Disruptor[] = [
   {
-    name: "Déchirure",
+    name: "Déchirure", id: "DCH",
     defaultSensitivity: 0.65,
     defaultDurationMs: 80,
     defaultCooldownMs: 300,
@@ -35,7 +36,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Dropout",
+    name: "Dropout", id: "DRP",
     defaultSensitivity: 0.7,
     defaultDurationMs: 60,
     defaultCooldownMs: 500,
@@ -55,7 +56,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Strobe",
+    name: "Strobe", id: "STR",
     defaultSensitivity: 0.8,
     defaultDurationMs: 40,
     defaultCooldownMs: 800,
@@ -71,7 +72,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Corrupt",
+    name: "Corrupt", id: "CRP",
     defaultSensitivity: 0.6,
     defaultDurationMs: 120,
     defaultCooldownMs: 400,
@@ -90,7 +91,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Tremor",
+    name: "Tremor", id: "TRM",
     defaultSensitivity: 0.55,
     defaultDurationMs: 150,
     defaultCooldownMs: 250,
@@ -113,7 +114,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Phosphore",
+    name: "Phosphore", id: "PHS",
     defaultSensitivity: 0.5,
     defaultDurationMs: 200,
     defaultCooldownMs: 600,
@@ -132,7 +133,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Flicker",
+    name: "Flicker", id: "FLK",
     defaultSensitivity: 0.72,
     defaultDurationMs: 90,
     defaultCooldownMs: 350,
@@ -153,7 +154,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Shatter",
+    name: "Shatter", id: "SHT",
     defaultSensitivity: 0.68,
     defaultDurationMs: 110,
     defaultCooldownMs: 420,
@@ -176,7 +177,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Bloom Burst",
+    name: "Bloom Burst", id: "BBR",
     defaultSensitivity: 0.75,
     defaultDurationMs: 130,
     defaultCooldownMs: 550,
@@ -203,7 +204,7 @@ vec3 process(vec2 uv) {
 }`,
   },
   {
-    name: "Glitch Rows",
+    name: "Glitch Rows", id: "GRW",
     defaultSensitivity: 0.62,
     defaultDurationMs: 100,
     defaultCooldownMs: 380,
@@ -230,7 +231,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Flip Horizontal",
+    name: "Flip Horizontal", id: "FLH",
     defaultSensitivity: 0.5,
     defaultDurationMs: 200,
     defaultCooldownMs: 600,
@@ -243,7 +244,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Flip Vertical",
+    name: "Flip Vertical", id: "FLV",
     defaultSensitivity: 0.5,
     defaultDurationMs: 200,
     defaultCooldownMs: 600,
@@ -256,7 +257,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Mosaic Burst",
+    name: "Mosaic Burst", id: "MSB",
     defaultSensitivity: 0.6,
     defaultDurationMs: 150,
     defaultCooldownMs: 500,
@@ -277,7 +278,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Spin Vortex",
+    name: "Spin Vortex", id: "SVX",
     defaultSensitivity: 0.55,
     defaultDurationMs: 180,
     defaultCooldownMs: 700,
@@ -296,7 +297,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Psycho Shift",
+    name: "Psycho Shift", id: "PSH",
     defaultSensitivity: 0.65,
     defaultDurationMs: 120,
     defaultCooldownMs: 450,
@@ -316,7 +317,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Displacement Storm",
+    name: "Displacement Storm", id: "DST",
     defaultSensitivity: 0.6,
     defaultDurationMs: 200,
     defaultCooldownMs: 600,
@@ -332,7 +333,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Negative Burst",
+    name: "Negative Burst", id: "NGB",
     defaultSensitivity: 0.7,
     defaultDurationMs: 120,
     defaultCooldownMs: 400,
@@ -348,7 +349,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Radial Warp",
+    name: "Radial Warp", id: "RDW",
     defaultSensitivity: 0.65,
     defaultDurationMs: 150,
     defaultCooldownMs: 500,
@@ -370,7 +371,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Color Shift",
+    name: "Color Shift", id: "CSH",
     defaultSensitivity: 0.6,
     defaultDurationMs: 100,
     defaultCooldownMs: 350,
@@ -393,7 +394,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Zoom Pulse",
+    name: "Zoom Pulse", id: "ZMP",
     defaultSensitivity: 0.7,
     defaultDurationMs: 140,
     defaultCooldownMs: 450,
@@ -413,7 +414,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Interlace Jitter",
+    name: "Interlace Jitter", id: "IJT",
     defaultSensitivity: 0.55,
     defaultDurationMs: 110,
     defaultCooldownMs: 380,
@@ -436,7 +437,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Mirror Flip",
+    name: "Mirror Flip", id: "MFL",
     defaultSensitivity: 0.5,
     defaultDurationMs: 180,
     defaultCooldownMs: 600,
@@ -459,7 +460,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Frequency Bars",
+    name: "Frequency Bars", id: "FRB",
     defaultSensitivity: 0.62,
     defaultDurationMs: 95,
     defaultCooldownMs: 320,
@@ -478,7 +479,7 @@ vec3 process(vec2 uv) {
   },
 
   {
-    name: "Temporal Shift",
+    name: "Temporal Shift", id: "TSH",
     defaultSensitivity: 0.58,
     defaultDurationMs: 125,
     defaultCooldownMs: 480,

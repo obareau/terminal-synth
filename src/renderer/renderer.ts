@@ -845,7 +845,8 @@ updateMidiBadges();
 // --- Effect Sequencer ---
 
 interface SeqStep {
-  indices: number[];   // index dans fxState (peut être plusieurs via +)
+  indices: number[];   // index dans fxState
+  disIndices: number[]; // index dans disruptorState (préfixe D:)
   beats: number;       // durée en beats
   prob: number;        // probabilité 0-1
   alts: SeqStep[][];   // alternatives <A B C> (vide = pas d'alternance)
@@ -853,6 +854,9 @@ interface SeqStep {
 
 const FX_ID_MAP = new Map<string, number>(
   EFFECTS.map((e, i) => [e.id.toUpperCase(), i])
+);
+const DIS_ID_MAP = new Map<string, number>(
+  DISRUPTORS.map((d, i) => [d.id.toUpperCase(), i])
 );
 
 function parseSeqPattern(src: string): SeqStep[] {
@@ -872,7 +876,7 @@ function parseSeqToken(tok: string): SeqStep | null {
     const parts = inner.split(/\s+/);
     const alts = parts.map(p => { const s = parseSeqToken(p); return s ? [s] : []; }).filter(a => a.length > 0);
     if (!alts.length) return null;
-    return { indices: [], beats: 1, prob: 1, alts };
+    return { indices: [], disIndices: [], beats: 1, prob: 1, alts };
   }
   // Extraire *N et ?P où qu'ils soient, puis parser la partie noms
   const beatsM = tok.match(/\*(\d+(?:\.\d+)?)/);
@@ -880,10 +884,20 @@ function parseSeqToken(tok: string): SeqStep | null {
   const beats  = beatsM ? parseFloat(beatsM[1]!) : 1;
   const prob   = probM  ? parseInt(probM[1]!) / 100 : 1;
   const namePart = tok.replace(/\*\d+(?:\.\d+)?/, "").replace(/\?\d+/, "").trim();
-  const ids = namePart.toUpperCase().split("+").map(s => s.trim()).filter(Boolean);
-  const indices = ids.map(id => FX_ID_MAP.get(id) ?? -1).filter(i => i >= 0);
-  if (!indices.length) return null;
-  return { indices, beats, prob, alts: [] };
+  const atoms = namePart.toUpperCase().split("+").map(s => s.trim()).filter(Boolean);
+  const indices: number[] = [];
+  const disIndices: number[] = [];
+  for (const atom of atoms) {
+    if (atom.startsWith("D:")) {
+      const di = DIS_ID_MAP.get(atom.slice(2));
+      if (di !== undefined) disIndices.push(di);
+    } else {
+      const fi = FX_ID_MAP.get(atom);
+      if (fi !== undefined) indices.push(fi);
+    }
+  }
+  if (!indices.length && !disIndices.length) return null;
+  return { indices, disIndices, beats, prob, alts: [] };
 }
 
 let seqSteps: SeqStep[] = [];
@@ -894,12 +908,18 @@ let seqBeatStart = -1;        // beatIdx où le step courant a commencé
 let seqStepBeats = 0;         // durée du step courant
 let seqActiveIndices: number[] = [];  // effets ON par le sequenceur
 
-const seqInput  = document.getElementById("seq-input")  as HTMLInputElement;
-const seqPlayBtn = document.getElementById("seq-play")  as HTMLButtonElement;
+const seqInput   = document.getElementById("seq-input")   as HTMLInputElement;
+const seqPlayBtn = document.getElementById("seq-play")   as HTMLButtonElement;
+const seqStepLbl = document.getElementById("seq-step")   as HTMLSpanElement;
 
 function seqApplyStep(step: SeqStep, on: boolean): void {
   for (const idx of step.indices) {
     if (fxState[idx]) fxState[idx]!.enabled = on;
+  }
+  for (const idx of step.disIndices) {
+    if (disruptorState[idx]) disruptorState[idx]!.enabled = on;
+    if (disruptorCbs[idx]) disruptorCbs[idx]!.checked = on;
+    disruptorCbs[idx]?.closest(".fx")?.classList.toggle("on", on);
   }
 }
 
@@ -911,9 +931,16 @@ function seqResolveStep(step: SeqStep): SeqStep {
 }
 
 function seqReset(): void {
-  // Éteindre tous les effets gérés par le seq
+  // Éteindre effets et disruptors gérés par le seq
   for (const idx of seqActiveIndices) {
-    if (fxState[idx]) fxState[idx]!.enabled = false;
+    if (idx < EFFECTS.length) {
+      if (fxState[idx]) fxState[idx]!.enabled = false;
+    } else {
+      const di = idx - EFFECTS.length;
+      if (disruptorState[di]) disruptorState[di]!.enabled = false;
+      if (disruptorCbs[di]) disruptorCbs[di]!.checked = false;
+      disruptorCbs[di]?.closest(".fx")?.classList.remove("on");
+    }
   }
   seqActiveIndices = [];
   seqStepIdx = 0;
@@ -925,6 +952,7 @@ function seqStop(): void {
   seqPlaying = false;
   seqPlayBtn.textContent = "▶";
   seqPlayBtn.classList.remove("on");
+  seqStepLbl.textContent = "";
   seqReset();
 }
 
@@ -1609,9 +1637,11 @@ function frame(now: number): void {
       seqStepIdx++;
       seqBeatStart = beatIdx;
       seqStepBeats = step.beats;
+      const stepNum = ((seqStepIdx - 1) % seqSteps.length) + 1;
+      seqStepLbl.textContent = `${stepNum}/${seqSteps.length}`;
       if (Math.random() < step.prob) {
         seqApplyStep(step, true);
-        seqActiveIndices = [...step.indices];
+        seqActiveIndices = [...step.indices, ...step.disIndices.map(i => i + EFFECTS.length)];
       }
     }
   }
