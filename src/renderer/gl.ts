@@ -35,6 +35,7 @@ uniform sampler2D u_audio;
 uniform sampler2D u_text;
 uniform sampler2D u_fbmTex;
 uniform sampler2D u_media;
+uniform int u_mediaLoaded;
 float fftAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float waveAt(float x) { return texture(u_audio, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
 vec3 textCol(vec2 uv) { return texture(u_text, uv).rgb; }
@@ -109,7 +110,7 @@ const UNIFORM_NAMES = [
   "u_resolution","u_time","u_bass","u_mid","u_treble","u_level","u_amount",
   "u_beat","u_beatEnv",
   "u_p0","u_p1","u_p2","u_p3",
-  "u_prev","u_feedback","u_audio","u_text","u_fbmTex","u_media",
+  "u_prev","u_feedback","u_audio","u_text","u_fbmTex","u_media","u_mediaLoaded",
 ];
 
 // Bakes the same fbm the Industrial shaders used to compute per-pixel
@@ -174,6 +175,7 @@ export class Pipeline {
   private textTex:   WebGLTexture;
   private fbmTex:    WebGLTexture;
   private mediaTex:  WebGLTexture;
+  private mediaLoaded = false;
   private w = 0;
   private h = 0;
   private blendMode    = 0;
@@ -283,6 +285,7 @@ export class Pipeline {
     return t;
   }
   updateMedia(src: TexImageSource, pixelated = false): void {
+    this.mediaLoaded = true;
     const gl = this.gl;
     gl.bindTexture(gl.TEXTURE_2D, this.mediaTex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -299,6 +302,7 @@ export class Pipeline {
   }
   clearMedia(): void {
     const gl = this.gl;
+    this.mediaLoaded = false;
     gl.bindTexture(gl.TEXTURE_2D, this.mediaTex);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([8,8,8,255]));
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
@@ -436,6 +440,7 @@ export class Pipeline {
     gl.uniform1f(p.loc["u_beatEnv"]??null, u.beatEnv ?? 0);
     gl.uniform1f(p.loc["u_amount"]??null,  amount);
     for (let i = 0; i < 4; i++) gl.uniform1f(p.loc[`u_p${i}`]??null, this.genParams[i] ?? 0);
+    gl.uniform1i(p.loc["u_mediaLoaded"]??null, this.mediaLoaded ? 1 : 0);
   }
 
   private pass(p: Program, target: WebGLFramebuffer | null, u: Uniforms, amount: number, srcTex?: WebGLTexture | null): void {
