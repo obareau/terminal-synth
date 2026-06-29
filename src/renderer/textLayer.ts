@@ -43,9 +43,9 @@ class TextLayer {
   private audioEnergy: number = 0;
   private audioFrequency: number = 0;
   private wordLoopCount: number = 0;
-  private maxWordsPerSession: number = 6;
+  private maxWordsPerSession: number = 2;
   private disabledAt: number = 0;
-  private reappearDelay: number = 4000;
+  private reappearDelay: number = 25000;
 
   /**
    * Initialize text layer
