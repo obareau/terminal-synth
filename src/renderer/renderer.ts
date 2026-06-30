@@ -64,6 +64,10 @@ const audioDeviceBtn = $<HTMLButtonElement>("audio-device-btn");
 const audioDevicePanel = $("audio-device-panel");
 const audioDeviceList = $("audio-device-list");
 const audioDeviceClose = $<HTMLButtonElement>("audio-device-close");
+const webcamDeviceBtn = $<HTMLButtonElement>("webcam-device-btn");
+const webcamDevicePanel = $("webcam-device-panel");
+const webcamDeviceList = $("webcam-device-list");
+const webcamDeviceClose = $<HTMLButtonElement>("webcam-device-close");
 const asciiBtn = $<HTMLButtonElement>("ascii-toggle");
 const textBtn = $<HTMLButtonElement>("text-toggle");
 const fullBtn = $<HTMLButtonElement>("full");
@@ -135,6 +139,7 @@ let captureIntervalMs = 1000;
 let captureWidth = 64;
 let lastCaptureTime = 0;
 let mediaIsWebcam = false;
+let chosenWebcamDeviceId = "";
 let lastBeatIdx = -1; // détection de frontière de beat
 const bands: Bands = { bass: 0, mid: 0, treble: 0, level: 0 };
 const audioData = new Uint8Array(512); // 256 spectre + 256 waveform → texture audio
@@ -583,6 +588,61 @@ document.addEventListener("click", (e) => {
   if (!audioDevicePanel.contains(e.target as Node) && e.target !== audioDeviceBtn) {
     audioDevicePanel.style.display = "none";
   }
+  if (!webcamDevicePanel.contains(e.target as Node) && e.target !== webcamDeviceBtn) {
+    webcamDevicePanel.style.display = "none";
+  }
+});
+
+webcamDeviceBtn?.addEventListener("click", async () => {
+  if (webcamDevicePanel.style.display !== "none") {
+    webcamDevicePanel.style.display = "none";
+    return;
+  }
+  webcamDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Chargement…</div>';
+  webcamDevicePanel.style.display = "block";
+  let devices: MediaDeviceInfo[];
+  try {
+    const all = await navigator.mediaDevices.enumerateDevices();
+    devices = all.filter(d => d.kind === "videoinput");
+  } catch {
+    webcamDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--red)">Erreur d\'accès caméra</div>';
+    return;
+  }
+  if (devices.every(d => !d.label)) {
+    webcamDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Activez d\'abord la webcam pour voir les labels</div>';
+  }
+  webcamDeviceList.innerHTML = "";
+  for (const dev of devices) {
+    const btn = document.createElement("button");
+    const isActive = dev.deviceId === chosenWebcamDeviceId;
+    btn.style.cssText = `
+      display:block; width:100%; text-align:left; padding:7px 12px;
+      background:${isActive ? "var(--accent-bg)" : "none"};
+      color:${isActive ? "var(--accent)" : "var(--text-sec)"};
+      border:none; border-bottom:1px solid var(--border-subtle);
+      cursor:pointer; font-size:11px; font-family:var(--font-ui);
+    `;
+    btn.textContent = dev.label || `Caméra ${dev.deviceId.slice(0, 8)}`;
+    btn.addEventListener("click", async () => {
+      chosenWebcamDeviceId = dev.deviceId;
+      webcamDevicePanel.style.display = "none";
+      // Restart webcam with new device if already running
+      const webcamBtnEl = document.getElementById("media-webcam-btn") as HTMLButtonElement | null;
+      if (mediaIsWebcam && webcamBtnEl) {
+        webcamBtnEl.click();
+        await new Promise(r => setTimeout(r, 100));
+        webcamBtnEl.click();
+      }
+    });
+    webcamDeviceList.appendChild(btn);
+  }
+  if (devices.length === 0) {
+    webcamDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Aucune caméra détectée</div>';
+  }
+});
+
+webcamDeviceClose?.addEventListener("click", () => {
+  webcamDevicePanel.style.display = "none";
 });
 
 asciiBtn.addEventListener("click", () => {
@@ -1588,7 +1648,10 @@ recBtn.addEventListener("click", async () => {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const videoConstraints: MediaTrackConstraints = chosenWebcamDeviceId
+        ? { deviceId: { exact: chosenWebcamDeviceId } }
+        : {};
+      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
       webcamStream = stream;
       const vid = document.createElement("video");
       vid.srcObject = stream;

@@ -637,7 +637,10 @@
         <div class="ph" style="flex-shrink:0">Media — Image · Vidéo · Webcam</div>
         <div style="padding:8px;flex-shrink:0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
           <button id="media-load-btn" style="width:100%;padding:5px;font-size:10px;letter-spacing:0.1em">📂 CHARGER IMAGE / VIDÉO</button>
-          <button id="media-webcam-btn" style="width:100%;padding:5px;font-size:10px;letter-spacing:0.1em">📷 WEBCAM</button>
+          <div style="display:flex;gap:4px">
+            <button id="media-webcam-btn" style="flex:1;padding:5px;font-size:10px;letter-spacing:0.1em">📷 WEBCAM</button>
+            <button id="webcam-device-btn" aria-label="Choisir caméra" title="Choisir caméra" style="font-size:11px;padding:0 6px;flex-shrink:0">⚙</button>
+          </div>
           <div id="media-filename" style="font-size:9px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">aucun média chargé</div>
           <button id="media-clear-btn" style="width:100%;padding:3px;font-size:9px;display:none">✕ EFFACER MÉDIA</button>
           <input type="file" id="media-file-input" accept="image/*,video/*" style="display:none">
@@ -891,6 +894,25 @@
     <button id="audio-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
   </div>
   <div id="audio-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
+</div>
+
+<div id="webcam-device-panel" style="
+  display: none;
+  position: fixed;
+  top: 36px;
+  left: 8px;
+  width: 280px;
+  background: var(--ctrl);
+  border: 1px solid var(--border);
+  z-index: 1002;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+  font-family: var(--font-ui);
+">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;font-weight:700;letter-spacing:0.4px;color:var(--text);text-transform:uppercase">Caméra</span>
+    <button id="webcam-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+  </div>
+  <div id="webcam-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
 </div>
 <script>
 // Force initial paint before renderer.js loads
