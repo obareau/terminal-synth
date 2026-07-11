@@ -1012,19 +1012,17 @@ function loadLaunchpadProPreset(): void {
   for (let col = 1; col <= 6; col++) {
     preset.push({ note: 10 + col, target: { type: "scene", idx: col - 1 } });
   }
-  // Reste de la grille (rangée 1 cols 7-8 puis rangées 2-7) → un pad par disruptor
-  // (hold-to-glitch : Note On = actif, Note Off = relâché), jusqu'à épuisement de la grille
+  // Reste de la grille (rangée 1 cols 7-8 puis rangées 2-8) → un pad par disruptor
+  // (hold-to-glitch : Note On = actif, Note Off = relâché), jusqu'à épuisement de la grille.
+  // 58 pads disponibles pour 61 disruptors au total (49 builtin + 12 industrial) : les 3
+  // derniers restent non mappés faute de place, à défaut d'utiliser les boutons ronds.
   let disIdx = 0;
-  for (let row = 1; row <= 7 && disIdx < DISRUPTORS.length; row++) {
+  for (let row = 1; row <= 8 && disIdx < DISRUPTORS.length; row++) {
     const colStart = row === 1 ? 7 : 1;
     for (let col = colStart; col <= 8 && disIdx < DISRUPTORS.length; col++) {
       preset.push({ note: row * 10 + col, target: { type: "disruptorToggle", idx: disIdx } });
       disIdx++;
     }
-  }
-  // Rangée 8 (haut) → amounts effets 1-8 (pulse plein/nul au toucher du pad)
-  for (let col = 1; col <= 8; col++) {
-    preset.push({ note: 80 + col, target: { type: "effect", idx: col - 1 } });
   }
   applyMidiPreset(preset);
 }

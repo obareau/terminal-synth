@@ -2,6 +2,18 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [2.1.0] - 2026-07-11
+
+### 🎛️ Presets MIDI hardware (Launchkey Mini MK3, Launchpad Pro MK3)
+
+- **Mapping par note en plus des CC** dans le système MIDI Learn (`midi.ts`, `renderer.ts`) — les pads de contrôleurs comme le Launchkey/Launchpad envoient des Note On/Off, pas des CC. Le Learn manuel accepte maintenant aussi bien un CC qu'un pad. Rétrocompatible avec les presets CC déjà sauvegardés en localStorage.
+- **Preset LKEY** — Launchkey Mini MK3 : 8 knobs (Custom Mode 1 usine, CC 21-28) → amounts effets 1-8 ; pads en mode Session (Shift+Pad Mode, natif) → scènes S1-S6 + 10 disruptors en hold-to-glitch (Note On = actif, Note Off = relâché).
+- **Preset LPAD** — Launchpad Pro MK3 : grille 8×8 en layout Standalone "Programmer" (Setup + pad Programmer) → scènes S1-S6 + 58 des 61 disruptors, un pad par disruptor.
+- **Feedback LED** — les pads mappés par note s'allument selon l'état réel (scène active = bleu, disruptor actif = rouge), via Note On de sortie MIDI (pas de sysex nécessaire — confirmé identique sur les deux Programmer's Reference Guide Novation). Rafraîchi une fois par frame avec diff/cache pour éviter le spam MIDI ; rattrape aussi les changements déclenchés par l'autoplay.
+- **Sortie MIDI** — `MidiInput.sendNoteOn()` : première fois que l'app écrit du MIDI (jusqu'ici lecture seule).
+
+Testé en Chrome (rendu + activation MIDI + presets, 0 erreur console) ; validation des LEDs sur hardware réel prévue au prochain live.
+
 ## [2.0.0] - 2026-06-29
 
 ### ⚡ Autoplay — Architecture refonte complète

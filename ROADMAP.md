@@ -1,6 +1,6 @@
 # Terminal-Synth Roadmap
 
-## 🚀 Status: v2.0.0 — Active development
+## 🚀 Status: v2.1.0 — Active development
 
 Terminal-Synth est un synthétiseur visuel dark/industriel pour **performeur
 solo live**, piloté par **Adaptive Autoplay** (évolution music-reactive).
@@ -8,17 +8,27 @@ v2.0 marque la fin du feature freeze v1.9 et ouvre un nouveau cycle de
 développement centré sur la profondeur : plus de matière visuelle, un
 autoplay plus intelligent, et un outil de scène plus mature.
 
-**Philosophie** : solo performer, autoplay-first, pas de séquenceur MIDI
-Learn — ces choix restent permanents.
+**Philosophie** : solo performer, autoplay-first, pas de séquenceur pas-à-pas
+— ce choix reste permanent. Le MIDI Learn (v1.9.4+, avec presets hardware
+depuis v2.1.0) reste un complément de contrôle live, pas un remplacement de
+l'autoplay.
 
 ---
 
 ## Version History
 
+### v2.1.0 — Presets MIDI Launchkey Mini MK3 + Launchpad Pro MK3, feedback LED (2026-07-11)
+- **Mapping par note dans MIDI Learn** — en plus des CC/pitch bend, le système apprend maintenant aussi les pads (Note On/Off). Rétrocompatible avec les mappings CC existants.
+- **Preset LKEY** (Launchkey Mini MK3) — knobs Custom Mode 1 (CC 21-28) → amounts effets 1-8 ; pads Session (Shift+Pad Mode) → scènes S1-S6 + 10 disruptors hold-to-glitch.
+- **Preset LPAD** (Launchpad Pro MK3) — grille 8×8 Standalone Programmer layout → scènes S1-S6 + 58 des 61 disruptors, un pad chacun.
+- **Feedback LED** — pads mappés par note s'allument selon l'état actif (scène = bleu, disruptor = rouge) via Note On de sortie, sans sysex. Diffé/cache pour éviter le spam MIDI, rattrape aussi l'autoplay.
+- **Sortie MIDI ajoutée à `MidiInput`** (`sendNoteOn`) — jusqu'ici lecture seule.
+- Testé en Chrome (0 erreur console) ; validation LED sur hardware réel prévue au prochain live.
+
 ### v1.0.1-delta — Foundations
 - 91 generators with audio reactivity, effects/disruptors chain
-- Sequencer + MIDI Learn (16-step automation, CC mapping) — **since removed**
-  in favor of Adaptive Autoplay
+- 16-step MIDI sequencer (CC mapping) — **since removed** in favor of
+  Adaptive Autoplay. MIDI Learn was independently reintroduced at v1.9.4.
 
 ### v1.2.0 — Master Brightness
 - Audio-reactive fade-to-black via CSS filter, exponential moving average
@@ -147,5 +157,5 @@ abandonnées. Priorité : stabilité live avant tout.
 
 - Stabilité live > features. Reverter immédiatement si l'app crash au démarrage.
 - Workflow : reproduire → fix minimal → `npm test` → commit → push.
-- Pas de MIDI Learn, pas de séquenceur — permanents.
+- Pas de séquenceur pas-à-pas — permanent. (MIDI Learn existe depuis v1.9.4 : contrôle live complémentaire, pas un remplacement de l'autoplay.)
 - Binaires (`.deb`, `.exe`) : locaux uniquement, jamais sur GitHub.

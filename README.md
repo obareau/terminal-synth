@@ -3,11 +3,11 @@
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
 ![Status](https://img.shields.io/badge/status-Active%20Development-brightgreen)
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
-Terminal-Synth est un visualiseur audio pensé pour un **performeur solo** : pas de séquenceur, pas de MIDI Learn — l'**Adaptive Autoplay** pilote le show en réagissant à la musique (BPM, énergie, onsets), et le performeur supervise/influence en direct.
+Terminal-Synth est un visualiseur audio pensé pour un **performeur solo** : pas de séquenceur pas-à-pas — l'**Adaptive Autoplay** pilote le show en réagissant à la musique (BPM, énergie, onsets), le performeur supervise/influence en direct, et peut aussi piloter n'importe quel paramètre en MIDI Learn (CC, pad ou pitch bend), avec des presets un clic pour nanoKONTROL2, Launchkey Mini MK3 et Launchpad Pro MK3.
 
 Intègre **137 générateurs** (dont 20 Industrial monochrome, 14 Lofi/Chiptune, 3 Media), **57 effets post-process**, **61 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **détection BPM** (spectral flux + autocorrélation), **effets beat-réactifs** (pulse, glitch et disruptors synchronisés au tempo), **Adaptive Autoplay** (3 cycles indépendants — générateurs, effets, principal — avec transitions fade), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée adaptive-width, mode ASCII, et export vidéo WebM.
 
@@ -24,12 +24,12 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 ### Linux (Debian/Ubuntu)
 ```bash
 # Download and install .deb package
-sudo dpkg -i terminal-synth_2.0.0_amd64.deb
+sudo dpkg -i terminal-synth_2.1.0_amd64.deb
 terminal-synth
 ```
 
 ### Windows (Executable)
-1. Download `terminal-synth_2.0.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+1. Download `terminal-synth_2.1.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
 2. Run directly (no installation needed)
 3. Grant audio access when prompted
 
@@ -99,7 +99,10 @@ npm run package        # Build Windows .exe
 | **FFT Analysis** | Bass, Mid, Treble, Level en temps réel |
 | **System Audio** | Loopback (monitor) ou microphone — bouton ⚙ pour choisir le périphérique exact |
 | **Linux/PipeWire** | Détection automatique (monitor/loopback/moniteur) + picker manuel si ambiguïté |
-| **MIDI Input** | Contrôleurs MIDI bruts (pas de MIDI Learn) |
+| **MIDI Input** | Notes → énergie (mode organ/noise), mod wheel, pitch bend |
+| **MIDI Learn** (v1.9.4, notes v2.1.0) | CC, pad (note) ou pitch bend → n'importe quel paramètre (effets, disruptors, scènes, brightness, stage cap...). Clic droit = débind |
+| **Presets hardware** (v2.1.0) | Un clic : **KORG** (nanoKONTROL2), **LKEY** (Launchkey Mini MK3), **LPAD** (Launchpad Pro MK3 — grille 8×8, 58/61 disruptors) |
+| **Feedback LED** (v2.1.0) | Pads mappés par note s'allument selon l'état actif (scène = bleu, disruptor = rouge) — Launchkey/Launchpad |
 
 ### 💡 Master Brightness (v1.2)
 | Feature | Details |
@@ -323,5 +326,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v2.0.0** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer
+**v2.1.0** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer · MIDI Learn (CC/note/PB) + presets Launchkey/Launchpad
 *Dark industrial visual synthesizer for solo live performance — autoplay-driven, music-reactive.*
