@@ -108,7 +108,7 @@ npm run package        # Build Windows .exe
 | **System Audio** | Loopback (monitor) ou microphone — bouton ⚙ pour choisir le périphérique exact |
 | **Linux/PipeWire** | Détection automatique (monitor/loopback/moniteur) + picker manuel si ambiguïté |
 | **MIDI Input** | Notes → énergie (mode organ/noise), mod wheel, pitch bend |
-| **MIDI Learn** (v1.9.4, notes v2.1.0) | CC, pad (note) ou pitch bend → n'importe quel paramètre (effets, disruptors, scènes, brightness, stage cap...). Clic droit = débind |
+| **MIDI Learn** (v1.9.4, notes v2.1.0, générateurs v2.1.1) | CC, pad (note) ou pitch bend → n'importe quel paramètre : générateurs, effets, disruptors, scènes, brightness, stage cap... Clic droit = débind |
 | **Presets hardware** (v2.1.0) | Un clic : **KORG** (nanoKONTROL2), **LKEY** (Launchkey Mini MK3), **LPAD** (Launchpad Pro MK3 — grille 8×8, 58/61 disruptors) |
 | **Feedback LED** (v2.1.0) | Pads mappés par note s'allument selon l'état actif (scène = bleu, disruptor = rouge) — Launchkey/Launchpad |
 

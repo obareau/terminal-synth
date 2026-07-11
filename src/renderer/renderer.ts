@@ -234,6 +234,7 @@ SHADERS.forEach((s, i) => {
   const item = document.createElement("div");
   item.className = "src-item";
   item.dataset["idx"] = String(i);
+  item.dataset.midiTarget = `generator:${i}`;
   const key = SRC_KEYS[i] ?? "";
   item.innerHTML = `<span class="src-key">${key}</span><span class="src-name">${s.name}</span>`;
   item.addEventListener("click", () => selectSource(i));
@@ -778,6 +779,7 @@ type MidiTarget =
   | { type: "layerBOpacity" }
   | { type: "brightness" }
   | { type: "scene"; idx: number }
+  | { type: "generator"; idx: number }
   | { type: "effect"; idx: number }
   | { type: "disruptor"; idx: number }
   | { type: "disruptorToggle"; idx: number };
@@ -855,6 +857,7 @@ function parseMidiTarget(s: string): MidiTarget | null {
   if (s === "layerBOpacity") return { type: "layerBOpacity" };
   if (s === "brightness")   return { type: "brightness" };
   const sm = s.match(/^scene:(\d)$/);        if (sm) return { type: "scene",          idx: parseInt(sm[1]!) };
+  const gm = s.match(/^generator:(\d+)$/);   if (gm) return { type: "generator",      idx: parseInt(gm[1]!) };
   const em = s.match(/^effect:(\d+)$/);      if (em) return { type: "effect",         idx: parseInt(em[1]!) };
   const dm = s.match(/^disruptor:(\d+)$/);   if (dm) return { type: "disruptor",      idx: parseInt(dm[1]!) };
   const dt = s.match(/^disruptor:(\d+):toggle$/); if (dt) return { type: "disruptorToggle", idx: parseInt(dt[1]!) };
@@ -878,6 +881,9 @@ function applyMidiTarget(target: MidiTarget, value: number): void {
       break;
     case "scene":
       if (value >= 0.5) recallScene(target.idx);
+      break;
+    case "generator":
+      if (value >= 0.5) selectSource(target.idx);
       break;
     case "effect":
       if (fxState[target.idx]) {
@@ -909,6 +915,7 @@ function midiTargetToSelector(target: MidiTarget): string | null {
     case "layerBOpacity":     return "#layer-b-opacity";
     case "brightness":        return "#master-brightness-slider";
     case "scene":             return `.scene-slot[data-idx="${target.idx}"]`;
+    case "generator":         return `[data-midi-target="generator:${target.idx}"]`;
     case "effect":            return `[data-midi-target="effect:${target.idx}"]`;
     case "disruptor":         return `[data-midi-target="disruptor:${target.idx}"]`;
     case "disruptorToggle":   return `[data-midi-target="disruptor:${target.idx}:toggle"]`;
