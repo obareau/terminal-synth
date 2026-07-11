@@ -23,6 +23,8 @@ export class MidiInput {
   onProgramChange?: (pc: number) => void;
   private last = performance.now();
   private lastCC: { cc: number; value: number } | null = null;
+  private lastNote: { note: number; velocity: number } | null = null;
+  private outputs: MIDIOutputLike[] = [];
 
   stop(): void {
     this.enabled = false;
@@ -31,6 +33,7 @@ export class MidiInput {
     this.mod = 0;
     this.bend = 0;
     this.deviceName = "";
+    this.outputs = [];
   }
 
   async start(): Promise<void> {
@@ -45,11 +48,19 @@ export class MidiInput {
         inp.onmidimessage = (e) => this.onMessage(e.data);
         if (!name && inp.name) name = inp.name;
       });
+      this.outputs = [];
+      access.outputs.forEach((out) => this.outputs.push(out));
       this.deviceName = name || "MIDI";
     };
     bind();
     access.onstatechange = bind;
     this.enabled = true;
+  }
+
+  /** Éclaire un pad (Note On = couleur, vélocité 0 = éteint) sur toutes les sorties MIDI connectées. */
+  sendNoteOn(note: number, velocity: number, channel = 0): void {
+    const status = 0x90 | (channel & 0x0f);
+    for (const out of this.outputs) out.send([status, note & 0x7f, velocity & 0x7f]);
   }
 
   private onMessage(data: Uint8Array | null): void {
@@ -66,9 +77,11 @@ export class MidiInput {
         } else {
           this.held.delete(d1);
         }
+        this.lastNote = { note: d1, velocity: d2 }; // pour MIDI Learn (pads, etc.)
         break;
       case 0x80: // note off
         this.held.delete(d1);
+        this.lastNote = { note: d1, velocity: 0 };
         break;
       case 0xa0: // aftertouch polyphonique
         this.mod = Math.max(this.mod, d2 / 127);
@@ -116,6 +129,12 @@ export class MidiInput {
     this.lastCC = null;
     return cc;
   }
+
+  getAndClearLastNote(): { note: number; velocity: number } | null {
+    const n = this.lastNote;
+    this.lastNote = null;
+    return n;
+  }
 }
 
 // --- Types Web MIDI minimaux (évite une dépendance @types/webmidi) ---
@@ -126,7 +145,11 @@ interface MIDIInputLike {
   name: string | null;
   onmidimessage: ((e: MIDIMessage) => void) | null;
 }
+interface MIDIOutputLike {
+  send: (data: number[]) => void;
+}
 interface MIDIAccessLike {
   inputs: { forEach: (cb: (input: MIDIInputLike) => void) => void };
+  outputs: { forEach: (cb: (output: MIDIOutputLike) => void) => void };
   onstatechange: (() => void) | null;
 }
