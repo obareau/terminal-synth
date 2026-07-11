@@ -57,6 +57,12 @@ function createWindow(): void {
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
     cb(permission === "media" || permission === "midi" || permission === "midiSysex");
   });
+  // Requis EN PLUS du request handler pour le Web MIDI dans Electron : Chromium fait
+  // aussi des checks synchrones — sans ce handler, l'énumération des ports échoue en
+  // silence (liste vide, aucune erreur) alors que requestMIDIAccess() résout.
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => {
+    return permission === "media" || permission === "midi" || permission === "midiSysex";
+  });
 
   // getDisplayMedia sans picker : premier écran + audio loopback
   // (fallback Windows/macOS uniquement — le renderer ne l'appelle pas sous

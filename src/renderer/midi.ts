@@ -24,10 +24,15 @@ export class MidiInput {
   private last = performance.now();
   private lastCC: { cc: number; value: number } | null = null;
   private lastNote: { note: number; velocity: number } | null = null;
+  /** timestamp du dernier message reçu — pour le témoin d'activité UI. */
+  lastActivityAt = 0;
   private outputs: MIDIOutputLike[] = [];
   private access: MIDIAccessLike | null = null;
-  /** Port choisi par l'utilisateur (id natif Web MIDI) ; undefined = tous les ports fusionnés. */
-  selectedInputId: string | undefined;
+  /** Port choisi par l'utilisateur, par NOM (les ids Web MIDI changent à chaque
+   *  reconnexion USB sous Chromium/Linux) ; undefined = tous les ports fusionnés. */
+  selectedInputName: string | undefined;
+  /** Notifié après chaque (re)bind de ports — connexion/déconnexion USB comprise. */
+  onPortsChanged?: () => void;
 
   stop(): void {
     // Détache les handlers de la session en cours — sinon un nouveau start() empile un
@@ -43,14 +48,14 @@ export class MidiInput {
     this.access = null;
   }
 
-  async start(deviceId?: string): Promise<void> {
+  async start(portName?: string): Promise<void> {
     const nav = navigator as unknown as {
       requestMIDIAccess?: (opts?: { sysex: boolean }) => Promise<MIDIAccessLike>;
     };
     if (!nav.requestMIDIAccess) throw new Error("Web MIDI indisponible");
     const access = await nav.requestMIDIAccess({ sysex: false });
     this.access = access;
-    this.selectedInputId = deviceId;
+    this.selectedInputName = portName;
     const bind = (): void => this.rebind();
     bind();
     access.onstatechange = bind;
@@ -65,9 +70,9 @@ export class MidiInput {
     return out;
   }
 
-  /** Change le port actif sans redemander l'accès Web MIDI. */
-  setInput(deviceId: string | undefined): void {
-    this.selectedInputId = deviceId;
+  /** Change le port actif (par nom) sans redemander l'accès Web MIDI. */
+  setInput(portName: string | undefined): void {
+    this.selectedInputName = portName;
     this.rebind();
   }
 
@@ -78,21 +83,29 @@ export class MidiInput {
       inp.onmidimessage = null;
       inputs.push(inp);
     });
-    const target = this.selectedInputId ? inputs.find((i) => i.id === this.selectedInputId) : undefined;
-    let name = "";
+    // "Midi Through" (loopback ALSA) rejoue notre propre sortie LED comme entrée →
+    // messages fantômes + le vrai contrôleur jamais écouté s'il arrive après dans la liste.
+    const isThrough = (n: string | null): boolean => !!n && /through/i.test(n);
+    const target = this.selectedInputName
+      ? inputs.find((i) => i.name === this.selectedInputName)
+      : undefined;
+    let bound: MIDIInputLike[];
     if (target) {
-      target.onmidimessage = (e) => this.onMessage(e.data);
-      name = target.name || "MIDI";
+      bound = [target];
     } else {
-      // Pas de sélection (ou port débranché) → fusionne tous les ports disponibles.
-      inputs.forEach((inp) => {
-        inp.onmidimessage = (e) => this.onMessage(e.data);
-        if (!name && inp.name) name = inp.name;
-      });
+      // Pas de sélection (ou port débranché) → fusionne les vrais ports, Through exclu.
+      bound = inputs.filter((i) => !isThrough(i.name));
+      if (!bound.length) bound = inputs;
     }
+    for (const inp of bound) inp.onmidimessage = (e) => this.onMessage(e.data);
     this.outputs = [];
-    this.access.outputs.forEach((out) => this.outputs.push(out));
-    this.deviceName = name || "MIDI";
+    this.access.outputs.forEach((out) => {
+      if (!isThrough(out.name)) this.outputs.push(out);
+    });
+    this.deviceName = bound[0]?.name || "MIDI";
+    // Diagnostic connexion : visible en console (F12) à chaque changement d'état USB.
+    console.log(`[MIDI] ports: ${inputs.map((i) => `${i.name}${bound.includes(i) ? " ✓" : ""}`).join(" · ") || "aucun"}`);
+    this.onPortsChanged?.();
   }
 
   /** Éclaire un pad (Note On = couleur, vélocité 0 = éteint) sur toutes les sorties MIDI connectées. */
@@ -103,6 +116,7 @@ export class MidiInput {
 
   private onMessage(data: Uint8Array | null): void {
     if (!data || data.length < 2) return;
+    this.lastActivityAt = performance.now();
     const status = data[0] & 0xf0;
     const d1 = data[1];
     const d2 = data[2] ?? 0;
@@ -185,6 +199,7 @@ interface MIDIInputLike {
   onmidimessage: ((e: MIDIMessage) => void) | null;
 }
 interface MIDIOutputLike {
+  name: string | null;
   send: (data: number[]) => void;
 }
 interface MIDIAccessLike {

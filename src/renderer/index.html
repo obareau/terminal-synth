@@ -241,6 +241,8 @@
     body.midi-learn [data-midi-target] { box-shadow:0 0 0 2px rgba(0,140,255,0.55);cursor:crosshair; }
     body.midi-learn [data-midi-target].learn-selected { box-shadow:0 0 0 2px #0088ff,0 0 10px rgba(0,140,255,0.5);background:rgba(0,100,255,0.1); }
     [data-midi-target].midi-bound { box-shadow:0 0 0 1px rgba(0,180,255,0.7); }
+    /* Témoin d'activité MIDI (clignote quand des messages arrivent, façon DAW) */
+    button#midi.midi-activity { border-color: var(--terminal-green); box-shadow: 0 0 10px rgba(74,246,38,0.6); }
 
     /* ── Left panel: generators with tabs ────────────────────────── */
     #left-panel {
@@ -527,11 +529,11 @@
     <button id="audio-device-btn" aria-label="Choisir périphérique audio" title="Choisir périphérique audio" style="font-size:11px;padding:0 6px">⚙</button>
     <div class="sep"></div>
     <button id="midi" aria-label="MIDI Toggle" title="MIDI [M]">MIDI</button>
+    <button id="midi-device-btn" aria-label="Choisir port MIDI" title="Choisir port MIDI" style="display:none;font-size:11px;padding:0 6px">⚙</button>
     <select id="midi-mode" aria-label="MIDI Mode">
       <option value="organ">organ</option>
       <option value="noise">noise</option>
     </select>
-    <button id="midi-device-btn" aria-label="Choisir port MIDI" title="Choisir port MIDI" style="display:none;font-size:11px;padding:0 6px">⚙</button>
     <button id="midi-learn-btn" title="MIDI Learn — clic sur un paramètre puis bouge un CC/PB · clic droit = débind" style="display:none;font-size:10px;letter-spacing:0.3px">LEARN</button>
     <button id="midi-korg-btn" title="Charger preset nanoKONTROL2 (Scene 1 factory)" style="display:none;font-size:10px;letter-spacing:0.3px">KORG</button>
     <button id="midi-launchkey-btn" title="Charger preset Launchkey Mini MK3 (knobs Custom 1 + pads Session — Shift+Pad Mode)" style="display:none;font-size:10px;letter-spacing:0.3px">LKEY</button>

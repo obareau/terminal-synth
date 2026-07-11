@@ -126,7 +126,9 @@ let masterBrightnessAmount = 0.5;
 let smoothedAudioLevel = 0; // Exponential moving average for smooth fading
 let chosenAudioDeviceId: string | undefined;
 let chosenAudioDeviceLabel: string | undefined;
-let chosenMidiDeviceId: string | undefined;
+const MIDI_PORT_KEY = "ts-midi-port";
+let chosenMidiPortName: string | undefined;
+try { chosenMidiPortName = localStorage.getItem(MIDI_PORT_KEY) ?? undefined; } catch {}
 
 // Beat phase & envelope — calculés depuis le BPM détecté chaque frame
 let beatPhase  = 0;   // 0→1 sawtooth par beat (pour shaders)
@@ -691,7 +693,10 @@ midiBtn.addEventListener("click", async () => {
     exitMidiLearn();
   } else {
     try {
-      await midi.start(chosenMidiDeviceId);
+      await midi.start(chosenMidiPortName);
+      midi.onPortsChanged = () => {
+        if (midi.enabled) midiBtn.textContent = "🎛 " + midi.deviceName;
+      };
       midiBtn.textContent = "🎛 " + midi.deviceName;
       midiBtn.classList.add("on");
       midiDeviceBtn.style.display = "";
@@ -740,17 +745,19 @@ midiDeviceBtn?.addEventListener("click", () => {
     midiDeviceList.appendChild(btn);
   };
 
-  mkBtn("Tous les ports (fusion)", chosenMidiDeviceId === undefined, () => {
-    chosenMidiDeviceId = undefined;
+  mkBtn("Tous les ports (fusion)", chosenMidiPortName === undefined, () => {
+    chosenMidiPortName = undefined;
+    try { localStorage.removeItem(MIDI_PORT_KEY); } catch {}
     midi.setInput(undefined);
     midiBtn.textContent = "🎛 " + midi.deviceName;
     midiDevicePanel.style.display = "none";
   });
 
   for (const dev of inputs) {
-    mkBtn(dev.name, dev.id === chosenMidiDeviceId, () => {
-      chosenMidiDeviceId = dev.id;
-      midi.setInput(dev.id);
+    mkBtn(dev.name, dev.name === chosenMidiPortName, () => {
+      chosenMidiPortName = dev.name;
+      try { localStorage.setItem(MIDI_PORT_KEY, dev.name); } catch {}
+      midi.setInput(dev.name);
       midiBtn.textContent = "🎛 " + midi.deviceName;
       midiDevicePanel.style.display = "none";
     });
@@ -1995,6 +2002,8 @@ function frame(now: number): void {
 
   // MIDI = contrôle : on replie l'énergie/mod dans les canaux existants.
   midi.update();
+  // Témoin d'activité façon DAW : le bouton s'illumine tant que des messages arrivent.
+  midiBtn.classList.toggle("midi-activity", midi.enabled && performance.now() - midi.lastActivityAt < 150);
   if (midi.enabled) {
     const lastCC = midi.getAndClearLastCC();
     const lastNote = midi.getAndClearLastNote();
