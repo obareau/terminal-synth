@@ -25,6 +25,9 @@ export class MidiInput {
   private lastCC: { cc: number; value: number } | null = null;
   private lastNote: { note: number; velocity: number } | null = null;
   private outputs: MIDIOutputLike[] = [];
+  private access: MIDIAccessLike | null = null;
+  /** Port choisi par l'utilisateur (id natif Web MIDI) ; undefined = tous les ports fusionnés. */
+  selectedInputId: string | undefined;
 
   stop(): void {
     this.enabled = false;
@@ -34,27 +37,59 @@ export class MidiInput {
     this.bend = 0;
     this.deviceName = "";
     this.outputs = [];
+    this.access = null;
   }
 
-  async start(): Promise<void> {
+  async start(deviceId?: string): Promise<void> {
     const nav = navigator as unknown as {
       requestMIDIAccess?: (opts?: { sysex: boolean }) => Promise<MIDIAccessLike>;
     };
     if (!nav.requestMIDIAccess) throw new Error("Web MIDI indisponible");
     const access = await nav.requestMIDIAccess({ sysex: false });
-    const bind = (): void => {
-      let name = "";
-      access.inputs.forEach((inp) => {
-        inp.onmidimessage = (e) => this.onMessage(e.data);
-        if (!name && inp.name) name = inp.name;
-      });
-      this.outputs = [];
-      access.outputs.forEach((out) => this.outputs.push(out));
-      this.deviceName = name || "MIDI";
-    };
+    this.access = access;
+    this.selectedInputId = deviceId;
+    const bind = (): void => this.rebind();
     bind();
     access.onstatechange = bind;
     this.enabled = true;
+  }
+
+  /** Liste les ports d'entrée détectés (pour le sélecteur UI). Nécessite `start()` déjà appelé. */
+  listInputs(): { id: string; name: string }[] {
+    if (!this.access) return [];
+    const out: { id: string; name: string }[] = [];
+    this.access.inputs.forEach((inp) => out.push({ id: inp.id, name: inp.name || "MIDI" }));
+    return out;
+  }
+
+  /** Change le port actif sans redemander l'accès Web MIDI. */
+  setInput(deviceId: string | undefined): void {
+    this.selectedInputId = deviceId;
+    this.rebind();
+  }
+
+  private rebind(): void {
+    if (!this.access) return;
+    const inputs: MIDIInputLike[] = [];
+    this.access.inputs.forEach((inp) => {
+      inp.onmidimessage = null;
+      inputs.push(inp);
+    });
+    const target = this.selectedInputId ? inputs.find((i) => i.id === this.selectedInputId) : undefined;
+    let name = "";
+    if (target) {
+      target.onmidimessage = (e) => this.onMessage(e.data);
+      name = target.name || "MIDI";
+    } else {
+      // Pas de sélection (ou port débranché) → fusionne tous les ports disponibles.
+      inputs.forEach((inp) => {
+        inp.onmidimessage = (e) => this.onMessage(e.data);
+        if (!name && inp.name) name = inp.name;
+      });
+    }
+    this.outputs = [];
+    this.access.outputs.forEach((out) => this.outputs.push(out));
+    this.deviceName = name || "MIDI";
   }
 
   /** Éclaire un pad (Note On = couleur, vélocité 0 = éteint) sur toutes les sorties MIDI connectées. */
@@ -142,6 +177,7 @@ interface MIDIMessage {
   data: Uint8Array | null;
 }
 interface MIDIInputLike {
+  id: string;
   name: string | null;
   onmidimessage: ((e: MIDIMessage) => void) | null;
 }

@@ -78,6 +78,10 @@ const layerBOpa = $<HTMLInputElement>("layer-b-opacity");
 layerBOpa.dataset.midiTarget = "layerBOpacity";
 const midiBtn = $<HTMLButtonElement>("midi");
 const midiModeSel = $<HTMLSelectElement>("midi-mode");
+const midiDeviceBtn = $<HTMLButtonElement>("midi-device-btn");
+const midiDevicePanel = $("midi-device-panel");
+const midiDeviceList = $("midi-device-list");
+const midiDeviceClose = $<HTMLButtonElement>("midi-device-close");
 const meter = $("meter");
 const chain = $("chain");
 const masterBrightnessToggle = $<HTMLButtonElement>("master-brightness-toggle");
@@ -122,6 +126,7 @@ let masterBrightnessAmount = 0.5;
 let smoothedAudioLevel = 0; // Exponential moving average for smooth fading
 let chosenAudioDeviceId: string | undefined;
 let chosenAudioDeviceLabel: string | undefined;
+let chosenMidiDeviceId: string | undefined;
 
 // Beat phase & envelope — calculés depuis le BPM détecté chaque frame
 let beatPhase  = 0;   // 0→1 sawtooth par beat (pour shaders)
@@ -591,6 +596,9 @@ document.addEventListener("click", (e) => {
   if (!webcamDevicePanel.contains(e.target as Node) && e.target !== webcamDeviceBtn) {
     webcamDevicePanel.style.display = "none";
   }
+  if (!midiDevicePanel.contains(e.target as Node) && e.target !== midiDeviceBtn) {
+    midiDevicePanel.style.display = "none";
+  }
 });
 
 webcamDeviceBtn?.addEventListener("click", async () => {
@@ -674,6 +682,8 @@ midiBtn.addEventListener("click", async () => {
     midi.stop();
     midiBtn.textContent = "🎛 MIDI";
     midiBtn.classList.remove("on");
+    midiDeviceBtn.style.display = "none";
+    midiDevicePanel.style.display = "none";
     midiLearnBtn.style.display = "none";
     midiKorgBtn.style.display = "none";
     midiLaunchkeyBtn.style.display = "none";
@@ -681,9 +691,10 @@ midiBtn.addEventListener("click", async () => {
     exitMidiLearn();
   } else {
     try {
-      await midi.start();
+      await midi.start(chosenMidiDeviceId);
       midiBtn.textContent = "🎛 " + midi.deviceName;
       midiBtn.classList.add("on");
+      midiDeviceBtn.style.display = "";
       midiLearnBtn.style.display = "";
       midiKorgBtn.style.display = "";
       midiLaunchkeyBtn.style.display = "";
@@ -696,6 +707,58 @@ midiBtn.addEventListener("click", async () => {
 });
 midiModeSel.addEventListener("change", () => {
   midi.mode = midiModeSel.value as MidiMode;
+});
+
+// MIDI port picker (plusieurs interfaces MIDI branchées → choisir la bonne au lieu de tout fusionner)
+midiDeviceBtn?.addEventListener("click", () => {
+  if (midiDevicePanel.style.display !== "none") {
+    midiDevicePanel.style.display = "none";
+    return;
+  }
+  midiDevicePanel.style.display = "block";
+  if (!midi.enabled) {
+    midiDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Activez MIDI d\'abord</div>';
+    return;
+  }
+  const inputs = midi.listInputs();
+  midiDeviceList.innerHTML = "";
+
+  const mkBtn = (label: string, isActive: boolean, onClick: () => void): void => {
+    const btn = document.createElement("button");
+    btn.style.cssText = `
+      display:block; width:100%; text-align:left; padding:7px 12px;
+      background:${isActive ? "var(--accent-bg)" : "none"};
+      color:${isActive ? "var(--accent)" : "var(--text-sec)"};
+      border:none; border-bottom:1px solid var(--border-subtle);
+      cursor:pointer; font-size:11px; font-family:var(--font-ui);
+    `;
+    btn.textContent = label;
+    btn.addEventListener("click", onClick);
+    midiDeviceList.appendChild(btn);
+  };
+
+  mkBtn("Tous les ports (fusion)", chosenMidiDeviceId === undefined, () => {
+    chosenMidiDeviceId = undefined;
+    midi.setInput(undefined);
+    midiBtn.textContent = "🎛 " + midi.deviceName;
+    midiDevicePanel.style.display = "none";
+  });
+
+  for (const dev of inputs) {
+    mkBtn(dev.name, dev.id === chosenMidiDeviceId, () => {
+      chosenMidiDeviceId = dev.id;
+      midi.setInput(dev.id);
+      midiBtn.textContent = "🎛 " + midi.deviceName;
+      midiDevicePanel.style.display = "none";
+    });
+  }
+  if (inputs.length === 0) {
+    midiDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Aucun port MIDI détecté</div>';
+  }
+});
+
+midiDeviceClose?.addEventListener("click", () => {
+  midiDevicePanel.style.display = "none";
 });
 
 // --- MIDI Learn ---
@@ -759,6 +822,22 @@ function applyMidiPreset(preset: MidiCC[]): void {
   saveMidiMap();
   updateMidiBadges();
   refreshMidiPadColors();
+}
+
+/** Flash vert (couleur 21, palette Novation standard) sur tous les pads mappés → confirmation
+ *  visuelle que la connexion MIDI + le preset (LKEY/LPAD) sont bien reconnus par le hardware. */
+function flashMidiConnectOk(preset: MidiCC[]): void {
+  if (!midi.enabled) return;
+  const notes = new Set<number>();
+  for (const m of preset) if (m.note !== undefined) notes.add(m.note);
+  for (const note of notes) {
+    midi.sendNoteOn(note, 21, 0);
+    midiPadColorCache.set(note, 21);
+  }
+  setTimeout(() => {
+    midiPadColorCache.clear();
+    refreshMidiPadColors();
+  }, 700);
 }
 
 function parseMidiTarget(s: string): MidiTarget | null {
@@ -993,6 +1072,7 @@ function loadLaunchkeyMiniPreset(): void {
     { note: 119, target: { type: "disruptorToggle", idx: 9 } },
   ];
   applyMidiPreset(preset);
+  flashMidiConnectOk(preset);
 }
 
 const midiLaunchkeyBtn = document.getElementById("midi-launchkey-btn") as HTMLButtonElement;
@@ -1025,6 +1105,7 @@ function loadLaunchpadProPreset(): void {
     }
   }
   applyMidiPreset(preset);
+  flashMidiConnectOk(preset);
 }
 
 const midiLaunchpadBtn = document.getElementById("midi-launchpad-btn") as HTMLButtonElement;

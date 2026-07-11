@@ -531,6 +531,7 @@
       <option value="organ">organ</option>
       <option value="noise">noise</option>
     </select>
+    <button id="midi-device-btn" aria-label="Choisir port MIDI" title="Choisir port MIDI" style="display:none;font-size:11px;padding:0 6px">⚙</button>
     <button id="midi-learn-btn" title="MIDI Learn — clic sur un paramètre puis bouge un CC/PB · clic droit = débind" style="display:none;font-size:10px;letter-spacing:0.3px">LEARN</button>
     <button id="midi-korg-btn" title="Charger preset nanoKONTROL2 (Scene 1 factory)" style="display:none;font-size:10px;letter-spacing:0.3px">KORG</button>
     <button id="midi-launchkey-btn" title="Charger preset Launchkey Mini MK3 (knobs Custom 1 + pads Session — Shift+Pad Mode)" style="display:none;font-size:10px;letter-spacing:0.3px">LKEY</button>
@@ -915,6 +916,25 @@
     <button id="webcam-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
   </div>
   <div id="webcam-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
+</div>
+
+<div id="midi-device-panel" style="
+  display: none;
+  position: fixed;
+  top: 36px;
+  left: 8px;
+  width: 300px;
+  background: var(--ctrl);
+  border: 1px solid var(--border);
+  z-index: 1002;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+  font-family: var(--font-ui);
+">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;font-weight:700;letter-spacing:0.4px;color:var(--text);text-transform:uppercase">Port MIDI</span>
+    <button id="midi-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+  </div>
+  <div id="midi-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
 </div>
 <script>
 // Force initial paint before renderer.js loads
