@@ -1,6 +1,6 @@
 # Maintainer: Olivier Bareau <olivier.bareau@gmail.com>
 pkgname=terminal-synth
-pkgver=2.1.0
+pkgver=2.1.1
 pkgrel=1
 pkgdesc="Synthétiseur visuel dark/industriel — WebGL2 audio-réactif, Adaptive Autoplay, MIDI Learn (CC/note/pitch bend) avec presets nanoKONTROL2 / Launchkey Mini MK3 / Launchpad Pro MK3"
 arch=('x86_64')
@@ -15,7 +15,7 @@ source=(
   "terminal-synth.png"
 )
 sha256sums=(
-  'e639336c644653744e7dcc5afd95055a7daa0d628f54110c3bf1ff6c339c1b07'
+  '3ad901fed9b16b0d64f08c855cd5008ffc5bbf002b5b480cfe93f2c7709ce121'
   'd5c6af04ed589bd1ca62f19f75321a197f06f4c9531114ce7e022312971336e0'
   '914c52e97d364b036296a04cb4af693330903c618f8baa82235cbef55fe1c2ff'
 )
