@@ -2,6 +2,15 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [2.1.1] - 2026-07-11
+
+### 🐛 Fix packaging Electron (electron-builder 26.15.0)
+
+- **`electron-builder.json` invalide** — le champ `arch` placé directement sous `linux`/`mac` (au lieu d'être imbriqué dans chaque target, comme déjà fait pour `win`) faisait échouer la validation de schéma d'electron-builder 26.15.0. `npm run package`, `package:mac` et `package:linux` étaient cassés silencieusement.
+- **Config dupliquée et divergente** — `package.json` avait son propre champ `"build"` (utilisé par défaut, `electron-builder.json` à la racine étant en réalité ignoré) avec un target `linux` différent (`deb`/"Graphics" vs `AppImage`/"Utility"). Supprimé le doublon dans `package.json`, fusionné le bloc `deb` (dépendances Debian) manquant dans `electron-builder.json`, et les scripts `package:*` passent maintenant `--config electron-builder.json` explicitement.
+- **Ajout d'un PKGBUILD Arch/Garuda** (`packaging/archlinux/`) — paquet pacman natif (non publié sur l'AUR), voir son README pour l'usage. Build validé de bout en bout (`tsc` + `esbuild` + `electron-builder --linux dir`) sur Garuda Linux.
+- Note : `npm run package:deb` reste cassé spécifiquement sur Arch/Garuda (le `fpm` embarqué par electron-builder pour générer les `.deb` nécessite `libcrypt.so.1`, absent sur ces distros) — non lié au fix ci-dessus, le `.deb` reste pensé pour un host Debian/Ubuntu.
+
 ## [2.1.0] - 2026-07-11
 
 ### 🎛️ Presets MIDI hardware (Launchkey Mini MK3, Launchpad Pro MK3)

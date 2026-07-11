@@ -1,6 +1,6 @@
 {
   "name": "terminal-synth",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Synthé visuel dark/industriel — shaders GLSL réactifs au son et au MIDI, esthétique terminal/ASCII, live + export. Style VS (Imaginando).",
   "author": "Olivier Bareau",
   "license": "MIT",
@@ -11,46 +11,10 @@
     "dev": "tsx build.ts && electron .",
     "test": "jest",
     "test:watch": "jest --watch",
-    "package": "tsx build.ts --production && electron-builder --win portable",
-    "package:mac": "tsx build.ts --production && electron-builder --mac",
-    "package:linux": "tsx build.ts --production && electron-builder --linux",
-    "package:deb": "tsx build.ts --production && electron-builder --linux deb"
-  },
-  "build": {
-    "appId": "com.robotariis.terminal-synth",
-    "productName": "terminal-synth",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**",
-      "package.json"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "linux": {
-      "target": [
-        "deb"
-      ],
-      "category": "Graphics"
-    },
-    "deb": {
-      "depends": [
-        "libx11-6",
-        "libxss1",
-        "libnss3"
-      ],
-      "maintainer": "Olivier Bareau <olivier.bareau@gmail.com>",
-      "priority": "optional"
-    }
+    "package": "tsx build.ts --production && electron-builder --config electron-builder.json --win portable",
+    "package:mac": "tsx build.ts --production && electron-builder --config electron-builder.json --mac",
+    "package:linux": "tsx build.ts --production && electron-builder --config electron-builder.json --linux",
+    "package:deb": "tsx build.ts --production && electron-builder --config electron-builder.json --linux deb"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1.5",

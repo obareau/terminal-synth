@@ -3,7 +3,7 @@
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
 ![Status](https://img.shields.io/badge/status-Active%20Development-brightgreen)
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
@@ -24,12 +24,20 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 ### Linux (Debian/Ubuntu)
 ```bash
 # Download and install .deb package
-sudo dpkg -i terminal-synth_2.1.0_amd64.deb
+sudo dpkg -i terminal-synth_2.1.1_amd64.deb
 terminal-synth
 ```
 
+### Linux (Arch/Garuda) — PKGBUILD
+```bash
+git clone https://github.com/obareau/terminal-synth.git
+cd terminal-synth/packaging/archlinux
+makepkg -si
+```
+Voir [`packaging/archlinux/README.md`](packaging/archlinux/README.md) pour le détail. Non publié sur l'AUR pour l'instant — usage local.
+
 ### Windows (Executable)
-1. Download `terminal-synth_2.1.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+1. Download `terminal-synth_2.1.1.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
 2. Run directly (no installation needed)
 3. Grant audio access when prompted
 
@@ -326,5 +334,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v2.1.0** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer · MIDI Learn (CC/note/PB) + presets Launchkey/Launchpad
+**v2.1.1** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer · MIDI Learn (CC/note/PB) + presets Launchkey/Launchpad
 *Dark industrial visual synthesizer for solo live performance — autoplay-driven, music-reactive.*

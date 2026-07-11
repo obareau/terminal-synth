@@ -1,0 +1,26 @@
+pkgbase = terminal-synth
+	pkgdesc = Synthétiseur visuel dark/industriel — WebGL2 audio-réactif, Adaptive Autoplay, MIDI Learn (CC/note/pitch bend) avec presets nanoKONTROL2 / Launchkey Mini MK3 / Launchpad Pro MK3
+	pkgver = 2.1.0
+	pkgrel = 1
+	url = https://github.com/obareau/terminal-synth
+	arch = x86_64
+	license = MIT
+	makedepends = nodejs
+	makedepends = npm
+	depends = gtk3
+	depends = nss
+	depends = libxss
+	depends = libxtst
+	depends = alsa-lib
+	depends = at-spi2-core
+	depends = libdrm
+	depends = mesa
+	options = !strip
+	source = terminal-synth-2.1.0.tar.gz::https://github.com/obareau/terminal-synth/archive/refs/tags/v2.1.0.tar.gz
+	source = terminal-synth.desktop
+	source = terminal-synth.png
+	sha256sums = e639336c644653744e7dcc5afd95055a7daa0d628f54110c3bf1ff6c339c1b07
+	sha256sums = d5c6af04ed589bd1ca62f19f75321a197f06f4c9531114ce7e022312971336e0
+	sha256sums = 914c52e97d364b036296a04cb4af693330903c618f8baa82235cbef55fe1c2ff
+
+pkgname = terminal-synth

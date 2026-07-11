@@ -1,0 +1,42 @@
+# Maintainer: Olivier Bareau <olivier.bareau@gmail.com>
+pkgname=terminal-synth
+pkgver=2.1.0
+pkgrel=1
+pkgdesc="Synthétiseur visuel dark/industriel — WebGL2 audio-réactif, Adaptive Autoplay, MIDI Learn (CC/note/pitch bend) avec presets nanoKONTROL2 / Launchkey Mini MK3 / Launchpad Pro MK3"
+arch=('x86_64')
+url="https://github.com/obareau/terminal-synth"
+license=('MIT')
+depends=('gtk3' 'nss' 'libxss' 'libxtst' 'alsa-lib' 'at-spi2-core' 'libdrm' 'mesa')
+makedepends=('nodejs' 'npm')
+options=('!strip')
+source=(
+  "$pkgname-$pkgver.tar.gz::https://github.com/obareau/terminal-synth/archive/refs/tags/v$pkgver.tar.gz"
+  "terminal-synth.desktop"
+  "terminal-synth.png"
+)
+sha256sums=(
+  'e639336c644653744e7dcc5afd95055a7daa0d628f54110c3bf1ff6c339c1b07'
+  'd5c6af04ed589bd1ca62f19f75321a197f06f4c9531114ce7e022312971336e0'
+  '914c52e97d364b036296a04cb4af693330903c618f8baa82235cbef55fe1c2ff'
+)
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  npm ci --no-audit --no-fund
+  npx tsc --noEmit
+  npx tsx build.ts --production
+  npx electron-builder --linux dir --config electron-builder.json
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -d "$pkgdir/usr/lib/$pkgname"
+  cp -r release/linux-unpacked/. "$pkgdir/usr/lib/$pkgname/"
+
+  install -d "$pkgdir/usr/bin"
+  ln -s "/usr/lib/$pkgname/$pkgname" "$pkgdir/usr/bin/$pkgname"
+
+  install -Dm644 "$srcdir/terminal-synth.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+  install -Dm644 "$srcdir/terminal-synth.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/$pkgname.png"
+}

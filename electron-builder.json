@@ -20,21 +20,23 @@
   },
   "mac": {
     "target": [
-      "dmg",
-      "zip"
-    ],
-    "arch": [
-      "x64",
-      "arm64"
+      { "target": "dmg", "arch": ["x64", "arm64"] },
+      { "target": "zip", "arch": ["x64", "arm64"] }
     ]
   },
   "linux": {
     "target": [
-      "AppImage"
-    ],
-    "arch": [
-      "x64"
+      { "target": "AppImage", "arch": ["x64"] }
     ],
     "category": "Utility"
+  },
+  "deb": {
+    "depends": [
+      "libx11-6",
+      "libxss1",
+      "libnss3"
+    ],
+    "maintainer": "Olivier Bareau <olivier.bareau@gmail.com>",
+    "priority": "optional"
   }
 }

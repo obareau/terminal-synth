@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal-Synth
+GenericName=Visual Synthesizer
+Comment=Synthétiseur visuel dark/industriel audio-réactif (WebGL2)
+Exec=terminal-synth %U
+Icon=terminal-synth
+Categories=AudioVideo;Audio;Video;Graphics;
+Terminal=false
+StartupWMClass=terminal-synth

@@ -1,6 +1,6 @@
 # Terminal-Synth Roadmap
 
-## 🚀 Status: v2.1.0 — Active development
+## 🚀 Status: v2.1.1 — Active development
 
 Terminal-Synth est un synthétiseur visuel dark/industriel pour **performeur
 solo live**, piloté par **Adaptive Autoplay** (évolution music-reactive).
@@ -16,6 +16,11 @@ l'autoplay.
 ---
 
 ## Version History
+
+### v2.1.1 — Fix packaging Electron + PKGBUILD Arch/Garuda (2026-07-11)
+- **Fix `electron-builder.json`** — `arch` mal imbriqué sous `linux`/`mac` faisait échouer la validation de schéma d'electron-builder 26.15.0 (`npm run package`/`package:mac`/`package:linux` cassés). Config dupliquée dans `package.json` supprimée (divergeait de `electron-builder.json`, silencieusement prioritaire par défaut).
+- **PKGBUILD Arch/Garuda** (`packaging/archlinux/`) — paquet pacman natif, non publié AUR. Build validé de bout en bout sur Garuda Linux.
+- `npm run package:deb` reste cassé sur Arch (dépendance `libcrypt.so.1` du `fpm` embarqué, absente sur ces distros) — limite du toolchain, pas liée au fix.
 
 ### v2.1.0 — Presets MIDI Launchkey Mini MK3 + Launchpad Pro MK3, feedback LED (2026-07-11)
 - **Mapping par note dans MIDI Learn** — en plus des CC/pitch bend, le système apprend maintenant aussi les pads (Note On/Off). Rétrocompatible avec les mappings CC existants.
