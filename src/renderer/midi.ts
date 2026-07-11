@@ -30,6 +30,9 @@ export class MidiInput {
   selectedInputId: string | undefined;
 
   stop(): void {
+    // Détache les handlers de la session en cours — sinon un nouveau start() empile un
+    // listener fantôme en plus sur le même port physique (double réception des messages).
+    if (this.access) this.access.inputs.forEach((inp) => { inp.onmidimessage = null; });
     this.enabled = false;
     this.held.clear();
     this.energy = 0;

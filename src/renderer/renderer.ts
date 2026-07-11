@@ -715,6 +715,9 @@ midiDeviceBtn?.addEventListener("click", () => {
     midiDevicePanel.style.display = "none";
     return;
   }
+  const btnRect = midiDeviceBtn.getBoundingClientRect();
+  midiDevicePanel.style.left = `${Math.round(btnRect.left)}px`;
+  midiDevicePanel.style.top = `${Math.round(btnRect.bottom + 4)}px`;
   midiDevicePanel.style.display = "block";
   if (!midi.enabled) {
     midiDeviceList.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text-dim)">Activez MIDI d\'abord</div>';
