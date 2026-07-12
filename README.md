@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
-Terminal-Synth est un visualiseur audio pensé pour un **performeur solo** : pas de séquenceur pas-à-pas — l'**Adaptive Autoplay** pilote le show en réagissant à la musique (BPM, énergie, onsets), le performeur supervise/influence en direct, et peut aussi piloter n'importe quel paramètre en MIDI Learn (CC, pad ou pitch bend), avec des presets un clic pour nanoKONTROL2, Launchkey Mini MK3 et Launchpad Pro MK3.
+Terminal-Synth est un visualiseur audio pensé pour un **performeur solo** : pas de séquenceur pas-à-pas — l'**Adaptive Autoplay** pilote le show en réagissant à la musique (BPM, énergie, onsets), le performeur supervise/influence en direct, et peut aussi piloter n'importe quel générateur, effet ou disruptor en MIDI Learn (CC, pad ou pitch bend), avec un moniteur MIDI live pour identifier chaque message reçu.
 
 Intègre **137 générateurs** (dont 20 Industrial monochrome, 14 Lofi/Chiptune, 3 Media), **57 effets post-process**, **61 perturbateurs audio-réactifs**, **Industrial Mode** (post-process N&B + dither, 4 palettes : B&W / Phosphor / Blueprint / Sepia), **détection BPM** (spectral flux + autocorrélation), **effets beat-réactifs** (pulse, glitch et disruptors synchronisés au tempo), **Adaptive Autoplay** (3 cycles indépendants — générateurs, effets, principal — avec transitions fade), **Master Brightness** audio-réactif, **cap de stages** réglable en live, **Auto-Perf** (dégradation graduée des perfs), couche texte pixellisée adaptive-width, mode ASCII, et export vidéo WebM.
 
@@ -109,8 +109,8 @@ npm run package        # Build Windows .exe
 | **Linux/PipeWire** | Détection automatique (monitor/loopback/moniteur) + picker manuel si ambiguïté |
 | **MIDI Input** | Notes → énergie (mode organ/noise), mod wheel, pitch bend |
 | **MIDI Learn** (v1.9.4, notes v2.1.0, générateurs v2.1.1) | CC, pad (note) ou pitch bend → n'importe quel paramètre : générateurs, effets, disruptors, scènes, brightness, stage cap... Clic droit = débind |
-| **Presets hardware** (v2.1.0) | Un clic : **KORG** (nanoKONTROL2), **LKEY** (Launchkey Mini MK3), **LPAD** (Launchpad Pro MK3 — grille 8×8, 58/61 disruptors) |
-| **Feedback LED** (v2.1.0) | Pads mappés par note s'allument selon l'état actif (scène = bleu, disruptor = rouge) — Launchkey/Launchpad |
+| **Moniteur MIDI** (v2.1.1) | Affiche en clair le dernier message reçu (canal, type, valeur) — pratique pour identifier un CC/note au lieu de deviner |
+| **Feedback LED** (v2.1.0) | Pads mappés par note s'allument selon l'état actif (scène = bleu, disruptor = rouge), sur tout contrôleur RGB compatible |
 
 ### 💡 Master Brightness (v1.2)
 | Feature | Details |
@@ -334,5 +334,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v2.1.1** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer · MIDI Learn (CC/note/PB) + presets Launchkey/Launchpad
+**v2.1.1** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer · MIDI Learn (générateurs/effets/disruptors, CC/note/PB) + moniteur live
 *Dark industrial visual synthesizer for solo live performance — autoplay-driven, music-reactive.*

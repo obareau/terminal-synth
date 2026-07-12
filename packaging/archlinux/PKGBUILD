@@ -2,7 +2,7 @@
 pkgname=terminal-synth
 pkgver=2.1.1
 pkgrel=1
-pkgdesc="Synthétiseur visuel dark/industriel — WebGL2 audio-réactif, Adaptive Autoplay, MIDI Learn (CC/note/pitch bend) avec presets nanoKONTROL2 / Launchkey Mini MK3 / Launchpad Pro MK3"
+pkgdesc="Synthétiseur visuel dark/industriel — WebGL2 audio-réactif, Adaptive Autoplay, MIDI Learn (générateurs/effets/disruptors, CC/note/pitch bend) avec moniteur MIDI live"
 arch=('x86_64')
 url="https://github.com/obareau/terminal-synth"
 license=('MIT')
