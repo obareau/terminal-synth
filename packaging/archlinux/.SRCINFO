@@ -1,6 +1,6 @@
 pkgbase = terminal-synth
 	pkgdesc = Synthétiseur visuel dark/industriel — WebGL2 audio-réactif, Adaptive Autoplay, MIDI Learn (générateurs/effets/disruptors, CC/note/pitch bend) avec moniteur MIDI live
-	pkgver = 2.1.1
+	pkgver = 2.2.0
 	pkgrel = 1
 	url = https://github.com/obareau/terminal-synth
 	arch = x86_64
@@ -16,10 +16,10 @@ pkgbase = terminal-synth
 	depends = libdrm
 	depends = mesa
 	options = !strip
-	source = terminal-synth-2.1.1.tar.gz::https://github.com/obareau/terminal-synth/archive/refs/tags/v2.1.1.tar.gz
+	source = terminal-synth-2.2.0.tar.gz::https://github.com/obareau/terminal-synth/archive/refs/tags/v2.2.0.tar.gz
 	source = terminal-synth.desktop
 	source = terminal-synth.png
-	sha256sums = 3ad901fed9b16b0d64f08c855cd5008ffc5bbf002b5b480cfe93f2c7709ce121
+	sha256sums = 6e8a91e6f34fd9cead6869584ddd52eda7b171265d4704a766a9cc22413e6caa
 	sha256sums = d5c6af04ed589bd1ca62f19f75321a197f06f4c9531114ce7e022312971336e0
 	sha256sums = 914c52e97d364b036296a04cb4af693330903c618f8baa82235cbef55fe1c2ff
 

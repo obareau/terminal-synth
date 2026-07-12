@@ -1,6 +1,6 @@
 # Maintainer: Olivier Bareau <olivier.bareau@gmail.com>
 pkgname=terminal-synth
-pkgver=2.1.1
+pkgver=2.2.0
 pkgrel=1
 pkgdesc="Synthétiseur visuel dark/industriel — WebGL2 audio-réactif, Adaptive Autoplay, MIDI Learn (générateurs/effets/disruptors, CC/note/pitch bend) avec moniteur MIDI live"
 arch=('x86_64')
@@ -15,7 +15,7 @@ source=(
   "terminal-synth.png"
 )
 sha256sums=(
-  '3ad901fed9b16b0d64f08c855cd5008ffc5bbf002b5b480cfe93f2c7709ce121'
+  '6e8a91e6f34fd9cead6869584ddd52eda7b171265d4704a766a9cc22413e6caa'
   'd5c6af04ed589bd1ca62f19f75321a197f06f4c9531114ce7e022312971336e0'
   '914c52e97d364b036296a04cb4af693330903c618f8baa82235cbef55fe1c2ff'
 )
