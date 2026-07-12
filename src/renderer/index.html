@@ -227,22 +227,71 @@
       z-index: 100;
     }
     .brand {
-      color: var(--orange); font-weight: 900; font-size: clamp(1.4rem, 3.5vw, 2rem);
+      color: var(--orange); font-weight: 900; font-size: 1.5rem;
       letter-spacing: -0.03em; margin-right: var(--spacing-xl); text-transform: uppercase;
       font-family: var(--font-ui);
     }
     .sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; margin: 0 var(--spacing-sm); opacity: 0.5; }
     .spacer { flex: 1; }
-    .scene-slot { width:24px;min-width:24px;padding:0;font-size:10px;font-weight:700;opacity:0.28;border:1px solid transparent;letter-spacing:0; }
-    .scene-slot.filled { opacity:1;border-color:var(--accent);color:var(--accent); }
-    .scene-slot.filled:hover { background:rgba(0,255,136,0.08); }
-    .scene-slot.active { background:rgba(0,255,136,0.28);border-color:var(--accent);opacity:1; }
+    .scene-slot { width:24px;min-width:24px;padding:0;font-size:10px;font-weight:700;color:var(--text-dim);border:1px solid var(--border);letter-spacing:0; }
+    .scene-slot:hover { color:var(--text);border-color:var(--border2); }
+    .scene-slot.filled { border-color:var(--accent-dim);color:var(--accent); }
+    .scene-slot.filled:hover { background:var(--accent-bg);border-color:var(--accent); }
+    .scene-slot.active { background:var(--accent-bg);border-color:var(--accent);color:var(--accent);box-shadow:0 0 6px rgba(109,213,163,0.35); }
     /* MIDI Learn */
     body.midi-learn [data-midi-target] { box-shadow:0 0 0 2px rgba(0,140,255,0.55);cursor:crosshair; }
     body.midi-learn [data-midi-target].learn-selected { box-shadow:0 0 0 2px #0088ff,0 0 10px rgba(0,140,255,0.5);background:rgba(0,100,255,0.1); }
     [data-midi-target].midi-bound { box-shadow:0 0 0 1px rgba(0,180,255,0.7); }
     /* Témoin d'activité MIDI (clignote quand des messages arrivent, façon DAW) */
     button#midi.midi-activity { border-color: var(--terminal-green); box-shadow: 0 0 10px rgba(74,246,38,0.6); }
+
+    /* ── Music info (ENERGY / BPM) ───────────────────────────────── */
+    #music-info {
+      display: flex; gap: var(--spacing-xl); align-items: center;
+      margin: 0 var(--spacing-lg); padding: 0 var(--spacing-lg);
+      border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+      align-self: stretch;
+    }
+    .mi-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+    .mi-label { font-size: 10px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.1em; }
+    .mi-value { font-size: 18px; font-weight: 800; font-family: var(--font-mono); line-height: 1; }
+
+    /* Barres compressibles : les sliders cèdent de la place avant que ça déborde */
+    #bottom-bar input[type=range], #topbar input[type=range] { flex-shrink: 1; min-width: 32px; }
+    #bottom-bar button, #topbar button, #bottom-bar select, #topbar select { flex-shrink: 0; }
+    @media (max-width: 1750px) {
+      #topbar, #bottom-bar { gap: var(--spacing-xs); padding: 0 var(--spacing-sm); }
+      #topbar button, #bottom-bar button { padding: var(--spacing-sm) 10px; }
+      .sep { margin: 0 2px; }
+      .brand { margin-right: var(--spacing-md); font-size: 1.25rem; }
+    }
+
+    /* ── Device pickers (audio / caméra / MIDI) — panneau flottant commun ── */
+    .device-panel {
+      position: fixed; top: 36px; left: 8px; width: 300px;
+      background: var(--ctrl); border: 1px solid var(--border);
+      z-index: 1002; box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+      font-family: var(--font-ui);
+    }
+    .device-panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px 8px; border-bottom: 1px solid var(--border);
+    }
+    .device-panel-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+      color: var(--text); text-transform: uppercase;
+    }
+    .device-panel-close {
+      background: none; border: none; color: var(--text-dim);
+      cursor: pointer; font-size: 16px; padding: 0; line-height: 1; height: auto;
+    }
+    .device-panel-close:hover { color: var(--text); background: none; border: none; }
+    .device-panel-list { padding: 6px 0; max-height: 240px; overflow-y: auto; }
+    /* Moniteur MIDI — dernier message reçu en clair */
+    #midi-monitor {
+      font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);
+      letter-spacing: 0.3px; min-width: 150px;
+    }
 
     /* ── Left panel: generators with tabs ────────────────────────── */
     #left-panel {
@@ -289,7 +338,7 @@
       text-overflow: ellipsis;
       letter-spacing: 0.3px;
     }
-    .tab-btn:hover { color: var(--text); background: rgba(255, 235, 229, 0.04); }
+    .tab-btn:hover { color: var(--text); background: rgba(255, 235, 229, 0.06); }
     .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .tab-btn.active {
       color: var(--accent);
@@ -315,7 +364,7 @@
       border-bottom: 1px solid var(--border-subtle);
       transition: background 120ms ease-out;
     }
-    .src-item:hover { background: rgba(255, 235, 229, 0.03); }
+    .src-item:hover { background: rgba(255, 235, 229, 0.06); }
     .src-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .src-item.active { background: var(--accent-bg); }
     .src-item.active .src-name { color: var(--accent); font-weight: 600; }
@@ -383,7 +432,6 @@
       position: absolute;
       inset: 0;
       background: rgba(0, 0, 0, 0.3);
-      border-radius: 8px;
       z-index: -1;
     }
     #ascii-glitch-permanent span {
@@ -443,7 +491,7 @@
       background: transparent;
       transition: background 120ms ease-out;
     }
-    .fx:hover { background: rgba(255, 235, 229, 0.03); }
+    .fx:hover { background: rgba(255, 235, 229, 0.06); }
     .fx:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .fx.on { background: var(--accent-bg); }
     .fx input[type=checkbox] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--accent); }
@@ -462,7 +510,7 @@
     #focus-hint {
       display: none;
       position: fixed; bottom: 6px; right: 8px; z-index: 200;
-      font-size: 9px; color: var(--text-dim); letter-spacing: .05em;
+      font-size: 10px; color: var(--text-dim); letter-spacing: .05em;
       pointer-events: none;
     }
     body.focus #focus-hint { display: block; }
@@ -535,7 +583,7 @@
       <option value="noise">noise</option>
     </select>
     <button id="midi-learn-btn" title="MIDI Learn — clic sur un paramètre puis bouge un CC/PB · clic droit = débind" style="display:none;font-size:10px;letter-spacing:0.3px">LEARN</button>
-    <span id="midi-monitor" title="Dernier message MIDI reçu" style="display:none;font-size:10px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:0.3px;min-width:150px">—</span>
+    <span id="midi-monitor" title="Dernier message MIDI reçu" style="display:none">—</span>
     <div class="spacer"></div>
     <button id="preset-load" aria-label="Load Preset" title="Charger preset  [Ctrl+O]">⊞</button>
     <button id="preset-save" aria-label="Save Preset" title="Sauvegarder preset  [Ctrl+S]">⊙</button>
@@ -548,14 +596,14 @@
     <button id="autoplay-glitch" aria-label="Glitch Automation" title="Glitch automation (effects)">◈ Glitch</button>
     <div class="sep"></div>
     <!-- Music Analysis Display - ENERGY & BPM -->
-    <div id="music-info" style="display:flex;gap:24px;align-items:center;margin:0 16px;padding:0 16px;border-left:1px solid var(--border);border-right:1px solid var(--border);">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <span style="font-size:10px;color:var(--text-dim);font-weight:600;letter-spacing:0.1em;">ENERGY</span>
-        <span id="energy-display" style="font-size:20px;color:var(--accent);font-weight:800;font-family:var(--font-mono);">—%</span>
+    <div id="music-info">
+      <div class="mi-cell">
+        <span class="mi-label">ENERGY</span>
+        <span id="energy-display" class="mi-value" style="color:var(--accent)">—%</span>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <span style="font-size:10px;color:var(--text-dim);font-weight:600;letter-spacing:0.1em;">BPM</span>
-        <span id="bpm-display" style="font-size:20px;color:var(--orange);font-weight:800;font-family:var(--font-mono);">—</span>
+      <div class="mi-cell">
+        <span class="mi-label">BPM</span>
+        <span id="bpm-display" class="mi-value" style="color:var(--orange)">—</span>
       </div>
     </div>
     <div class="sep"></div>
@@ -568,18 +616,6 @@
     <div class="sep"></div>
     <button id="theme-toggle" aria-label="Toggle Theme" title="Toggle light/dark theme [T]">☀</button>
     <div class="spacer"></div>
-    <!-- Music Analysis Display - Large and visible -->
-    <div id="music-info" style="display:flex;gap:16px;align-items:center;font-size:14px;font-weight:600;margin-right:16px;padding:0 12px;border-left:1px solid var(--border);border-right:1px solid var(--border);">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-        <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.05em;">ENERGY</span>
-        <span id="energy-display" style="font-size:18px;color:var(--accent);font-weight:700;">—%</span>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-        <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.05em;">BEAT</span>
-        <span id="bpm-display" style="font-size:18px;color:var(--orange);font-weight:700;">—</span>
-      </div>
-    </div>
-    <div class="sep"></div>
     <span id="autoplay-status" style="font-size:10px;color:var(--text-dim);margin-right:10px;"></span>
     <div class="sep"></div>
     <button id="full" aria-label="Fullscreen" title="Plein écran  [F]">⛶</button>
@@ -880,61 +916,28 @@
 <div id="performance-hud"></div>
 
 <!-- ── Audio Device Picker ───────────────────────────────── -->
-<div id="audio-device-panel" style="
-  display: none;
-  position: fixed;
-  top: 36px;
-  left: 8px;
-  width: 300px;
-  background: var(--ctrl);
-  border: 1px solid var(--border);
-  z-index: 1002;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.85);
-  font-family: var(--font-ui);
-">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;font-weight:700;letter-spacing:0.4px;color:var(--text);text-transform:uppercase">Source audio</span>
-    <button id="audio-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+<div id="audio-device-panel" class="device-panel" style="display:none">
+  <div class="device-panel-head">
+    <span class="device-panel-title">Source audio</span>
+    <button id="audio-device-close" class="device-panel-close" aria-label="Fermer">✕</button>
   </div>
-  <div id="audio-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
+  <div id="audio-device-list" class="device-panel-list"></div>
 </div>
 
-<div id="webcam-device-panel" style="
-  display: none;
-  position: fixed;
-  top: 36px;
-  left: 8px;
-  width: 280px;
-  background: var(--ctrl);
-  border: 1px solid var(--border);
-  z-index: 1002;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.85);
-  font-family: var(--font-ui);
-">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;font-weight:700;letter-spacing:0.4px;color:var(--text);text-transform:uppercase">Caméra</span>
-    <button id="webcam-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+<div id="webcam-device-panel" class="device-panel" style="display:none;width:280px">
+  <div class="device-panel-head">
+    <span class="device-panel-title">Caméra</span>
+    <button id="webcam-device-close" class="device-panel-close" aria-label="Fermer">✕</button>
   </div>
-  <div id="webcam-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
+  <div id="webcam-device-list" class="device-panel-list"></div>
 </div>
 
-<div id="midi-device-panel" style="
-  display: none;
-  position: fixed;
-  top: 36px;
-  left: 8px;
-  width: 300px;
-  background: var(--ctrl);
-  border: 1px solid var(--border);
-  z-index: 1002;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.85);
-  font-family: var(--font-ui);
-">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;font-weight:700;letter-spacing:0.4px;color:var(--text);text-transform:uppercase">Port MIDI</span>
-    <button id="midi-device-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
+<div id="midi-device-panel" class="device-panel" style="display:none">
+  <div class="device-panel-head">
+    <span class="device-panel-title">Port MIDI</span>
+    <button id="midi-device-close" class="device-panel-close" aria-label="Fermer">✕</button>
   </div>
-  <div id="midi-device-list" style="padding:6px 0;max-height:240px;overflow-y:auto"></div>
+  <div id="midi-device-list" class="device-panel-list"></div>
 </div>
 <script>
 // Force initial paint before renderer.js loads
