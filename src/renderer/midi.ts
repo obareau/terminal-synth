@@ -26,6 +26,8 @@ export class MidiInput {
   private lastNote: { note: number; velocity: number } | null = null;
   /** timestamp du dernier message reçu — pour le témoin d'activité UI. */
   lastActivityAt = 0;
+  /** Dernier message reçu, formaté pour affichage direct (moniteur MIDI live). */
+  lastEventLabel = "—";
   private outputs: MIDIOutputLike[] = [];
   private access: MIDIAccessLike | null = null;
   /** Port choisi par l'utilisateur, par NOM (les ids Web MIDI changent à chaque
@@ -46,6 +48,7 @@ export class MidiInput {
     this.deviceName = "";
     this.outputs = [];
     this.access = null;
+    this.lastEventLabel = "—";
   }
 
   async start(portName?: string): Promise<void> {
@@ -118,6 +121,7 @@ export class MidiInput {
     if (!data || data.length < 2) return;
     this.lastActivityAt = performance.now();
     const status = data[0] & 0xf0;
+    const chan = (data[0] & 0x0f) + 1;
     const d1 = data[1];
     const d2 = data[2] ?? 0;
     switch (status) {
@@ -130,28 +134,35 @@ export class MidiInput {
           this.held.delete(d1);
         }
         this.lastNote = { note: d1, velocity: d2 }; // pour MIDI Learn (pads, etc.)
+        this.lastEventLabel = `CH${chan} · Note ${d1}${d2 > 0 ? ` · v${d2}` : " off"}`;
         break;
       case 0x80: // note off
         this.held.delete(d1);
         this.lastNote = { note: d1, velocity: 0 };
+        this.lastEventLabel = `CH${chan} · Note ${d1} off`;
         break;
       case 0xa0: // aftertouch polyphonique
         this.mod = Math.max(this.mod, d2 / 127);
         if (this.held.has(d1)) this.held.set(d1, Math.max(this.held.get(d1) ?? 0, d2 / 127));
+        this.lastEventLabel = `CH${chan} · AT ${d1} · ${d2}`;
         break;
       case 0xd0: // aftertouch de canal
         this.mod = d1 / 127;
+        this.lastEventLabel = `CH${chan} · ChanAT · ${d1}`;
         break;
       case 0xb0: // control change
         if (d1 === 1) this.mod = d2 / 127; // mod wheel
         // Store all CC messages for MIDI Learn
         this.lastCC = { cc: d1, value: d2 };
+        this.lastEventLabel = `CH${chan} · CC${d1} · ${d2}`;
         break;
       case 0xc0: // program change → rappel de scène
         this.onProgramChange?.(d1);
+        this.lastEventLabel = `CH${chan} · PC ${d1}`;
         break;
       case 0xe0: // pitch bend
         this.bend = (((d2 << 7) | d1) / 16383) * 2 - 1;
+        this.lastEventLabel = `CH${chan} · PitchBend · ${this.bend >= 0 ? "+" : ""}${this.bend.toFixed(2)}`;
         break;
     }
   }

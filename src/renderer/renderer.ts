@@ -82,6 +82,7 @@ const midiDeviceBtn = $<HTMLButtonElement>("midi-device-btn");
 const midiDevicePanel = $("midi-device-panel");
 const midiDeviceList = $("midi-device-list");
 const midiDeviceClose = $<HTMLButtonElement>("midi-device-close");
+const midiMonitor = $<HTMLSpanElement>("midi-monitor");
 const meter = $("meter");
 const chain = $("chain");
 const masterBrightnessToggle = $<HTMLButtonElement>("master-brightness-toggle");
@@ -688,9 +689,7 @@ midiBtn.addEventListener("click", async () => {
     midiDeviceBtn.style.display = "none";
     midiDevicePanel.style.display = "none";
     midiLearnBtn.style.display = "none";
-    midiKorgBtn.style.display = "none";
-    midiLaunchkeyBtn.style.display = "none";
-    midiLaunchpadBtn.style.display = "none";
+    midiMonitor.style.display = "none";
     exitMidiLearn();
   } else {
     try {
@@ -702,9 +701,7 @@ midiBtn.addEventListener("click", async () => {
       midiBtn.classList.add("on");
       midiDeviceBtn.style.display = "";
       midiLearnBtn.style.display = "";
-      midiKorgBtn.style.display = "";
-      midiLaunchkeyBtn.style.display = "";
-      midiLaunchpadBtn.style.display = "";
+      midiMonitor.style.display = "";
     } catch (e) {
       console.error(e);
       midiBtn.textContent = "MIDI ✗";
@@ -822,34 +819,6 @@ function refreshMidiPadColors(): void {
       midi.sendNoteOn(m.note, color, 0);
     }
   }
-}
-
-function applyMidiPreset(preset: MidiCC[]): void {
-  // Éteint les pads du mapping précédent avant de basculer sur le nouveau
-  for (const [note, color] of midiPadColorCache) {
-    if (color !== 0) midi.sendNoteOn(note, 0, 0);
-  }
-  midiPadColorCache.clear();
-  midiMap = preset;
-  saveMidiMap();
-  updateMidiBadges();
-  refreshMidiPadColors();
-}
-
-/** Flash vert (couleur 21, palette Novation standard) sur tous les pads mappés → confirmation
- *  visuelle que la connexion MIDI + le preset (LKEY/LPAD) sont bien reconnus par le hardware. */
-function flashMidiConnectOk(preset: MidiCC[]): void {
-  if (!midi.enabled) return;
-  const notes = new Set<number>();
-  for (const m of preset) if (m.note !== undefined) notes.add(m.note);
-  for (const note of notes) {
-    midi.sendNoteOn(note, 21, 0);
-    midiPadColorCache.set(note, 21);
-  }
-  setTimeout(() => {
-    midiPadColorCache.clear();
-    refreshMidiPadColors();
-  }, 700);
 }
 
 function parseMidiTarget(s: string): MidiTarget | null {
@@ -993,145 +962,6 @@ document.addEventListener("contextmenu", (e) => {
 });
 
 // Preset nanoKONTROL2 (Scene 1, factory CCs)
-function loadNanoKontrolPreset(): void {
-  const preset: MidiCC[] = [
-    // Knobs 1-8 (CC 16-23) → amounts effets 1-8
-    { cc: 16, target: { type: "effect", idx: 0 } },
-    { cc: 17, target: { type: "effect", idx: 1 } },
-    { cc: 18, target: { type: "effect", idx: 2 } },
-    { cc: 19, target: { type: "effect", idx: 3 } },
-    { cc: 20, target: { type: "effect", idx: 4 } },
-    { cc: 21, target: { type: "effect", idx: 5 } },
-    { cc: 22, target: { type: "effect", idx: 6 } },
-    { cc: 23, target: { type: "effect", idx: 7 } },
-    // Fader 1 (CC 0) → Master Brightness
-    { cc: 0,  target: { type: "brightness" } },
-    // Faders 2-7 (CC 1-6) → Scènes S1-S6
-    { cc: 1,  target: { type: "scene", idx: 0 } },
-    { cc: 2,  target: { type: "scene", idx: 1 } },
-    { cc: 3,  target: { type: "scene", idx: 2 } },
-    { cc: 4,  target: { type: "scene", idx: 3 } },
-    { cc: 5,  target: { type: "scene", idx: 4 } },
-    { cc: 6,  target: { type: "scene", idx: 5 } },
-    // Fader 8 (CC 7) → Stage Cap
-    { cc: 7,  target: { type: "stageCap" } },
-    // S buttons 1-8 (CC 32-39) → Disruptors 1-8 toggle
-    { cc: 32, target: { type: "disruptorToggle", idx: 0 } },
-    { cc: 33, target: { type: "disruptorToggle", idx: 1 } },
-    { cc: 34, target: { type: "disruptorToggle", idx: 2 } },
-    { cc: 35, target: { type: "disruptorToggle", idx: 3 } },
-    { cc: 36, target: { type: "disruptorToggle", idx: 4 } },
-    { cc: 37, target: { type: "disruptorToggle", idx: 5 } },
-    { cc: 38, target: { type: "disruptorToggle", idx: 6 } },
-    { cc: 39, target: { type: "disruptorToggle", idx: 7 } },
-    // M buttons 1-8 (CC 48-55) → Disruptors 9-16 toggle
-    { cc: 48, target: { type: "disruptorToggle", idx: 8 } },
-    { cc: 49, target: { type: "disruptorToggle", idx: 9 } },
-    { cc: 50, target: { type: "disruptorToggle", idx: 10 } },
-    { cc: 51, target: { type: "disruptorToggle", idx: 11 } },
-    { cc: 52, target: { type: "disruptorToggle", idx: 12 } },
-    { cc: 53, target: { type: "disruptorToggle", idx: 13 } },
-    { cc: 54, target: { type: "disruptorToggle", idx: 14 } },
-    { cc: 55, target: { type: "disruptorToggle", idx: 15 } },
-    // R buttons 1-8 (CC 64-71) → Disruptors 17-24 toggle
-    { cc: 64, target: { type: "disruptorToggle", idx: 16 } },
-    { cc: 65, target: { type: "disruptorToggle", idx: 17 } },
-    { cc: 66, target: { type: "disruptorToggle", idx: 18 } },
-    { cc: 67, target: { type: "disruptorToggle", idx: 19 } },
-    { cc: 68, target: { type: "disruptorToggle", idx: 20 } },
-    { cc: 69, target: { type: "disruptorToggle", idx: 21 } },
-    { cc: 70, target: { type: "disruptorToggle", idx: 22 } },
-    { cc: 71, target: { type: "disruptorToggle", idx: 23 } },
-  ];
-  applyMidiPreset(preset);
-}
-
-const midiKorgBtn = document.getElementById("midi-korg-btn") as HTMLButtonElement;
-midiKorgBtn.addEventListener("click", () => {
-  loadNanoKontrolPreset();
-  midiKorgBtn.classList.add("on");
-  setTimeout(() => midiKorgBtn.classList.remove("on"), 800);
-});
-
-// Preset Novation Launchkey Mini MK3
-// Prérequis matériel : Shift + Pad Mode → "Session" (rangée orange, pads en Note On/Off
-// plutôt qu'en CC — mode documenté, pas besoin de DAW mode). Knobs en Custom Mode 1
-// (défaut usine) → CC 21-28.
-function loadLaunchkeyMiniPreset(): void {
-  const preset: MidiCC[] = [
-    // 8 knobs (Custom Mode 1 usine, CC 21-28) → amounts effets 1-8
-    { cc: 21, target: { type: "effect", idx: 0 } },
-    { cc: 22, target: { type: "effect", idx: 1 } },
-    { cc: 23, target: { type: "effect", idx: 2 } },
-    { cc: 24, target: { type: "effect", idx: 3 } },
-    { cc: 25, target: { type: "effect", idx: 4 } },
-    { cc: 26, target: { type: "effect", idx: 5 } },
-    { cc: 27, target: { type: "effect", idx: 6 } },
-    { cc: 28, target: { type: "effect", idx: 7 } },
-    // Pads mode Session, rangée haute (notes 96-101) → scènes S1-S6
-    { note: 96,  target: { type: "scene", idx: 0 } },
-    { note: 97,  target: { type: "scene", idx: 1 } },
-    { note: 98,  target: { type: "scene", idx: 2 } },
-    { note: 99,  target: { type: "scene", idx: 3 } },
-    { note: 100, target: { type: "scene", idx: 4 } },
-    { note: 101, target: { type: "scene", idx: 5 } },
-    // 2 pads restants rangée haute (102-103) + rangée basse (112-119)
-    // → disruptors en hold-to-glitch (Note On = actif, Note Off = relâché)
-    { note: 102, target: { type: "disruptorToggle", idx: 0 } },
-    { note: 103, target: { type: "disruptorToggle", idx: 1 } },
-    { note: 112, target: { type: "disruptorToggle", idx: 2 } },
-    { note: 113, target: { type: "disruptorToggle", idx: 3 } },
-    { note: 114, target: { type: "disruptorToggle", idx: 4 } },
-    { note: 115, target: { type: "disruptorToggle", idx: 5 } },
-    { note: 116, target: { type: "disruptorToggle", idx: 6 } },
-    { note: 117, target: { type: "disruptorToggle", idx: 7 } },
-    { note: 118, target: { type: "disruptorToggle", idx: 8 } },
-    { note: 119, target: { type: "disruptorToggle", idx: 9 } },
-  ];
-  applyMidiPreset(preset);
-  flashMidiConnectOk(preset);
-}
-
-const midiLaunchkeyBtn = document.getElementById("midi-launchkey-btn") as HTMLButtonElement;
-midiLaunchkeyBtn.addEventListener("click", () => {
-  loadLaunchkeyMiniPreset();
-  midiLaunchkeyBtn.classList.add("on");
-  setTimeout(() => midiLaunchkeyBtn.classList.remove("on"), 800);
-});
-
-// Preset Novation Launchpad Pro MK3
-// Prérequis matériel : passer la grille en layout Standalone "Programmer" (appui long sur
-// Setup, puis pad "Programmer" en haut) — canevas neutre en Note On/Off, numérotation
-// classique Launchpad (note = ligne*10 + colonne, ligne 1 en bas, colonne 1 à gauche).
-function loadLaunchpadProPreset(): void {
-  const preset: MidiCC[] = [];
-  // Rangée 1 (bas), 6 premiers pads → scènes S1-S6
-  for (let col = 1; col <= 6; col++) {
-    preset.push({ note: 10 + col, target: { type: "scene", idx: col - 1 } });
-  }
-  // Reste de la grille (rangée 1 cols 7-8 puis rangées 2-8) → un pad par disruptor
-  // (hold-to-glitch : Note On = actif, Note Off = relâché), jusqu'à épuisement de la grille.
-  // 58 pads disponibles pour 61 disruptors au total (49 builtin + 12 industrial) : les 3
-  // derniers restent non mappés faute de place, à défaut d'utiliser les boutons ronds.
-  let disIdx = 0;
-  for (let row = 1; row <= 8 && disIdx < DISRUPTORS.length; row++) {
-    const colStart = row === 1 ? 7 : 1;
-    for (let col = colStart; col <= 8 && disIdx < DISRUPTORS.length; col++) {
-      preset.push({ note: row * 10 + col, target: { type: "disruptorToggle", idx: disIdx } });
-      disIdx++;
-    }
-  }
-  applyMidiPreset(preset);
-  flashMidiConnectOk(preset);
-}
-
-const midiLaunchpadBtn = document.getElementById("midi-launchpad-btn") as HTMLButtonElement;
-midiLaunchpadBtn.addEventListener("click", () => {
-  loadLaunchpadProPreset();
-  midiLaunchpadBtn.classList.add("on");
-  setTimeout(() => midiLaunchpadBtn.classList.remove("on"), 800);
-});
-
 updateMidiBadges();
 
 // --- Effect Sequencer ---
@@ -2012,6 +1842,7 @@ function frame(now: number): void {
   // Témoin d'activité façon DAW : le bouton s'illumine tant que des messages arrivent.
   midiBtn.classList.toggle("midi-activity", midi.enabled && performance.now() - midi.lastActivityAt < 150);
   if (midi.enabled) {
+    midiMonitor.textContent = midi.lastEventLabel;
     const lastCC = midi.getAndClearLastCC();
     const lastNote = midi.getAndClearLastNote();
     if (midiLearnMode && midiLearnPending) {
