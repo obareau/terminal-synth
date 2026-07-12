@@ -1,6 +1,6 @@
 # Terminal-Synth Roadmap
 
-## 🚀 Status: v2.1.1 — Active development
+## 🚀 Status: v2.2.0 — Active development
 
 Terminal-Synth est un synthétiseur visuel dark/industriel pour **performeur
 solo live**, piloté par **Adaptive Autoplay** (évolution music-reactive).
@@ -9,13 +9,19 @@ développement centré sur la profondeur : plus de matière visuelle, un
 autoplay plus intelligent, et un outil de scène plus mature.
 
 **Philosophie** : solo performer, autoplay-first, pas de séquenceur pas-à-pas
-— ce choix reste permanent. Le MIDI Learn (v1.9.4+, avec presets hardware
-depuis v2.1.0) reste un complément de contrôle live, pas un remplacement de
-l'autoplay.
+— ce choix reste permanent. Le MIDI Learn (v1.9.4+, universel depuis v2.2.0 :
+générateurs/effets/disruptors par CC, note ou pitch bend) reste un complément
+de contrôle live, pas un remplacement de l'autoplay.
 
 ---
 
 ## Version History
+
+### v2.2.0 — MIDI fiable dans Electron, Learn universel, moniteur live, polish UI (2026-07-12)
+- **Fix majeur Web MIDI dans Electron** — `setPermissionCheckHandler` manquant : l'énumération des ports échouait en silence dans l'app alors que tout marchait dans Chrome. Piège spécifique Electron documenté.
+- **Sélecteur de port MIDI** (⚙) — sélection par nom (ids instables sous Chromium/Linux), persistance, ré-accrochage après reconnexion USB, "Midi Through" exclu.
+- **MIDI Learn universel** — générateurs (nouveau) + effets + disruptors + scènes + brightness + stage cap, par CC/note/pitch bend. Presets KORG/LKEY/LPAD retirés au profit du Learn libre + **moniteur MIDI live** (canal/type/valeur du dernier message) + témoin d'activité vert façon DAW.
+- **Polish UI** — doublon ENERGY/BEAT mort supprimé, barres compressibles + mode compact <1750px (scene slots plus jamais coupés), scene slots lisibles sur tokens accent, panels device dédupliqués.
 
 ### v2.1.1 — Fix packaging Electron + PKGBUILD Arch/Garuda (2026-07-11)
 - **Fix `electron-builder.json`** — `arch` mal imbriqué sous `linux`/`mac` faisait échouer la validation de schéma d'electron-builder 26.15.0 (`npm run package`/`package:mac`/`package:linux` cassés). Config dupliquée dans `package.json` supprimée (divergeait de `electron-builder.json`, silencieusement prioritaire par défaut).

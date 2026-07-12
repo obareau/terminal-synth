@@ -1,6 +1,6 @@
 {
   "name": "terminal-synth",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Synthé visuel dark/industriel — shaders GLSL réactifs au son et au MIDI, esthétique terminal/ASCII, live + export. Style VS (Imaginando).",
   "author": "Olivier Bareau",
   "license": "MIT",

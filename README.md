@@ -3,7 +3,7 @@
 > **Synthétiseur visuel dark/industriel** — outil de performance live solo, piloté par Adaptive Autoplay, rendu WebGL2 audio-réactif.
 
 ![Status](https://img.shields.io/badge/status-Active%20Development-brightgreen)
-![Version](https://img.shields.io/badge/version-2.1.1-blue)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-blueviolet)
 
@@ -24,7 +24,7 @@ Bras visuel de **ROBOTARIIS** — univers SF d'Olivier (ex-ROBOTANS).
 ### Linux (Debian/Ubuntu)
 ```bash
 # Download and install .deb package
-sudo dpkg -i terminal-synth_2.1.1_amd64.deb
+sudo dpkg -i terminal-synth_2.2.0_amd64.deb
 terminal-synth
 ```
 
@@ -37,7 +37,7 @@ makepkg -si
 Voir [`packaging/archlinux/README.md`](packaging/archlinux/README.md) pour le détail. Non publié sur l'AUR pour l'instant — usage local.
 
 ### Windows (Executable)
-1. Download `terminal-synth_2.1.1.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
+1. Download `terminal-synth_2.2.0.exe` from [Releases](https://github.com/obareau/terminal-synth/releases)
 2. Run directly (no installation needed)
 3. Grant audio access when prompted
 
@@ -108,8 +108,9 @@ npm run package        # Build Windows .exe
 | **System Audio** | Loopback (monitor) ou microphone — bouton ⚙ pour choisir le périphérique exact |
 | **Linux/PipeWire** | Détection automatique (monitor/loopback/moniteur) + picker manuel si ambiguïté |
 | **MIDI Input** | Notes → énergie (mode organ/noise), mod wheel, pitch bend |
-| **MIDI Learn** (v1.9.4, notes v2.1.0, générateurs v2.1.1) | CC, pad (note) ou pitch bend → n'importe quel paramètre : générateurs, effets, disruptors, scènes, brightness, stage cap... Clic droit = débind |
-| **Moniteur MIDI** (v2.1.1) | Affiche en clair le dernier message reçu (canal, type, valeur) — pratique pour identifier un CC/note au lieu de deviner |
+| **MIDI Learn** (universel depuis v2.2.0) | CC, pad (note) ou pitch bend → n'importe quel paramètre : générateurs, effets, disruptors, scènes, brightness, stage cap... Clic droit = débind |
+| **Sélecteur de port MIDI** (v2.2.0) | Bouton ⚙ — choix du port par nom, persisté, ré-accroché après reconnexion USB ; "Midi Through" exclu |
+| **Moniteur MIDI** (v2.2.0) | Affiche en clair le dernier message reçu (canal, type, valeur) + témoin d'activité vert façon DAW sur le bouton MIDI |
 | **Feedback LED** (v2.1.0) | Pads mappés par note s'allument selon l'état actif (scène = bleu, disruptor = rouge), sur tout contrôleur RGB compatible |
 
 ### 💡 Master Brightness (v1.2)
@@ -334,5 +335,5 @@ Générateurs, effets, perturbateurs = **tactiques Recta** (combat visuel).
 
 ---
 
-**v2.1.1** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer · MIDI Learn (générateurs/effets/disruptors, CC/note/PB) + moniteur live
+**v2.2.0** · WebGL2 · 137 Generators · 57 Effects · 61 Disruptors · Industrial Mode · Adaptive Autoplay · Fade Transitions · Master Brightness · Media Loader · Text Layer · MIDI Learn (générateurs/effets/disruptors, CC/note/PB) + moniteur live
 *Dark industrial visual synthesizer for solo live performance — autoplay-driven, music-reactive.*

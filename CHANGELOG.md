@@ -2,6 +2,25 @@
 
 All notable changes to Terminal-Synth are documented in this file.
 
+## [2.2.0] - 2026-07-12
+
+### 🎛️ MIDI enfin fiable dans Electron + Learn universel
+
+- **Fix majeur : le Web MIDI ne fonctionnait pas dans l'app Electron** (`setPermissionCheckHandler` manquant dans `main.ts` — Chromium exige ce handler EN PLUS de `setPermissionRequestHandler` ; sans lui l'énumération des ports échoue en silence, liste vide sans erreur). Ça marchait dans Chrome sur la même machine, d'où des symptômes très trompeurs ("la connexion ne tient pas").
+- **Sélecteur de port MIDI** (bouton ⚙ à côté de MIDI) — choix par **nom** de port (les ids Web MIDI changent à chaque reconnexion USB sous Chromium/Linux), persisté en localStorage, re-accroché automatiquement après un débranchement. "Midi Through" (loopback ALSA) exclu du mode fusion et des sorties LED — il rejouait notre propre sortie comme fausse entrée.
+- **Témoin d'activité façon DAW** — le bouton MIDI s'illumine en vert à chaque message reçu.
+- **Moniteur MIDI live** — affiche le dernier message en clair (`CH1 · CC42 · 103`, `CH10 · Note 51 · v92`…) : fini de deviner ce qu'envoie un contrôleur.
+- **MIDI Learn étendu aux générateurs** — clic LEARN puis clic sur n'importe quel générateur (tout onglet) : générateurs + effets + disruptors + scènes + brightness + stage cap, tout est librement mappable (CC, pad/note, pitch bend).
+- **Boutons de preset KORG/LKEY/LPAD retirés** — supposaient des mappings hardware figés (le Custom Mode réel d'un contrôleur dépend de ce que l'utilisateur y a configuré) ; le MIDI Learn libre + le moniteur les remplacent avantageusement. Le feedback LED par note (scène = bleu, disruptor = rouge) reste actif pour tout binding appris.
+- **Fix : double réception de chaque message** après plusieurs cycles MIDI on/off (`stop()` ne détachait pas les listeners de l'ancienne session).
+
+### ✨ Polish UI
+
+- **Bloc ENERGY/BEAT dupliqué supprimé** de la topbar (ids en double — jamais mis à jour, affichait "—" en permanence).
+- **Barres top/bottom compressibles** + mode compact sous 1750px — les slots SCENE S1-S6 étaient coupés hors écran à 1600px.
+- **Scene slots lisibles** (bordures, états hover/filled/active sur les tokens `--accent` au lieu d'un vert codé en dur et d'une opacité 0.28 illisible).
+- Panels device (audio/caméra/MIDI) dédupliqués en classes partagées, hovers perceptibles, moniteur MIDI 11px, radius égaré retiré, version HUD resynchronisée.
+
 ## [2.1.1] - 2026-07-11
 
 ### 🐛 Fix packaging Electron (electron-builder 26.15.0)
