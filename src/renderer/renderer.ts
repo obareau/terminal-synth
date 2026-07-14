@@ -104,7 +104,7 @@ themeToggle?.addEventListener("click", () => {
 document.addEventListener("keydown", (e) => {
   if (!e.ctrlKey && !e.shiftKey && (e.key === "t" || e.key === "T")) {
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
-    if (!inInput) {
+    if (!inInput && !gotoActive) {
       e.preventDefault();
       applyTheme(!document.body.classList.contains("light-theme"));
     }
@@ -187,7 +187,21 @@ setupTabs("left-panel");
 setupTabs("right-panel");
 
 // --- Générateurs : catégorisés par type ---
-const SRC_KEYS = "1234567890qwertyuiopasdfghjklzxcvbnm";
+
+// Raccourci "leader" g + 2 lettres → couvre les 142 générateurs (26×26 = 676 combinaisons)
+const GOTO_ALPHA = "abcdefghijklmnopqrstuvwxyz";
+function gotoCode(i: number): string {
+  return GOTO_ALPHA[Math.floor(i / GOTO_ALPHA.length)]! + GOTO_ALPHA[i % GOTO_ALPHA.length]!;
+}
+let gotoActive = false;
+let gotoBuffer = "";
+let gotoTimer: ReturnType<typeof setTimeout> | null = null;
+function resetGoto(): void {
+  if (gotoActive) meter.textContent = "";
+  gotoActive = false;
+  gotoBuffer = "";
+  if (gotoTimer) { clearTimeout(gotoTimer); gotoTimer = null; }
+}
 
 // Fonction pour catégoriser basée sur le nom
 function getCategory(name: string): string {
@@ -236,8 +250,8 @@ SHADERS.forEach((s, i) => {
   item.className = "src-item";
   item.dataset["idx"] = String(i);
   item.dataset.midiTarget = `generator:${i}`;
-  const key = SRC_KEYS[i] ?? "";
-  item.innerHTML = `<span class="src-key">${key}</span><span class="src-name">${s.name}</span>`;
+  const gcode = gotoCode(i);
+  item.innerHTML = `<span class="src-goto">${gcode}</span><span class="src-name">${s.name}</span>`;
   item.addEventListener("click", () => selectSource(i));
 
   // Ajouter à All et à la catégorie spécifique
@@ -1140,7 +1154,7 @@ masterBrightnessSlider.addEventListener("input", () => {
 document.addEventListener("keydown", (e) => {
   if (!e.ctrlKey && !e.shiftKey && (e.key === "b" || e.key === "B")) {
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
-    if (!inInput) {
+    if (!inInput && !gotoActive) {
       e.preventDefault();
       masterBrightnessToggle.click();
     }
@@ -1223,7 +1237,7 @@ document.addEventListener("keydown", (e) => {
     if (focusMode) { toggleFocus(); return; }
     window.synth?.setFullscreen(false);
   }
-  if (e.key === "F11" || (!inInput && (e.key === "f" || e.key === "F")))
+  if (e.key === "F11" || (!inInput && !gotoActive && (e.key === "f" || e.key === "F")))
     window.synth?.toggleFullscreen();
 
   // Ctrl shortcuts — toujours actifs même si focus sur un input
@@ -1234,6 +1248,36 @@ document.addEventListener("keydown", (e) => {
   }
 
   if (inInput) return; // le reste est désactivé si on est dans un input
+
+  // Leader "g" + 2 lettres → sélection directe parmi tous les générateurs
+  if (e.key === "Escape") { resetGoto(); }
+  if (gotoActive) {
+    e.preventDefault();
+    const k = e.key.toLowerCase();
+    if (k.length === 1 && k >= "a" && k <= "z") {
+      gotoBuffer += k;
+      if (gotoBuffer.length >= 2) {
+        const idx = GOTO_ALPHA.indexOf(gotoBuffer[0]!) * GOTO_ALPHA.length + GOTO_ALPHA.indexOf(gotoBuffer[1]!);
+        if (idx >= 0 && idx < SHADERS.length) selectSource(idx);
+        resetGoto();
+      } else {
+        meter.textContent = `g${gotoBuffer}_`;
+        if (gotoTimer) clearTimeout(gotoTimer);
+        gotoTimer = setTimeout(resetGoto, 1500);
+      }
+    } else {
+      resetGoto();
+    }
+    return;
+  }
+  if (e.key === "g" && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    gotoActive = true;
+    gotoBuffer = "";
+    meter.textContent = "g_";
+    gotoTimer = setTimeout(resetGoto, 1500);
+    return;
+  }
 
   // Tab = focus mode (canvas plein écran interne)
   if (e.key === "Tab") { e.preventDefault(); toggleFocus(); return; }
@@ -1297,9 +1341,6 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  // 1-9, 0, q-p, a-k, ... → sélection du générateur
-  const idx = SRC_KEYS.indexOf(e.key.toLowerCase());
-  if (idx >= 0 && idx < SHADERS.length) { selectSource(idx); return; }
 });
 
 // --- Tailles ---

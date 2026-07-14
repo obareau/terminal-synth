@@ -68,8 +68,6 @@
     body.light-theme .src-item { border-bottom-color: #dedcd5; }
     body.light-theme .src-item:hover { background: #dedcd5; }
     body.light-theme .src-item.active { background: #c8e6d4; }
-    body.light-theme .src-key { background: #d2cfc7; border-color: #c46e00; color: #1a1a1a; }
-    body.light-theme .src-item.active .src-key { background: var(--orange); border-color: var(--orange); color: #fff; }
     body.light-theme #layer-section { background: #efece5; }
     body.light-theme .fx { border-bottom-color: #dedcd5; }
     body.light-theme .fx:hover { background: #dedcd5; }
@@ -368,13 +366,13 @@
     .src-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .src-item.active { background: var(--accent-bg); }
     .src-item.active .src-name { color: var(--accent); font-weight: 600; }
-    .src-key {
-      font-size: 10px; font-weight: 700; color: var(--text); min-width: 18px;
+    .src-goto {
+      font-size: 13px; font-weight: 700; color: var(--text); min-width: 22px;
       background: transparent; border: 1px solid var(--border-io);
       border-radius: 0; text-align: center; line-height: 18px; padding: 0 4px;
-      flex-shrink: 0; font-family: var(--font-mono);
+      flex-shrink: 0; font-family: var(--font-mono); text-transform: uppercase; opacity: 0.85;
     }
-    .src-item.active .src-key { color: #000; background: var(--orange); border-color: var(--orange); }
+    .src-item.active .src-goto { color: #000; background: var(--orange); border-color: var(--orange); opacity: 1; }
     .src-name { font-size: 12px; color: var(--text-sec); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* Layer section */
@@ -641,7 +639,7 @@
         style="flex-shrink:0;width:100%;box-sizing:border-box;margin:4px 0;padding:4px 6px;background:var(--panel-bg,#111);color:var(--text,#ddd);border:1px solid var(--border,#333);font:inherit;font-size:11px;" />
 
       <div id="gen-all" class="tab-content active">
-        <div class="ph" style="flex-shrink:0">All Generators<span class="hint">1-9 q-p a-k</span></div>
+        <div class="ph" style="flex-shrink:0">All Generators<span class="hint">g + 2 lettres</span></div>
         <div id="sources-list" style="flex:1;overflow-y:auto;min-height:0"></div>
       </div>
 
