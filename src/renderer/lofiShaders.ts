@@ -485,14 +485,14 @@ vec3 render(vec2 uv, vec2 res) {
       float h1 = fract(sin(row * 127.1 + floor(t * 0.4)) * 4375.8);
       float h2 = fract(sin(row * 311.7 + cx  * 0.07)     * 3287.4);
       float textLen = h1 * 0.6 + 0.2 + u_level * 0.2;
-      float active = step(colN, textLen) * step(0.2, h2);
+      float isLit = step(colN, textLen) * step(0.2, h2);
       // Band coloring per row group
       float band = mod(row, 3.0) < 1.0 ? u_bass : mod(row, 3.0) < 2.0 ? u_mid : u_treble;
       vec3 txt = mix(vec3(0.55, 0.55, 0.55), vec3(1.0), band);
-      col = mix(vec3(0.0, 0.0, 0.04), txt, active * 0.65);
+      col = mix(vec3(0.0, 0.0, 0.04), txt, isLit * 0.65);
       // Beat flash on alternating rows
       float onBeat = step(0.85, u_bass) * mod(row, 2.0);
-      col = mix(col, vec3(1.0, 1.0, 0.5), onBeat * 0.35 * active);
+      col = mix(col, vec3(1.0, 1.0, 0.5), onBeat * 0.35 * isLit);
       // Row separator
       if (fract(row / 3.0) < 0.07) col = vec3(0.1, 0.1, 0.22);
     }
