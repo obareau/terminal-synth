@@ -224,10 +224,18 @@
       flex-shrink: 0;
       z-index: 100;
     }
+    .brand-block {
+      display: flex; flex-direction: column; justify-content: center; gap: 1px;
+      margin-right: var(--spacing-xl);
+    }
     .brand {
       color: var(--orange); font-weight: 900; font-size: 1.5rem;
-      letter-spacing: -0.03em; margin-right: var(--spacing-xl); text-transform: uppercase;
-      font-family: var(--font-ui);
+      letter-spacing: -0.03em; text-transform: uppercase;
+      font-family: var(--font-ui); line-height: 1;
+    }
+    .brand-version {
+      font-size: 9px; font-weight: 600; color: var(--text-dim);
+      font-family: var(--font-mono); letter-spacing: 0.04em; line-height: 1;
     }
     .sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; margin: 0 var(--spacing-sm); opacity: 0.5; }
     .spacer { flex: 1; }
@@ -552,7 +560,10 @@
 
   <!-- ── Top bar ────────────────────────────────────────── -->
   <div id="topbar">
-    <span class="brand">TERMINAL·SYNTH</span>
+    <div class="brand-block">
+      <span class="brand">TERMINAL·SYNTH</span>
+      <span class="brand-version" id="brand-version"></span>
+    </div>
     <span id="industrial-hud-badge" style="
       display: none;
       padding: 4px 10px;

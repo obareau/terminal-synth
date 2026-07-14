@@ -17,6 +17,11 @@ import { MusicAnalyzer } from "./musicAnalyzer";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
+declare const __APP_VERSION__: string;
+declare const __BUILD_HASH__: string;
+const brandVersionEl = document.getElementById("brand-version");
+if (brandVersionEl) brandVersionEl.textContent = `v${__APP_VERSION__} · build ${__BUILD_HASH__}`;
+
 // Mode variables (output window / performance overlay)
 const isOutputMode = new URLSearchParams(window.location.search).get("mode") === "output";
 const isControlMode = !isOutputMode;

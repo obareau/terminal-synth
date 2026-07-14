@@ -1,5 +1,6 @@
 import * as esbuild from "esbuild";
 import * as fs from "node:fs";
+import { execSync } from "node:child_process";
 
 const production = process.argv.includes("--production");
 const common = {
@@ -7,6 +8,18 @@ const common = {
   sourcemap: !production,
   minify: production,
   logLevel: "info" as const,
+};
+
+const pkgVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version as string;
+let buildHash = "dev";
+try {
+  buildHash = execSync("git rev-parse --short HEAD").toString().trim();
+} catch {
+  // pas de repo git disponible (ex: build depuis un tarball release) — garde "dev"
+}
+const versionDefines = {
+  __APP_VERSION__: JSON.stringify(pkgVersion),
+  __BUILD_HASH__: JSON.stringify(buildHash),
 };
 
 async function main(): Promise<void> {
@@ -37,6 +50,7 @@ async function main(): Promise<void> {
     outfile: "dist/renderer.js",
     platform: "browser",
     format: "iife",
+    define: versionDefines,
   });
 
   fs.mkdirSync("dist", { recursive: true });
