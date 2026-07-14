@@ -4250,5 +4250,249 @@ vec3 render(vec2 uv, vec2 res) {
 }
 `,
   },
+  {
+    name: "Engine",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Jitter", key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Échelle", key: "u_p2", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+float gearDist(vec2 p, vec2 c, float r, float teeth, float depth, float rot) {
+  vec2 d = p - c;
+  float dist = length(d);
+  float ang = atan(d.y, d.x) - rot;
+  float toothWave = 0.5 + 0.5 * cos(ang * teeth);
+  float rTeeth = r + depth * smoothstep(0.4, 0.6, toothWave);
+  return dist - rTeeth;
+}
+
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float speed = mix(0.3, 2.5, u_p0) * (1.0 + u_bass * 0.8);
+  float scale = mix(0.35, 0.85, u_p2);
+  float jitter = u_p1 * u_treble * 0.15;
+
+  float r1 = 0.32 * scale, r2 = 0.26 * scale, r3 = 0.21 * scale;
+  vec2 c1 = vec2(-(r1 + r2) * 0.92, 0.0);
+  vec2 c2 = vec2((r1 + r2) * 0.92, 0.0);
+  vec2 c3 = vec2(0.0, (r1 + r3) * 0.92);
+  float t1 = 10.0, t2 = 8.0, t3 = 6.0;
+  float toothDepth = 0.045 * scale;
+  float rot1 = u_time * speed + sin(u_time * 9.0) * jitter;
+  float rot2 = -u_time * speed * (t1 / t2) + cos(u_time * 8.0) * jitter;
+  float rot3 = u_time * speed * (t1 / t3) + sin(u_time * 7.0) * jitter;
+
+  float d1 = gearDist(p, c1, r1, t1, toothDepth, rot1);
+  float d2 = gearDist(p, c2, r2, t2, toothDepth, rot2);
+  float d3 = gearDist(p, c3, r3, t3, toothDepth, rot3);
+
+  vec3 col = vec3(0.015, 0.015, 0.02);
+  vec3 gearCol1 = mix(vec3(0.9, 0.4, 0.05), vec3(0.9, 0.15, 0.1), u_mid);
+  vec3 gearCol2 = gearCol1 * 0.85;
+  vec3 gearCol3 = gearCol1 * 0.7;
+
+  float body1 = smoothstep(0.006, -0.006, d1);
+  float body2 = smoothstep(0.006, -0.006, d2);
+  float body3 = smoothstep(0.006, -0.006, d3);
+  float hole1 = smoothstep(r1 * 0.32, r1 * 0.28, length(p - c1));
+  float hole2 = smoothstep(r2 * 0.32, r2 * 0.28, length(p - c2));
+  float hole3 = smoothstep(r3 * 0.32, r3 * 0.28, length(p - c3));
+
+  col = mix(col, gearCol1, body1 * (1.0 - hole1));
+  col = mix(col, gearCol2, body2 * (1.0 - hole2));
+  col = mix(col, gearCol3, body3 * (1.0 - hole3));
+
+  float rim = exp(-abs(d1) * 80.0) + exp(-abs(d2) * 80.0) + exp(-abs(d3) * 80.0);
+  col += gearCol1 * rim * 0.5 * (0.5 + u_level * 0.5);
+
+  return col * (0.6 + u_level * 0.6);
+}
+`,
+  },
+  {
+    name: "Menger Sponge",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Explosion", key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Échelle", key: "u_p2", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+float distLine(vec2 p, vec2 a, vec2 b) {
+  vec2 d = b - a;
+  float t = clamp(dot(p - a, d) / dot(d, d), 0.0, 1.0);
+  return length(p - a - t * d);
+}
+mat3 rotY(float a) { float s = sin(a), c = cos(a); return mat3(c,0.0,s, 0.0,1.0,0.0, -s,0.0,c); }
+mat3 rotX(float a) { float s = sin(a), c = cos(a); return mat3(1.0,0.0,0.0, 0.0,c,-s, 0.0,s,c); }
+vec2 project(vec3 p, float camZ) {
+  float d = camZ + p.z;
+  return p.xy / max(d, 0.2);
+}
+
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * mix(0.1, 0.8, u_p0);
+  mat3 rot = rotY(t) * rotX(t * 0.6);
+  float scale = mix(0.4, 0.9, u_p2);
+  float explode = 1.0 + u_p1 * (0.4 + u_bass * 0.8);
+
+  vec3 cubeV[8];
+  cubeV[0] = vec3(-1.0,-1.0,-1.0); cubeV[1] = vec3(1.0,-1.0,-1.0);
+  cubeV[2] = vec3(1.0,1.0,-1.0);   cubeV[3] = vec3(-1.0,1.0,-1.0);
+  cubeV[4] = vec3(-1.0,-1.0,1.0);  cubeV[5] = vec3(1.0,-1.0,1.0);
+  cubeV[6] = vec3(1.0,1.0,1.0);    cubeV[7] = vec3(-1.0,1.0,1.0);
+  int e0[12] = int[12](0,1,2,3, 4,5,6,7, 0,1,2,3);
+  int e1[12] = int[12](1,2,3,0, 5,6,7,4, 4,5,6,7);
+
+  float md = 10.0;
+  for (int ix = -1; ix <= 1; ix++) {
+    for (int iy = -1; iy <= 1; iy++) {
+      for (int iz = -1; iz <= 1; iz++) {
+        int zeros = 0;
+        if (ix == 0) zeros++;
+        if (iy == 0) zeros++;
+        if (iz == 0) zeros++;
+        if (zeros >= 2) continue;
+        vec3 offset = vec3(float(ix), float(iy), float(iz)) * (0.66 * explode);
+        vec2 sv[8];
+        for (int k = 0; k < 8; k++) {
+          vec3 vp = (cubeV[k] * 0.32 + offset) * scale;
+          vp = rot * vp;
+          sv[k] = project(vp, 3.2);
+        }
+        for (int k = 0; k < 12; k++) {
+          md = min(md, distLine(p, sv[e0[k]], sv[e1[k]]));
+        }
+      }
+    }
+  }
+
+  float thick = 0.004 + u_level * 0.003;
+  float w = smoothstep(thick * 2.0, 0.0, md);
+  float glow = exp(-md * md * 600.0);
+  vec3 col = vec3(0.02, 0.02, 0.03);
+  vec3 wireCol = mix(vec3(0.15, 0.9, 0.5), vec3(0.9, 0.7, 0.1), u_mid);
+  col += wireCol * w * 1.3;
+  col += wireCol * glow * 0.35;
+  return col * (0.6 + u_level * 0.6);
+}
+`,
+  },
+  {
+    name: "Moire",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Dérive", key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Fréquence", key: "u_p2", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float speed = mix(0.1, 1.0, u_p0);
+  float freq = mix(30.0, 90.0, u_p2);
+  float drift = u_p1 * (0.3 + u_bass * 0.5);
+
+  vec2 c1 = vec2(sin(u_time * speed) * drift, cos(u_time * speed * 0.7) * drift);
+  vec2 c2 = vec2(cos(u_time * speed * 0.8 + 2.0) * drift, sin(u_time * speed * 1.1) * drift);
+  vec2 c3 = -c1 * 0.5;
+
+  float d1 = length(p - c1);
+  float d2 = length(p - c2);
+  float d3 = length(p - c3);
+
+  float r1 = 0.5 + 0.5 * sin(d1 * freq - u_time * (1.0 + u_treble * 2.0));
+  float r2 = 0.5 + 0.5 * sin(d2 * freq * 1.07 + u_time * (1.2 + u_mid * 2.0));
+  float r3 = 0.5 + 0.5 * sin(d3 * freq * 0.93 - u_time * 0.7);
+
+  float pattern = r1 * r2 * r3;
+  pattern = pow(pattern, mix(1.0, 4.0, 0.5));
+
+  vec3 colA = mix(vec3(0.05, 0.05, 0.1), vec3(0.1, 0.9, 0.7), u_mid);
+  vec3 colB = mix(vec3(0.9, 0.2, 0.5), vec3(0.9, 0.7, 0.1), u_treble);
+  vec3 col = mix(colA, colB, pattern);
+  col *= 0.3 + pattern * 0.9;
+
+  return col * (0.5 + u_level * 0.7);
+}
+`,
+  },
+  {
+    name: "Flying Toasters",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Battement", key: "u_p1", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Échelle", key: "u_p2", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+float sdBox(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+float sdTri(vec2 p, vec2 a, vec2 b, vec2 c) {
+  vec2 e0 = b - a, e1 = c - b, e2 = a - c;
+  vec2 v0 = p - a, v1 = p - b, v2 = p - c;
+  vec2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+  vec2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+  vec2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
+  float s = sign(e0.x * e2.y - e0.y * e2.x);
+  vec2 d0 = vec2(dot(pq0, pq0), s * (v0.x * e0.y - v0.y * e0.x));
+  vec2 d1 = vec2(dot(pq1, pq1), s * (v1.x * e1.y - v1.y * e1.x));
+  vec2 d2 = vec2(dot(pq2, pq2), s * (v2.x * e2.y - v2.y * e2.x));
+  vec2 d = min(min(d0, d1), d2);
+  return -sqrt(d.x) * sign(d.y);
+}
+float h11(float x) { return fract(sin(x * 12.9898) * 43758.5453); }
+
+float toasterDist(vec2 lp, float flap) {
+  float body = sdBox(lp, vec2(0.11, 0.075));
+  float slotL = sdBox(lp - vec2(-0.04, 0.075), vec2(0.02, 0.02));
+  float slotR = sdBox(lp - vec2(0.04, 0.075), vec2(0.02, 0.02));
+  body = max(body, -slotL);
+  body = max(body, -slotR);
+  float wingY = sin(flap) * 0.05;
+  float wL = sdTri(lp, vec2(-0.11, -0.02), vec2(-0.30, wingY), vec2(-0.11, 0.05));
+  float wR = sdTri(lp, vec2(0.11, -0.02), vec2(0.30, wingY), vec2(0.11, 0.05));
+  return min(body, min(wL, wR));
+}
+
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float speed = mix(0.15, 0.6, u_p0) * (1.0 + u_level * 0.4);
+  float flapSpeed = mix(6.0, 18.0, u_p1) * (1.0 + u_treble * 0.6);
+  float scale = mix(0.7, 1.6, u_p2);
+
+  vec3 col = vec3(0.015, 0.015, 0.02);
+  vec3 wireCol = mix(vec3(0.15, 0.95, 0.35), vec3(0.9, 0.85, 0.15), u_mid);
+
+  float md = 10.0;
+  const int N = 6;
+  for (int i = 0; i < N; i++) {
+    float fi = float(i);
+    float seedX = h11(fi * 3.1);
+    float seedY = h11(fi * 7.7 + 1.0);
+    float lane = -0.4 + seedY * 0.8;
+    float x = fract(seedX + u_time * speed * (0.6 + h11(fi) * 0.6) ) * 2.4 - 1.2;
+    float bob = sin(u_time * 2.0 + fi * 2.1) * 0.04;
+    vec2 c = vec2(x, lane + bob);
+    float flap = u_time * flapSpeed + fi * 1.7;
+    vec2 lp = (p - c) / scale * 3.0;
+    float d = toasterDist(lp, flap) * scale / 3.0;
+    md = min(md, d);
+  }
+
+  float body = smoothstep(0.004, -0.004, md);
+  float glow = exp(-max(md, 0.0) * 90.0) * step(0.0, md);
+  col = mix(col, wireCol, body);
+  col += wireCol * glow * 0.5;
+
+  return col * (0.6 + u_level * 0.6);
+}
+`,
+  },
 ];
 export const SHADERS: Shader[] = [...BUILTIN_SHADERS, ...INDUSTRIAL_SHADERS, ...LOFI_SHADERS, ...MEDIA_SHADERS];

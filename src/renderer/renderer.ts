@@ -264,9 +264,24 @@ const listContainers: Record<string, HTMLElement | null> = {
 for (const [cat, items] of allItems) {
   const container = listContainers[cat];
   if (container) {
-    items.forEach(item => container.appendChild(item));
+    const sorted = [...items].sort((a, b) => {
+      const nameA = a.querySelector(".src-name")?.textContent ?? "";
+      const nameB = b.querySelector(".src-name")?.textContent ?? "";
+      return nameA.localeCompare(nameB, "fr", { sensitivity: "base" });
+    });
+    sorted.forEach(item => container.appendChild(item));
   }
 }
+
+// Recherche générateur — filtre les .src-item de la liste visible par nom
+const genSearch = document.getElementById("gen-search") as HTMLInputElement | null;
+genSearch?.addEventListener("input", () => {
+  const q = genSearch.value.trim().toLowerCase();
+  document.querySelectorAll<HTMLElement>(".src-item").forEach(item => {
+    const name = item.querySelector(".src-name")?.textContent?.toLowerCase() ?? "";
+    item.style.display = !q || name.includes(q) ? "" : "none";
+  });
+});
 
 function selectSource(i: number): void {
   shaderSel.value = String(i);
