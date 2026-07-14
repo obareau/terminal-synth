@@ -4010,6 +4010,245 @@ vec3 render(vec2 uv, vec2 res) {
   return col * (0.6 + u_level * 0.6);
 }`,
   },
-];
+  {
+    name: "Morph Polyhedron",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Hauteur apex", key: "u_p1", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Échelle", key: "u_p2", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+#define MAXN 8
+float distLine(vec2 p, vec2 a, vec2 b) {
+  vec2 d = b - a;
+  float t = clamp(dot(p - a, d) / dot(d, d), 0.0, 1.0);
+  return length(p - a - t * d);
+}
+mat3 rotY(float a) { float s = sin(a), c = cos(a); return mat3(c,0.0,s, 0.0,1.0,0.0, -s,0.0,c); }
+mat3 rotX(float a) { float s = sin(a), c = cos(a); return mat3(1.0,0.0,0.0, 0.0,c,-s, 0.0,s,c); }
+vec2 project(vec3 p, float camZ) {
+  float d = camZ + p.z;
+  return p.xy / max(d, 0.2);
+}
 
+float bipyramidWire(vec2 p, mat3 rot, float scale, int n, float apexH) {
+  vec2 sv[MAXN];
+  for (int i = 0; i < MAXN; i++) {
+    if (i >= n) break;
+    float ang = TWO_PI * float(i) / float(n);
+    vec3 vp = rot * (vec3(cos(ang), 0.0, sin(ang)) * scale);
+    sv[i] = project(vp, 3.0);
+  }
+  vec2 topApex = project(rot * vec3(0.0, apexH, 0.0) * scale, 3.0);
+  vec2 botApex = project(rot * vec3(0.0, -apexH, 0.0) * scale, 3.0);
+
+  float md = 10.0;
+  for (int i = 0; i < MAXN; i++) {
+    if (i >= n) break;
+    int j = (i + 1 < n) ? (i + 1) : 0;
+    md = min(md, distLine(p, sv[i], sv[j]));
+    md = min(md, distLine(p, sv[i], topApex));
+    md = min(md, distLine(p, sv[i], botApex));
+  }
+  return md;
+}
+
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * mix(0.2, 1.2, u_p0);
+  mat3 rot = rotY(t) * rotX(t * 0.6);
+  float scale = mix(0.4, 1.0, u_p2);
+  float apexH = mix(0.8, 1.6, u_p1);
+
+  // Nombre de côtés continu, piloté par l'intensité audio (u_level) : 3 (tétra) à 8 (octo)
+  float nf = 3.0 + clamp(u_level, 0.0, 1.0) * 5.0;
+  int nlo = int(floor(nf));
+  int nhi = min(nlo + 1, MAXN);
+  float blend = fract(nf);
+
+  float mdLo = bipyramidWire(p, rot, scale, nlo, apexH);
+  float mdHi = bipyramidWire(p, rot, scale, nhi, apexH);
+
+  float thick = 0.006 + u_bass * 0.004;
+  float wLo = smoothstep(thick * 2.0, 0.0, mdLo) * (1.0 - blend);
+  float wHi = smoothstep(thick * 2.0, 0.0, mdHi) * blend;
+  float glowLo = exp(-mdLo * mdLo * 400.0) * (1.0 - blend);
+  float glowHi = exp(-mdHi * mdHi * 400.0) * blend;
+
+  vec3 col = vec3(0.02, 0.02, 0.03);
+  vec3 wireCol = mix(vec3(0.95, 0.55, 0.05), vec3(0.95, 0.15, 0.5), u_mid);
+  col += wireCol * (wLo + wHi) * 1.3;
+  col += wireCol * (glowLo + glowHi) * 0.4;
+  return col * (0.6 + u_level * 0.6);
+}
+`,
+  },
+  {
+    name: "Tesseract",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Déformation", key: "u_p1", min: 0, max: 1, default: 0.3, step: 0.01 },
+      { label: "Échelle", key: "u_p2", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+float distLine(vec2 p, vec2 a, vec2 b) {
+  vec2 d = b - a;
+  float t = clamp(dot(p - a, d) / dot(d, d), 0.0, 1.0);
+  return length(p - a - t * d);
+}
+float h11(float x) { return fract(sin(x * 12.9898) * 43758.5453); }
+vec4 rot4(vec4 v, float aXW, float aYZ) {
+  float c1 = cos(aXW), s1 = sin(aXW);
+  float x = v.x * c1 - v.w * s1;
+  float w = v.x * s1 + v.w * c1;
+  float c2 = cos(aYZ), s2 = sin(aYZ);
+  float y = v.y * c2 - v.z * s2;
+  float z = v.y * s2 + v.z * c2;
+  return vec4(x, y, z, w);
+}
+vec2 project2(vec3 p, float camZ) {
+  float d = camZ + p.z;
+  return p.xy / max(d, 0.2);
+}
+vec3 project3(vec4 p, float camW) {
+  float d = camW + p.w;
+  return p.xyz / max(d, 0.4);
+}
+
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * mix(0.15, 1.0, u_p0);
+  float aXW = t;
+  float aYZ = t * 0.7;
+  float scale = mix(0.4, 0.9, u_p2);
+  float deform = u_p1 * (0.1 + u_treble * 0.4);
+  float camW = 2.2 + sin(u_time * 1.3) * (0.2 + u_bass * 0.5);
+
+  vec2 sv[16];
+  for (int i = 0; i < 16; i++) {
+    float x = (((i >> 0) & 1) == 1) ? 1.0 : -1.0;
+    float y = (((i >> 1) & 1) == 1) ? 1.0 : -1.0;
+    float z = (((i >> 2) & 1) == 1) ? 1.0 : -1.0;
+    float w = (((i >> 3) & 1) == 1) ? 1.0 : -1.0;
+    vec4 v4 = vec4(x, y, z, w) * scale;
+    float n = h11(float(i) * 3.7 + floor(u_time * 2.0));
+    v4 += vec4(x, y, z, w) * sin(u_time * 1.7 + n * TWO_PI) * deform;
+    v4 = rot4(v4, aXW, aYZ);
+    vec3 p3 = project3(v4, camW);
+    sv[i] = project2(p3, 3.0);
+  }
+
+  int e0[32] = int[32](0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 8, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 14);
+  int e1[32] = int[32](1, 2, 4, 8, 3, 5, 9, 3, 6, 10, 7, 11, 5, 6, 12, 7, 13, 7, 14, 15, 9, 10, 12, 11, 13, 11, 14, 15, 13, 14, 15, 15);
+
+  float md = 10.0;
+  for (int i = 0; i < 32; i++) {
+    md = min(md, distLine(p, sv[e0[i]], sv[e1[i]]));
+  }
+
+  float thick = 0.005 + u_level * 0.003;
+  float w2 = smoothstep(thick * 2.0, 0.0, md);
+  float glow = exp(-md * md * 500.0);
+  vec3 col = vec3(0.02, 0.02, 0.03);
+  vec3 wireCol = mix(vec3(0.6, 0.2, 1.0), vec3(0.1, 0.8, 1.0), u_mid);
+  col += wireCol * w2 * 1.3;
+  col += wireCol * glow * 0.4;
+  return col * (0.6 + u_level * 0.6);
+}
+`,
+  },
+  {
+    name: "Hypersphere",
+    params: [
+      { label: "Vitesse", key: "u_p0", min: 0, max: 1, default: 0.4, step: 0.01 },
+      { label: "Plongée 4D", key: "u_p1", min: 0, max: 1, default: 0.35, step: 0.01 },
+      { label: "Échelle", key: "u_p2", min: 0, max: 1, default: 0.5, step: 0.01 },
+    ],
+    category: "Geometry",
+    src: /* glsl */ `
+float distLine(vec2 p, vec2 a, vec2 b) {
+  vec2 d = b - a;
+  float t = clamp(dot(p - a, d) / dot(d, d), 0.0, 1.0);
+  return length(p - a - t * d);
+}
+vec4 rot4(vec4 v, float aXW, float aYZ) {
+  float c1 = cos(aXW), s1 = sin(aXW);
+  float x = v.x * c1 - v.w * s1;
+  float w = v.x * s1 + v.w * c1;
+  float c2 = cos(aYZ), s2 = sin(aYZ);
+  float y = v.y * c2 - v.z * s2;
+  float z = v.y * s2 + v.z * c2;
+  return vec4(x, y, z, w);
+}
+vec2 project2(vec3 p, float camZ) {
+  float d = camZ + p.z;
+  return p.xy / max(d, 0.2);
+}
+vec3 project3(vec4 p, float camW) {
+  float d = camW + p.w;
+  return p.xyz / max(d, 0.4);
+}
+
+vec3 render(vec2 uv, vec2 res) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  float t = u_time * mix(0.15, 1.0, u_p0);
+  float aXW = t * 0.8;
+  float aYZ = t * 0.5;
+  float scale = mix(0.4, 0.9, u_p2);
+  float wAmt = u_p1 * (0.6 + u_bass * 0.6);
+  float camW = 2.4;
+
+  const int LAT = 6;
+  const int SEG = 14;
+  float md = 10.0;
+
+  for (int la = 1; la < LAT; la++) {
+    float phi = PI * float(la) / float(LAT) - HALF_PI;
+    float ringR = cos(phi);
+    float y = sin(phi);
+    vec2 prevPt = vec2(0.0);
+    for (int s = 0; s <= SEG; s++) {
+      float th = TWO_PI * float(s) / float(SEG);
+      vec3 p3d = vec3(ringR * cos(th), y, ringR * sin(th));
+      float wCoord = (p3d.x * cos(u_time * 0.6) + p3d.z * sin(u_time * 0.6)) * wAmt;
+      vec4 v4 = vec4(p3d, wCoord) * scale;
+      v4 = rot4(v4, aXW, aYZ);
+      vec3 pr3 = project3(v4, camW);
+      vec2 sp = project2(pr3, 3.0);
+      if (s > 0) md = min(md, distLine(p, prevPt, sp));
+      prevPt = sp;
+    }
+  }
+  const int MER = 8;
+  for (int me = 0; me < MER; me++) {
+    float lambda = TWO_PI * float(me) / float(MER);
+    vec2 prevPt = vec2(0.0);
+    for (int s = 0; s <= SEG; s++) {
+      float phi = PI * float(s) / float(SEG) - HALF_PI;
+      float ringR = cos(phi);
+      vec3 p3d = vec3(ringR * cos(lambda), sin(phi), ringR * sin(lambda));
+      float wCoord = (p3d.x * cos(u_time * 0.6) + p3d.z * sin(u_time * 0.6)) * wAmt;
+      vec4 v4 = vec4(p3d, wCoord) * scale;
+      v4 = rot4(v4, aXW, aYZ);
+      vec3 pr3 = project3(v4, camW);
+      vec2 sp = project2(pr3, 3.0);
+      if (s > 0) md = min(md, distLine(p, prevPt, sp));
+      prevPt = sp;
+    }
+  }
+
+  float thick = 0.005 + u_level * 0.003;
+  float w2 = smoothstep(thick * 2.0, 0.0, md);
+  float glow = exp(-md * md * 500.0);
+  vec3 col = vec3(0.02, 0.02, 0.03);
+  vec3 wireCol = mix(vec3(1.0, 0.3, 0.7), vec3(0.3, 0.9, 1.0), u_treble);
+  col += wireCol * w2 * 1.3;
+  col += wireCol * glow * 0.4;
+  return col * (0.6 + u_level * 0.6);
+}
+`,
+  },
+];
 export const SHADERS: Shader[] = [...BUILTIN_SHADERS, ...INDUSTRIAL_SHADERS, ...LOFI_SHADERS, ...MEDIA_SHADERS];
