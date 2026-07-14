@@ -1337,6 +1337,7 @@ document.addEventListener("keydown", (e) => {
 
   // b = layer B toggle
   if (e.key === "b" || e.key === "B") { layerBBtn.click(); return; }
+  if (e.key === "l" || e.key === "L") { ultraLowCostBtn.click(); return; }
 
   // Easter egg: Alt+A = toggle ASCII glitch permanent overlay
   if (e.altKey && (e.key === "a" || e.key === "A")) {
@@ -1348,10 +1349,23 @@ document.addEventListener("keydown", (e) => {
 
 });
 
+// --- Ultra Low Cost : divise le nombre de pixels rendus par 2 (facteur 1/√2 par axe) ---
+const ultraLowCostBtn = $<HTMLButtonElement>("ultra-low-cost-toggle");
+let ultraLowCostEnabled = localStorage.getItem("ts-ultra-low-cost") === "on";
+if (ultraLowCostEnabled) ultraLowCostBtn.classList.add("on");
+function setUltraLowCost(enabled: boolean): void {
+  ultraLowCostEnabled = enabled;
+  ultraLowCostBtn.classList.toggle("on", enabled);
+  localStorage.setItem("ts-ultra-low-cost", enabled ? "on" : "off");
+  resizeCanvas();
+}
+ultraLowCostBtn.addEventListener("click", () => setUltraLowCost(!ultraLowCostEnabled));
+
 // --- Tailles ---
 function resizeCanvas(): void {
   const scale = AUTO_PERF_SCALE[autoPerfLevel] ?? 1;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2) * scale;
+  const ultraFactor = ultraLowCostEnabled ? Math.SQRT1_2 : 1; // 1/√2 par axe → moitié moins de pixels
+  const dpr = Math.min(window.devicePixelRatio || 1, 2) * scale * ultraFactor;
   canvas.width = Math.max(1, Math.floor(canvas.clientWidth * dpr));
   canvas.height = Math.max(1, Math.floor(canvas.clientHeight * dpr));
 }
@@ -2315,13 +2329,15 @@ const textConfigBtn = $<HTMLButtonElement>("text-config");
 const textConfigPanel = $("text-config-panel");
 const textConfigCloseBtn = $<HTMLButtonElement>("text-config-close");
 
-// textLayer démarre enabled:true — on synchronise le bouton et on respecte localStorage si "off"
+// textLayer démarre enabled:true côté module — on le désactive par défaut (coûteux en CPU,
+// jamais réactivé automatiquement par l'autoplay). L'utilisateur peut l'activer manuellement
+// et son choix est persisté.
 {
   const saved = localStorage.getItem("ts-textlayer");
-  if (saved === "off") {
-    textLayer.toggle(); // désactive (part de true → false)
+  if (saved === "on") {
+    textLayerBtn.classList.add("on"); // déjà activé par défaut côté module
   } else {
-    textLayerBtn.classList.add("on"); // déjà activé par défaut
+    textLayer.toggle(); // désactive (part de true → false)
   }
 }
 

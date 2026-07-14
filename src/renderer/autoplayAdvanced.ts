@@ -11,7 +11,6 @@
  * - RECTA color/size randomization
  */
 
-import { textLayer } from "./textLayer";
 import { SHADERS } from "./shaders";
 
 // Global functions from renderer.ts
@@ -276,10 +275,6 @@ class AutoplayAdvanced {
     if (Math.random() < 0.2 + aggression * 0.3) {
       this.randomizeBlendMode();
     }
-    // Text layer
-    if (Math.random() < 0.15 + aggression * 0.1) {
-      this.randomizeTextLayer();
-    }
     // Render filter
     if (Math.random() < 0.08 + aggression * 0.05) {
       this.randomizeRenderFilter();
@@ -311,9 +306,6 @@ class AutoplayAdvanced {
     }
     if (Math.random() < mutationStrength * 0.5) {
       this.randomizeSource();
-    }
-    if (Math.random() < mutationStrength * 0.25) {
-      this.randomizeTextLayer();
     }
     if (Math.random() < mutationStrength * 0.15) {
       this.randomizeRenderFilter();
@@ -564,13 +556,6 @@ class AutoplayAdvanced {
 
       requestAnimationFrame(animate);
     });
-  }
-
-  /**
-   * Helper: randomize text layer (toggle on/off)
-   */
-  private randomizeTextLayer() {
-    textLayer.toggle();
   }
 
   /**
