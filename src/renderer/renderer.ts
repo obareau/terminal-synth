@@ -1333,7 +1333,6 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "a" || e.key === "A") { audioBtn.click(); return; }
   if (e.key === "m" || e.key === "M") { midiBtn.click(); return; }
   if (e.key === "x" || e.key === "X") { asciiBtn.click(); return; }
-  if (e.key === "t" || e.key === "T") { textBtn.click(); return; }
 
   // b = layer B toggle
   if (e.key === "b" || e.key === "B") { layerBBtn.click(); return; }
@@ -1350,8 +1349,9 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Ultra Low Cost : divise le nombre de pixels rendus par 2 (facteur 1/√2 par axe) ---
+// Activé par défaut (tourne bien partout) — désactivable manuellement, choix persisté.
 const ultraLowCostBtn = $<HTMLButtonElement>("ultra-low-cost-toggle");
-let ultraLowCostEnabled = localStorage.getItem("ts-ultra-low-cost") === "on";
+let ultraLowCostEnabled = localStorage.getItem("ts-ultra-low-cost") !== "off";
 if (ultraLowCostEnabled) ultraLowCostBtn.classList.add("on");
 function setUltraLowCost(enabled: boolean): void {
   ultraLowCostEnabled = enabled;
