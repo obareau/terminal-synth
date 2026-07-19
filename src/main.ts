@@ -68,8 +68,14 @@ function createWindow(): void {
   // (fallback Windows/macOS uniquement — le renderer ne l'appelle pas sous
   // Linux). Le catch est vital : sous Wayland getSources passe par le portal
   // screencast et son refus laissait une promesse non gérée qui tuait l'app.
+  // Timeout obligatoire : sous macOS, desktopCapturer.getSources() peut
+  // bloquer indéfiniment (ScreenCaptureKit) quand un AirPlay/Screen Mirroring
+  // est actif, ce qui gelait tout le process principal (même Cmd+Q ne répondait plus).
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-    desktopCapturer.getSources({ types: ["screen"] })
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("desktopCapturer.getSources timeout (AirPlay/Screen Mirroring actif ?)")), 4000);
+    });
+    Promise.race([desktopCapturer.getSources({ types: ["screen"] }), timeout])
       .then((sources) => { callback({ video: sources[0], audio: "loopback" }); })
       .catch((err) => { console.error("[Main] getDisplayMedia refusé:", err); callback({}); });
   });
