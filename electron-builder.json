@@ -19,6 +19,7 @@
     ]
   },
   "mac": {
+    "icon": "build/icon.icns",
     "target": [
       { "target": "dmg", "arch": ["x64", "arm64"] },
       { "target": "zip", "arch": ["x64", "arm64"] }
@@ -30,6 +31,7 @@
     "entitlementsInherit": "build/entitlements.mac.plist"
   },
   "linux": {
+    "icon": "build/icon.png",
     "target": [
       { "target": "AppImage", "arch": ["x64"] }
     ],

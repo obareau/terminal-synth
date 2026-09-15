@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1210"/>
+      <stop offset="100%" stop-color="#020403"/>
+    </linearGradient>
+    <radialGradient id="bloom" cx="50%" cy="48%" r="55%">
+      <stop offset="0%" stop-color="#33ff77" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#33ff77" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224"/>
+    </clipPath>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"/>
+
+    <g opacity="0.05" stroke="#8fffb0" stroke-width="2">
+      <g id="scan"></g>
+    </g>
+    <g opacity="0.045">
+      <g fill="none" stroke="#9dffbf" stroke-width="2">
+        <path d="M0,60 H1024"/><path d="M0,86 H1024"/><path d="M0,112 H1024"/><path d="M0,138 H1024"/>
+        <path d="M0,164 H1024"/><path d="M0,190 H1024"/><path d="M0,216 H1024"/><path d="M0,242 H1024"/>
+        <path d="M0,268 H1024"/><path d="M0,294 H1024"/><path d="M0,320 H1024"/><path d="M0,346 H1024"/>
+        <path d="M0,372 H1024"/><path d="M0,398 H1024"/><path d="M0,424 H1024"/><path d="M0,450 H1024"/>
+        <path d="M0,476 H1024"/><path d="M0,502 H1024"/><path d="M0,528 H1024"/><path d="M0,554 H1024"/>
+        <path d="M0,580 H1024"/><path d="M0,606 H1024"/><path d="M0,632 H1024"/><path d="M0,658 H1024"/>
+        <path d="M0,684 H1024"/><path d="M0,710 H1024"/><path d="M0,736 H1024"/><path d="M0,762 H1024"/>
+        <path d="M0,788 H1024"/><path d="M0,814 H1024"/><path d="M0,840 H1024"/><path d="M0,866 H1024"/>
+        <path d="M0,892 H1024"/><path d="M0,918 H1024"/><path d="M0,944 H1024"/><path d="M0,970 H1024"/>
+      </g>
+    </g>
+
+    <circle cx="512" cy="500" r="380" fill="url(#bloom)"/>
+
+    <!-- corner reticle brackets -->
+    <g stroke="#1f7a45" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.85">
+      <path d="M120,230 V120 H230"/>
+      <path d="M904,230 V120 H794"/>
+      <path d="M120,794 V904 H230"/>
+      <path d="M904,794 V904 H794"/>
+    </g>
+
+    <!-- glow layer (prompt + spectrum) -->
+    <g filter="url(#glow)" opacity="0.65">
+      <path d="M257,340 L477,512 L257,684" fill="none" stroke="#33ff77" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="517" y="462" width="46" height="100" rx="18" fill="#33ff77"/>
+      <rect x="585" y="397" width="46" height="230" rx="18" fill="#33ff77"/>
+      <rect x="653" y="362" width="46" height="300" rx="18" fill="#33ff77"/>
+      <rect x="721" y="427" width="46" height="170" rx="18" fill="#33ff77"/>
+    </g>
+
+    <!-- crisp foreground (prompt + spectrum) -->
+    <g filter="url(#softGlow)" opacity="0.9">
+      <path d="M257,340 L477,512 L257,684" fill="none" stroke="#bdffd4" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g>
+      <path d="M257,340 L477,512 L257,684" fill="none" stroke="#3dffa0" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="517" y="462" width="46" height="100" rx="18" fill="#3dffa0"/>
+      <rect x="585" y="397" width="46" height="230" rx="18" fill="#3dffa0"/>
+      <rect x="653" y="362" width="46" height="300" rx="18" fill="#eafff2"/>
+      <rect x="721" y="427" width="46" height="170" rx="18" fill="#3dffa0"/>
+    </g>
+  </g>
+</svg>
