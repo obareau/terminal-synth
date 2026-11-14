@@ -42,3 +42,10 @@ mappings MIDI sauvegardés. **Ajouter à la fin, ne jamais renuméroter.**
 
 > Ces fichiers ne sont pas des ISF exécutables tels quels dans VDMX/Resolume : seul
 > l'en-tête suit la convention ISF, le corps utilise les uniforms de Terminal-Synth.
+
+## Conversion Metal
+
+`npm run metal:convert` convertit tous les shaders en Metal (glslang → SPIR-V →
+spirv-cross) et les fait compiler par le pilote Metal du Mac. Prérequis :
+`brew install glslang spirv-cross`. Résultat dans `out/metal/msl/`, rapport dans
+`docs/metal-conversion.md`.

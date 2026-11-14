@@ -11,6 +11,7 @@
     "dev": "tsx build.ts && electron .",
     "test": "jest",
     "test:watch": "jest --watch",
+    "metal:convert": "tsx scripts/convert-metal.ts",
     "package": "tsx build.ts --production && electron-builder --config electron-builder.json --win portable",
     "package:mac": "tsx build.ts --production && electron-builder --config electron-builder.json --mac",
     "package:linux": "tsx build.ts --production && electron-builder --config electron-builder.json --linux",
