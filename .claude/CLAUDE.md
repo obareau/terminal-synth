@@ -67,9 +67,9 @@ npm run test:watch     # Watch mode for TDD
 | File | Purpose | Key Classes |
 |------|---------|-------------|
 | `src/renderer/gl.ts` | WebGL2 pipeline | `Pipeline` (rendering engine) |
-| `src/renderer/shaders.ts` | Generator definitions | GLSL ES 3.00 generators |
-| `src/renderer/effects.ts` | Post-process effects | Effect chain definitions |
-| `src/renderer/disruptors.ts` | Audio-triggered glitches | Disruptor effects |
+| `shaders/{generators,effects,disruptors}/*.glsl` | Shader sources, one file each | JSON header + GLSL ES 3.00 (see `shaders/README.md`) |
+| `src/shaderLibrary/library.ts` | Reads `shaders/` (esbuild plugin + Jest) | `loadShaderLibrary` |
+| `src/renderer/shaders.ts` / `effects.ts` / `disruptors.ts` | Types + arrays loaded from the library | `SHADERS`, `EFFECTS`, `DISRUPTORS` |
 | `src/renderer/audio.ts` | FFT analysis | `AudioInput` (Web Audio API) |
 | `src/renderer/musicAnalyzer.ts` | BPM/energy/onset detection | `MusicAnalyzer` |
 | `src/renderer/autoplay.ts` | Base autoplay logic | `Autoplay` |
@@ -120,7 +120,7 @@ Audio Input → FFT Analysis → Audio Bands {bass, mid, treble, level}
 
 ### Generator Selection
 - Keys: `1-9`, `q-p`, `a-k`
-- **Files**: `shaders.ts` (generator definitions), `renderer.ts` (selection logic)
+- **Files**: `shaders/generators/*.glsl` (generator sources), `renderer.ts` (selection logic)
 
 ### Audio Controls
 - **Toggle Audio**: `A` key
@@ -136,9 +136,9 @@ Audio Input → FFT Analysis → Audio Bands {bass, mid, treble, level}
 
 1. **Autoplay logic**: Edit `autoplay.ts` / `autoplayAdapter.ts` / `autoplayAdvanced.ts`
 2. **Music analysis (BPM/energy/onsets)**: Edit `musicAnalyzer.ts`
-3. **Generators**: Add to `src/renderer/shaders.ts` (GLSL code block)
-4. **Effects**: Add to `src/renderer/effects.ts` (post-process shader)
-5. **Disruptors**: Add to `src/renderer/disruptors.ts` (audio-triggered glitches)
+3. **Generators**: Add a file in `shaders/generators/`
+4. **Effects**: Add a file in `shaders/effects/`
+5. **Disruptors**: Add a file in `shaders/disruptors/`
 6. **UI Elements**: Add to `src/renderer/index.html` + `renderer.ts` event listeners
 7. **Styling**: Add to `src/renderer/index.html` `<style>` or separate CSS
 
@@ -162,32 +162,9 @@ Audio Input → FFT Analysis → Audio Bands {bass, mid, treble, level}
 
 ## Common Tasks
 
-### Add a New Generator
-```typescript
-// In shaders.ts, add to SHADERS array:
-{
-  name: "My Generator",
-  category: "Geometry",
-  shader: `vec3 render(vec2 uv, vec2 resolution) {
-    // Your GLSL code here
-    return vec3(...);
-  }`,
-  audioReactive: true,
-}
-```
-
-### Add a New Effect
-```typescript
-// In effects.ts, add to EFFECTS array:
-{
-  name: "My Effect",
-  effect: `vec3 process(vec2 uv) {
-    // Your GLSL code here
-    return vec3(...);
-  }`,
-  amount: 0.5,
-}
-```
+### Add a New Generator / Effect / Disruptor
+See `shaders/README.md`. In short: create `shaders/generators/NNN-name.glsl` with the next free number.
+Never renumber existing files — scenes, presets and MIDI reference shaders by index.
 
 ### Add a Keyboard Shortcut
 ```typescript

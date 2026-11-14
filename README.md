@@ -261,18 +261,20 @@ Electron 34
 
 ### Fichiers Clés
 ```
+shaders/                       Source unique des shaders (partagée avec le futur port Metal)
+├── generators/                142 générateurs — un fichier .glsl chacun
+├── effects/                   57 effets post-process
+├── disruptors/                61 perturbateurs
+└── lib/                       code GLSL partagé (#include)
 src/
+├── shaderLibrary/library.ts   Lecture de shaders/ (plugin esbuild + Jest)
 ├── main.ts                   Process principal Electron (fenêtres, IPC, export vidéo)
 ├── preload.ts                 Pont contextBridge ↔ renderer
 └── renderer/
     ├── gl.ts                  Pipeline WebGL2 (multi-pass, effects chain, u_media)
-    ├── shaders.ts             100 générateurs GLSL ES 3.00 (builtin)
-    ├── industrialShaders.ts   20 générateurs Industrial monochrome
-    ├── lofiShaders.ts         14 générateurs Lofi/Chiptune/ASCII
-    ├── mediaShaders.ts         3 générateurs Media (u_media texture)
-    ├── effects.ts             57 effets post-process
-    ├── disruptors.ts          61 perturbateurs (24 builtin + 25 nouveaux)
-    ├── industrialDisruptors.ts 12 perturbateurs Industrial
+    ├── shaders.ts             type Shader + SHADERS (lus depuis shaders/generators)
+    ├── effects.ts             type Effect + EFFECTS (lus depuis shaders/effects)
+    ├── disruptors.ts          type Disruptor + DISRUPTORS (lus depuis shaders/disruptors)
     ├── audio.ts               FFT + audio input (loopback/micro)
     ├── musicAnalyzer.ts       BPM / énergie / style / tap tempo
     ├── autoplay.ts            Logique autoplay de base
