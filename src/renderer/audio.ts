@@ -15,6 +15,15 @@ export interface Bands {
 
 export type AudioSource = "system" | "mic";
 
+// Chromium active par défaut AGC + annulation d'écho + réduction de bruit
+// (traitement « visio »). Pour une FFT musicale ça écrase la dynamique et
+// filtre la musique comme du bruit : on veut le signal brut.
+const RAW_AUDIO: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+};
+
 export class AudioInput {
   private ctx?: AudioContext;
   private analyser?: AnalyserNode;
@@ -43,14 +52,14 @@ export class AudioInput {
     let stream: MediaStream;
     if (deviceId) {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId } },
+        audio: { ...RAW_AUDIO, deviceId: { exact: deviceId } },
         video: false,
       });
       console.log(`[Audio] Capture via device: ${deviceId}`);
     } else if (source === "system") {
       stream = await this.captureSystem();
     } else {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: RAW_AUDIO, video: false });
     }
     if (stream.getAudioTracks().length === 0) throw new Error("Aucune piste audio capturée");
 
@@ -86,7 +95,7 @@ export class AudioInput {
       const monitor = audioInputs.find((d) => /monitor|loopback|moniteur/i.test(d.label));
       if (monitor) {
         const monStream = await navigator.mediaDevices.getUserMedia({
-          audio: { deviceId: { exact: monitor.deviceId } },
+          audio: { ...RAW_AUDIO, deviceId: { exact: monitor.deviceId } },
           video: false,
         });
         console.log(`[Audio] System capture via monitor device: ${monitor.label}`);
